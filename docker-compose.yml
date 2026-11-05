@@ -1,0 +1,38 @@
+version: '3.8'
+services:
+  db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: rp_admin
+      POSTGRES_PASSWORD: admin_password_segura
+      POSTGRES_DB: rp_joinville_erp
+      TZ: America/Sao_Paulo
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "5432:5432"
+
+  backend:
+    build: ./backend
+    environment:
+      DATABASE_URL: postgres://rp_admin:admin_password_segura@db:5432/rp_joinville_erp
+      JWT_SECRET: chave_super_secreta_jwt_rp_joinville
+      PORT: 3001
+      TZ: America/Sao_Paulo
+    ports:
+      - "3001:3001"
+    depends_on:
+      - db
+
+  frontend:
+    build: ./frontend
+    environment:
+      VITE_API_URL: http://localhost:3001/api
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+
+volumes:
+  pgdata:

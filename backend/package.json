@@ -1,0 +1,1 @@
+{"name":"rp-api","scripts":{"dev":"node server.js"},"dependencies":{"express":"*","pg":"*","cors":"*","jsonwebtoken":"*"}}
