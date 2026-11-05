@@ -10,6 +10,8 @@
 - **Método de trabalho:** [processo de desenvolvimento de MVP de software com IA assistida](https://github.com/jukazilli/processo-de-desenvolvimento-de-mvp-de-software-com-ia-assistida), etapas 01–14. Este arquivo é o documento principal; Issues são a fila de trabalho e PRs guardam alterações revisáveis.
 - **Baseline de código observado:** `main` @ `1baacd0ea5cb2efc265b29cff10bf47d58c067cf`; alterações posteriores devem ser verificadas antes de iniciar novas tarefas.
 
+**Legado:** `legacy/frontend/`, `legacy/backend/`, `legacy/database/`, `legacy/escr/` e `legacy/docker-compose.yml` foram deslocados da raiz sem alteração de conteúdo. Seu uso é exclusivamente como referência histórica; o código novo e os schemas devem nascer de especificações e testes, não de extensão do protótipo. Ver [política do legado](../legacy/README.md).
+
 **Regra de precedência:** requisito funcional aprovado e interface aprovada prevalecem sobre a implementação atual; decisões de infraestrutura e arquitetura do projeto controlam como implementar, mas não autorizam alterar regras de negócio, permissões ou UI. Conflitos são documentados e submetidos a revisão. Fonte técnica proposta não equivale a aceite institucional.
 
 ## 06 — Qualidade, riscos e proteção de dados
@@ -73,6 +75,9 @@ A [especificação técnica da arquitetura](arquitetura/MVC_MONOREPO.md) governa
 
 ## 10 — Trabalho no GitHub
 
+**Metodologia:** Spec-Driven Development (SDD, interpretação operacional de “driven development”, pendente de confirmação do nome da prática antes da primeira implementação funcional). Primeiro especificação rastreável do DRS/UI, cenários de aceitação e testes; depois código, verificação, PR e aceite. TDD/BDD complementam o processo. Referência: [Plano de reconstrução](planejamento/RECONSTRUCAO_SDD.md). Templates obrigatórios de issue e PR no `.github/` documentam contratos, evidências e riscos.
+
+
 - **Backlog oficial:** [Issues](https://github.com/larabeatrizs/ERP_Restaurantes_Joinville/issues); **revisões:** [Pull requests](https://github.com/larabeatrizs/ERP_Restaurantes_Joinville/pulls).
 - Priorizar `FND-000` (auditoria/reconciliação), depois ADR/arquitetura, autorização, modelo de dados, staging e CI; identificadores são nomes de trabalho propostos, não números existentes.
 - Cada issue deve referenciar IDs do DRS e estados da UI, critérios observáveis, dependências, verificações e evidências. Usar branch e PR antes de integrar na `main`; não marcar concluído sem testes/aceite adequados.
@@ -80,13 +85,14 @@ A [especificação técnica da arquitetura](arquitetura/MVC_MONOREPO.md) governa
 
 ## 11 — Fundação técnica (planejada; não executada)
 
-1. Revisar estrutura legada e escolher layout físico alvo `apps/web` / `apps/api` / `packages/*` / `supabase/migrations`.
+1. Usar os arquivos em `legacy/` somente para auditoria; **criar novos** `apps/web`, `apps/api`, `packages/*` e `supabase/migrations` sem copiar o protótipo como aplicação.
 2. Definir bootstrap do monorepo, versões fixadas, lockfile, lint, testes, build e CI.
-3. Reconciliar schema atual com DRS, criar baseline de migrations e validar bootstrap em banco vazio isolado.
-4. Implementar Auth, perfis, vínculos por unidade, grants/RLS e testes negativos.
-5. Adaptar API ao runtime Cloudflare e disponibilizar frontend fiel à referência.
-6. Configurar staging e secrets, validar deploy e smoke test com dados sintéticos.
-7. Demonstrar backup/restauração, observabilidade, recuperação e procedimentos de operação.
+3. **Recriar integralmente os schemas pertinentes ao DRS** a partir do modelo conceitual, regras e critérios de aceitação; produzir migrations novas, relacionamentos, constraints, grants/RLS, auditoria e testes em banco isolado. O banco Supabase conectado não deve ser apagado ou alterado sem plano e autorização.
+4. Implementar novos Auth, perfis, vínculos por unidade, grants/RLS e testes negativos, sem reaproveitar `legacy/backend`.
+5. **Recriar backend MVC, regras de negócio e contratos HTTP** em `apps/api`, com testes de domínio, autorização, integração e concorrência.
+6. **Recriar frontend** em `apps/web`, aderente ao Style Guide e integrado às APIs, com testes de acessibilidade, estados e comparação visual.
+7. Configurar staging e secrets, validar deploy e smoke test com dados sintéticos.
+8. Demonstrar backup/restauração, observabilidade, recuperação e procedimentos de operação.
 
 **Gate `FND_READY`:** pipeline e staging comprovados, autorização/RLS testadas, migrations reaplicáveis, sem segredos em código, UI de referência conferida e evidências vinculadas a commit. **Estado atual: NÃO ATINGIDO.**
 
@@ -112,6 +118,6 @@ Realizar a primeira implantação operacional no RP1, com duas semanas em parale
 
 ## 16 — Continuidade e evidências
 
-- **Esta alteração:** documentação de arquitetura e reconciliação exclusivamente; sem criação de infraestrutura, migrations, código funcional ou alteração de estilos.
+- **Esta alteração:** relocação do código do protótipo para `legacy/`, documentação da reconstrução integral e templates de SDD/PR, sem criação de infraestrutura, migrations, código funcional ou alteração de estilos.
 - **Próximo recorte:** revisar/aceitar o PR, abrir/associar `FND-000`, fechar contrato de Auth e modelagem, preparar base do monorepo em PR posterior.
 - **Critério de governança:** registrar mudanças futuras na seção afetada e na issue/PR correspondente; nenhuma decisão documental prova implantação real.
