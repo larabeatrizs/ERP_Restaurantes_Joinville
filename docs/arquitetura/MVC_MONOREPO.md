@@ -7,6 +7,7 @@
 - **Monorepo:** um único repositório Git, pipelines coordenados, dependências explícitas e módulos isolados.
 - **MVC:** Model–View–Controller para o sistema web, com camadas de Serviço (casos de uso) e Repositório (persistência) internas ao Model/Backend, evitando controllers com regras de negócio ou SQL.
 - **Execução:** frontend React/Vite e API Cloudflare Workers; PostgreSQL e Auth gerenciados por Supabase. **Nenhum serviço VPS/Docker é requisito de produção.**
+- **Estratégia de reconstrução:** `legacy/` é acervo histórico; os novos pacotes e todos os schemas serão implementados do zero a partir dos requisitos, sem importar ou estender o protótipo. Ver [plano SDD](../planejamento/RECONSTRUCAO_SDD.md).
 - **Fontes de produto imutáveis por padrão:** DRS e Style Guide; mudanças de comportamento ou telas dependem de decisão e aprovação explícitas.
 
 ## 2. Diagrama-alvo
@@ -79,7 +80,7 @@ ERP_Restaurantes_Joinville/
 └── package.json               # workspaces, após decisão de toolchain
 ~~~
 
-**Estado observado antes desta decisão:** o repositório contém `frontend/`, `backend/`, `database/init.sql`, `escr/` e `docker-compose.yml`. A árvore anterior não foi alterada nesta reconciliação. Na futura migração, mapear equivalências, verificar imports/build, preservar histórico do banco e decidir onde integrar `escr/App.jsx` (tela de diagnóstico, não a UI final). Não criar diretórios vazios ou declarar componentes concluídos.
+**Estado após o arquivamento:** `legacy/frontend/`, `legacy/backend/`, `legacy/database/init.sql`, `legacy/escr/` e `legacy/docker-compose.yml` contêm o protótipo anterior. A estrutura `apps/*` ainda não existe e será criada **como implementação nova**, sem migrar `escr/App.jsx` nem importar módulos legados. O banco atual requer inventário e decisão de migração antes de qualquer alteração. O histórico do Git preserva a origem dos arquivos.
 
 ## 4. Responsabilidade das camadas
 
@@ -115,7 +116,7 @@ O fluxo acima é uma **intenção arquitetural**, não afirma que `POST /api/sai
 ## 6. Decisões complementares ainda necessárias
 
 1. **Auth e autorização:** vínculo `auth.users` ↔ perfil ↔ unidade, política de convite/inativação, isolamento de dados e cenário de administrador.
-2. **Migrations:** reconciliar tabelas existentes com modelo conceitual sem executar `init.sql` cegamente sobre o projeto atual; testar migração em ambiente isolado.
+2. **Schemas e migrations novos:** recriar os objetos necessários a partir do DRS em um banco de teste isolado; reconciliar tabelas existentes sem executar `legacy/database/init.sql` cegamente sobre o projeto conectado ou derrubar dados sem autorização.
 3. **Operações atômicas:** escolher HTTPS/RPC Supabase versus conexão direta gerenciada para estoque, com ensaio de concorrência e justificativa de runtime/custo.
 4. **Toolchain do monorepo:** gerenciador de pacotes (npm workspaces proposto), linguagem TypeScript em novas camadas, versões, test runner e lockfile único.
 5. **Cloudflare:** produto de hospedagem da View e deploy da API, URLs e rotas, compatibilidade real do Express atual e CORS.
