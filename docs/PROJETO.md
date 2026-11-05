@@ -5,7 +5,7 @@
 ## 01 — Ponto de partida e fontes de autoridade
 
 - **Produto:** ERP web dos Restaurantes Populares de Joinville (RP1 e RP2), com estoque por lote/unidade, entradas, saídas, cardápios, relatórios e rastreabilidade.
-- **Contrato funcional:** [Documento de Requisitos de Software](requisitos/Requisitos_Software_Restaurantes_Populares_Joinville.md), versão 1.3 (04/11/2026) e reconciliação técnica v1.4 em revisão (05/11/2026). Os IDs `RF-`, `RN-`, `RNF-` e `CA-`, as prioridades e os critérios funcionais são preservados.
+- **Contrato funcional:** [Documento de Requisitos de Software](requisitos/Requisitos_Software_Restaurantes_Populares_Joinville.md), versão 1.3 (04/11/2026) e adendo técnico 1.3-A em revisão (05/11/2026). Os IDs `RF-`, `RN-`, `RNF-` e `CA-`, as prioridades e os critérios funcionais são preservados.
 - **Interface visual de referência obrigatória:** [Style Guide Restaurante Popular](wireframe/Style%20Guide%20Restaurante%20Popular.html). A referência não pode ser modificada sem ressalva/decisão explícita. Abrange as telas identificadas de Login, Painel, Produtos, Cadastro de Produto, Entrada de Materiais, Aprovações e Cardápio; estados e fluxos sem especificação explícita exigem levantamento, não invenção.
 - **Método de trabalho:** [processo de desenvolvimento de MVP de software com IA assistida](https://github.com/jukazilli/processo-de-desenvolvimento-de-mvp-de-software-com-ia-assistida), etapas 01–14. Este arquivo é o documento principal; Issues são a fila de trabalho e PRs guardam alterações revisáveis.
 - **Baseline de código observado:** `main` @ `1baacd0ea5cb2efc265b29cff10bf47d58c067cf`; alterações posteriores devem ser verificadas antes de iniciar novas tarefas.
