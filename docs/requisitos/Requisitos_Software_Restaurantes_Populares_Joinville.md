@@ -1250,6 +1250,14 @@ RF-013
 - Separar staging e produção; registrar orçamento, localização dos dados, privacidade/LGPD, backups e responsável pela aprovação institucional antes de operar com dados reais.
 - Validar comportamento de API/Worker, armazenamento de anexos e estados não cobertos pela UI; nenhuma lacuna autoriza modificar as telas aprovadas.
 
-### 18.4 Aceite deste adendo
+### 18.4 Reconstrução do produto e metodologia
+
+A responsável determinou que os diretórios `frontend/`, `backend/`, `database/` e `escr/` fossem arquivados em `legacy/`, incluindo o Compose do protótipo. **O código legado serve somente como referência histórica e não é base de implementação.** Os novos schemas, frontend, backend e regras de negócio serão criados nas etapas adequadas com base neste DRS, no Style Guide e nas decisões de arquitetura, sem presumir que o SQL anterior representa o contrato completo.
+
+A organização do trabalho utilizará desenvolvimento orientado por especificações (*Spec-Driven Development — SDD*) como interpretação operacional provisória de “driven development”, com documentação e templates de issues/PRs em [Plano de reconstrução e fluxo SDD](../planejamento/RECONSTRUCAO_SDD.md). A nomeação da prática deve ser confirmada antes do desenvolvimento funcional. Critérios `CA-*` e controles de qualidade deste DRS permanecem obrigatórios; testes automatizados (TDD/BDD quando apropriado) complementam, mas não substituem o contrato.
+
+A recriação do schema ocorrerá primeiro em banco isolado, versionado por migrations, com segurança RLS e testes. **Este adendo não autoriza apagar/reinicializar o projeto Supabase conectado.** Não ocorre aqui mudança funcional, alteração da UI aprovada, deploy ou liberação com dados reais.
+
+### 18.5 Aceite deste adendo
 
 **Revisão técnica:** pendente de aprovação do PR. **Aprovação da instituição (seção 17.3):** não comprovada. **Implantação Cloudflare/Supabase:** não comprovada. Este adendo não substitui os aceites formais do piloto e da produção.
