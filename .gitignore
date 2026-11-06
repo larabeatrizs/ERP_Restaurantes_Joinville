@@ -9,3 +9,5 @@ dist/
 coverage/
 *.tsbuildinfo
 *.log
+supabase/.temp/
+supabase/.branches/
