@@ -1,6 +1,6 @@
 # PROJETO — ERP Restaurantes Populares de Joinville
 
-> **Estado:** PRs #3–#7 integradas à main em 06/11/2026. API de configurações C3 em implementação na branch `feat/api-001-configuracoes`. Ambiente declarado pela responsável como staging compartilhado de desenvolvimento/testes; separação permanente congelada até o encerramento (ADR-002/AMB-001). Migrations executadas até aqui somente em laboratório, sem mudança no banco hospedado. Não comprova deploy, homologação ou liberação de produção.
+> **Estado:** PRs #3–#7 integradas à main em 06/11/2026. API de configurações C3 implementada e verificada no recorte da PR #8, com integração remota no staging ainda pendente. Ambiente declarado pela responsável como staging compartilhado de desenvolvimento/testes; separação permanente congelada até o encerramento (ADR-002/AMB-001, issue #9). Migrations executadas até aqui somente em laboratório, sem mudança no banco hospedado. Não comprova deploy, homologação ou liberação de produção.
 
 ## 01 — Ponto de partida e fontes de autoridade
 
@@ -113,7 +113,7 @@ Realizar a primeira implantação operacional no RP1, com duas semanas em parale
 | --- | --- | --- |
 | Modelo de autenticação e vínculo `auth.users` / perfil / unidade | Define segurança e migrations | Proposta SEC-001; revisão e testes pendentes |
 | Acesso ao banco via Supabase HTTP/RPC ou acesso direto controlado | Afeta transações, custo e isolamento | Pendente de prova técnica |
-| Staging, backup, região e orçamento | Afeta custos, recuperação e LGPD | Pendente de autorização |
+| Staging, backup, região e orçamento | Afeta custos, recuperação e LGPD | Staging compartilhado definido; separação congelada em AMB-001; backup/região/orçamento ainda exigem planejamento |
 | Deploy frontend Cloudflare e API Worker | Afeta toolchain sem mudar a decisão de plataforma | Worker nativo local verificado; implantação remota pendente |
 | Estados e jornadas não cobertos pelo Style Guide | Evita extrapolar UI aprovada | Pendente de inventário |
 | Validação externa e assinaturas da seção 17.3 do DRS | Condição para liberação institucional | Não comprovada |

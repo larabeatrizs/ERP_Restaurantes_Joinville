@@ -24,3 +24,9 @@ O adaptador utiliza o SDK real sobre transporte HTTP simulado nos testes: foram 
 Não foi realizada mudança de schema ou limpeza no staging. O painel ainda não foi implementado. Endpoints globais e histórico HTTP ficam para recortes próprios. FND_READY/produção continuam pendentes; AMB-001 permanece congelada ao fim do projeto conforme ADR-002.
 
 Fontes consultadas: [getUser](https://supabase.com/docs/reference/javascript/auth-getuser), [inicialização de cliente](https://supabase.com/docs/reference/javascript/initializing), [schemas customizados](https://supabase.com/docs/guides/api/using-custom-schemas) e changelog Supabase. A exposição necessária é somente de erp, com os grants/RLS já versionados; erp_private permanece fora do Data API.
+
+## Publicação e CI
+
+PR [#8](https://github.com/larabeatrizs/ERP_Restaurantes_Joinville/pull/8), commit `b29da35`, [execução 42291658272](https://github.com/larabeatrizs/ERP_Restaurantes_Joinville/actions/runs/42291658272): success. O workflow executou os checks do monorepo e o laboratório PostgreSQL 17, sem deploy. Testes HTTP/adaptador usam transporte simulado; o job SQL valida banco real descartável com bootstrap de identidade simulado, não o Supabase hospedado. A integração à main é autorizada pela responsável após os checks, e os novos commits devem ser conferidos antes de merge.
+
+A separação de ambientes foi registrada como [AMB-001 / issue #9](https://github.com/larabeatrizs/ERP_Restaurantes_Joinville/issues/9), congelada ao fim do projeto. Não bloqueia este recorte nem exige criar ambiente permanente adicional.

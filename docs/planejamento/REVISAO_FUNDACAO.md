@@ -28,3 +28,7 @@ Em ambos, `npm ci` e `npm run check` completaram no runner Linux, incluindo lint
 [DOM-001](../decisoes/DOM-001-PROPOSTAS.md) reúne cinco propostas prioritárias. A responsável foi consultada sobre adotar o conjunto ou ajustar itens; até existir resposta explícita, o status continua pendente. A publicação das PRs e o CI verde não aprovam essas regras de produto.
 
 A [issue #2](https://github.com/larabeatrizs/ERP_Restaurantes_Joinville/issues/2) continua aberta: não há evidência nova de inspeção visual ou snapshot remoto do banco. Nenhum deploy, mudança de banco, aprovação de produto ou merge ocorreu nesta publicação.
+
+## Continuidade após a pilha inicial
+
+PRs #3–#7 integradas à main sob autorização da responsável, com merge commits e checks existentes verificados; main chegou a `88ec253`. A [PR #8](https://github.com/larabeatrizs/ERP_Restaurantes_Joinville/pull/8) entrega API-001 e ADR-002. CI do commit `b29da35`: [42291658272](https://github.com/larabeatrizs/ERP_Restaurantes_Joinville/actions/runs/42291658272), success. Ao concluir a integração, main e a branch ativa devem ser sincronizadas. A pendência de separar ambientes está congelada na issue #9. As notas anteriores de rascunho/ausência de merge são o histórico da publicação inicial.

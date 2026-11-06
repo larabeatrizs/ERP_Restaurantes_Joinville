@@ -14,6 +14,8 @@ Testes locais em memória e serviços PostgreSQL descartáveis do CI continuam p
 
 **Estado: congelada até o encerramento funcional do projeto**, por determinação da responsável. Escopo: provisionar e separar os ambientes permanentes de produção e desenvolvimento/testes, configurar credenciais distintas, destinos de pipeline, domínios/origens e procedimentos de promoção.
 
+Backlog oficial: [issue #9 — AMB-001 congelada](https://github.com/larabeatrizs/ERP_Restaurantes_Joinville/issues/9). O registro é uma pendência futura, sem criação de recursos nesta etapa.
+
 No encerramento, executar plano revisável de limpeza do staging, reconstrução por migrations, validação de integridade e carga inicial necessária; depois preparar e validar os ambientes separados antes da entrada em produção. A instrução atual define a etapa futura, **não autoriza um DROP/TRUNCATE/reset imediato** nem presume que todos os registros devam ser descartados sem inventário.
 
 Critérios para descongelar: recortes funcionais concluídos/revisados; inventário dos dados e dependências; plano de backup/retorno e de limpeza; testes de reconstrução e autorização; responsáveis e destinos confirmados. Nenhuma limpeza foi executada por este ADR.
