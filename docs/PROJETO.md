@@ -85,7 +85,7 @@ A [especificação técnica da arquitetura](arquitetura/MVC_MONOREPO.md) governa
 
 ## 11 — Fundação técnica (execução inicial)
 
-O bootstrap técnico de `apps/web`, `apps/api` e `packages/contracts`, configuração TypeScript e comandos foi implementado e verificado localmente. Workflow de CI preparado, ainda sem execução remota comprovada. Escopo e evidências em [MONO-001](fundacao/MONO-001.md). A [nova modelagem](dados/DATA-001.md) e os [contratos de acesso](seguranca/SEC-001.md) estão propostos para revisão; nenhuma migration ou integração de banco/Auth foi executada. A fundação completa continua pendente.
+O bootstrap técnico de `apps/web`, `apps/api` e `packages/contracts`, configuração TypeScript e comandos foi implementado e verificado localmente e no CI remoto dos commits indicados em [revisão da fundação](planejamento/REVISAO_FUNDACAO.md). As PRs #3/#4/#5 estão em rascunho e encadeadas, sem merge. Escopo inicial em [MONO-001](fundacao/MONO-001.md). A [nova modelagem](dados/DATA-001.md) e os [contratos de acesso](seguranca/SEC-001.md) estão propostos para revisão; nenhuma migration ou integração de banco/Auth foi executada. A fundação completa continua pendente.
 
 1. Usar os arquivos em `legacy/` somente para auditoria; **criar novos** `apps/web`, `apps/api`, `packages/*` e `supabase/migrations` sem copiar o protótipo como aplicação.
 2. Definir bootstrap do monorepo, versões fixadas, lockfile, lint, testes, build e CI.
@@ -126,5 +126,6 @@ Realizar a primeira implantação operacional no RP1, com duas semanas em parale
 - **Execução iniciada:** [MONO-001](fundacao/MONO-001.md), bootstrap técnico independente dos contratos funcionais ainda abertos. Não declara encerramento de FND-000 nem da fase B inteira.
 - **Fase B em revisão:** [DATA-001](dados/DATA-001.md), [dicionário](dados/DICIONARIO.md), [transações](dados/TRANSACOES_ESTOQUE.md) e [SEC-001](seguranca/SEC-001.md). Fonte PDF conferida textualmente nas páginas 10/11/51/52; conflitos de perdas, cotação, transferência, atendimento e abertura de saldo continuam explícitos.
 - **Decisões para revisão:** [DOM-001](decisoes/DOM-001-PROPOSTAS.md) apresenta propostas concretas por item e seus efeitos. Não estão aprovadas por terem sido documentadas; implementar somente o recorte cujas decisões estejam registradas.
+- **Revisão publicada:** [PRs e CI](planejamento/REVISAO_FUNDACAO.md), com ordem de dependência e evidências por commit. As branches estão publicadas; main permanece sem essas integrações.
 - **Próximo recorte:** concluir evidências da FND-000, revisar modelo/contratos e resolver conflitos do recorte antes de implementar banco/segurança na C2. Não transformar desenho em migrations sobre o banco conectado sem plano de ambiente.
 - **Critério de governança:** registrar mudanças futuras na seção afetada e na issue/PR correspondente; nenhuma decisão documental prova implantação real.
