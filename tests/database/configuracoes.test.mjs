@@ -50,12 +50,19 @@ async function expectSqlError(sql, code) {
   await db.exec('rollback to savepoint error_case');
 }
 
-test('migration cria tabelas com RLS e sem funções SECURITY DEFINER', async () => {
+test('RLS nas tabelas e única função privilegiada com executor restrito', async () => {
   const tables = await db.query("select relname,relrowsecurity from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname='erp' and c.relkind='r'");
   assert.equal(tables.rows.length, 7);
   assert.ok(tables.rows.every((row) => row.relrowsecurity));
-  const functions = await db.query("select proname from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='erp_private' and prosecdef");
-  assert.equal(functions.rows.length, 0);
+  const functions = await db.query("select proname,pg_get_userbyid(proowner) as owner,proconfig from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname in ('erp','erp_private') and prosecdef");
+  assert.equal(functions.rows.length, 1);
+  assert.equal(functions.rows[0].proname, 'atualizar_configuracao');
+  assert.equal(functions.rows[0].owner, 'erp_config_writer');
+  assert.ok(functions.rows[0].proconfig.includes('search_path=""'));
+  const role = (await db.query("select rolcanlogin,rolsuper,rolbypassrls,rolcreaterole,rolcreatedb from pg_roles where rolname='erp_config_writer'")).rows[0];
+  assert.ok(Object.values(role).every((value) => value === false));
+  const grants = (await db.query("select pg_has_role('authenticated','erp_config_writer','MEMBER') as member,has_schema_privilege('erp_config_writer','erp_private','CREATE') as can_create,has_column_privilege('erp_config_writer','erp.parametro_unidade','alterado_por','UPDATE') as actor_write")).rows[0];
+  assert.deepEqual(grants, { member: false, can_create: false, actor_write: false });
 });
 
 test('leitura acontece como authenticated e retorna apenas a unidade vinculada', async () => {
@@ -190,4 +197,174 @@ test('configuração não muda de unidade e gravação sem ator ativo falha', as
   await transaction(null, async () => {
     await expectSqlError('update erp.parametro_unidade set margem_percentual=9 where unidade_id=1', '42501');
   }, 'owner');
+});
+
+async function saveConfig(unit = 1, revision = 1, fields = { margem_percentual: '8.25' }, reason = 'Alteração de teste') {
+  return db.query('select * from erp.atualizar_configuracao($1,$2,$3::jsonb,$4)', [unit, revision, JSON.stringify(fields), reason]);
+}
+
+async function expectSaveError(code, ...args) {
+  await db.exec('savepoint save_case');
+  await assert.rejects(() => saveConfig(...args), { code });
+  await db.exec('rollback to savepoint save_case');
+}
+
+test('salvamento mediado como authenticated altera somente os campos permitidos e audita', async () => {
+  await transaction(5, async () => {
+    const row = (await saveConfig(1, 1, { margem_percentual: '0', alerta_email_habilitado: false })).rows[0];
+    assert.equal(Number(row.revisao), 2);
+    assert.equal(Number(row.margem_percentual), 0);
+    assert.equal(row.alerta_email_habilitado, false);
+    assert.equal(row.modo_saida, 'POSTERIOR');
+    assert.equal(row.alterado_por, uid(5));
+    assert.equal(row.criado_por, uid(1));
+    const audit = (await db.query('select * from erp.auditoria_configuracao where unidade_id=1 order by revisao')).rows;
+    assert.equal(audit.length, 2);
+    assert.equal(audit[1].ator_id, uid(5));
+    assert.equal(Number(audit[1].antes.margem_percentual), 5);
+    assert.equal(Number(audit[1].depois.margem_percentual), 0);
+    await expectSqlError('update erp.parametro_unidade set margem_percentual=50 where unidade_id=1', '42501');
+  });
+});
+
+test('revisão antiga não sobrescreve mudança nem acrescenta auditoria', async () => {
+  await transaction(5, async () => {
+    await saveConfig();
+    await expectSaveError('PT412');
+    assert.equal(Number((await db.query('select revisao from erp.parametro_unidade where unidade_id=1')).rows[0].revisao), 2);
+    assert.equal((await db.query('select * from erp.auditoria_configuracao where unidade_id=1')).rows.length, 2);
+  });
+});
+
+test('revisão obrigatória e positiva', async () => {
+  await transaction(5, async () => {
+    await expectSaveError('PT428', 1, null);
+    await expectSaveError('PT422', 1, 0);
+    await expectSaveError('PT422', 1, -1);
+  });
+});
+
+test('payload estrito rejeita null, chaves extras, coerções e valores inválidos atomicamente', async () => {
+  const invalid = [
+    null, [], {}, { desconhecido: true }, { revisao: 99 }, { unidade_id: 2 },
+    { alterado_por: uid(2) }, { criado_por: uid(2) }, { exige_aprovacao_perda: false },
+    { margem_percentual: 5 }, { margem_percentual: null }, { margem_percentual: '5.001' },
+    { margem_percentual: '101' }, { margem_percentual: '-1' }, { margem_percentual: 'NaN' },
+    { modo_saida: 'LIVRE' }, { modo_saida: true }, { referencia_preco: 'DESCONHECIDO' },
+    { dias_alerta_validade: -1 }, { dias_alerta_validade: 1.5 }, { dias_alerta_validade: '7' },
+    { dias_alerta_validade: 2147483648 }, { prazo_amostra_horas: 0 },
+    { periodicidade_inventario_dias: 0 }, { alerta_email_habilitado: 'false' },
+    { margem_percentual: '7', prazo_amostra_horas: 0 },
+  ];
+  await transaction(5, async () => {
+    for (const fields of invalid) await expectSaveError('PT422', 1, 1, fields);
+    for (const reason of [null, '', '  ', 'ab']) await expectSaveError('PT422', 1, 1, { margem_percentual: '7' }, reason);
+    assert.equal(Number((await db.query('select revisao from erp.parametro_unidade where unidade_id=1')).rows[0].revisao), 1);
+    assert.equal((await db.query('select * from erp.auditoria_configuracao where unidade_id=1')).rows.length, 1);
+  });
+});
+
+test('leitura sem edição, outra unidade, ausência de claim e atores inativos são negados', async () => {
+  for (const actor of [1, 2, 3, 4, 6, 7, 8, null, 999]) {
+    await transaction(actor, async () => { await expectSaveError('42501'); });
+  }
+  await transaction(5, async () => { await expectSaveError('42501', 2); });
+});
+
+test('revogar vínculo/capacidade ou inativar unidade bloqueia o salvamento', async () => {
+  for (const change of [
+    `delete from erp.usuario_unidade where usuario_id='${uid(5)}'`,
+    "delete from erp.perfil_permissao where permissao='CONFIGURACAO_EDITAR'",
+    "update erp.unidade set status='INATIVO' where id=1",
+  ]) {
+    await transaction(5, async () => {
+      await db.exec(change);
+      await db.exec('set local role authenticated');
+      await expectSaveError('42501');
+    }, 'owner');
+  }
+});
+
+test('anon não executa wrapper e função interna mantém a mesma fronteira de autorização', async () => {
+  await transaction(null, async () => { await expectSaveError('42501'); }, 'anon');
+  await transaction(8, async () => {
+    await expectSqlError("select erp_private.atualizar_configuracao(1,1,'{\"margem_percentual\":\"9\"}','Teste interno')", '42501');
+  });
+});
+
+test('nenhuma função de salvamento tem EXECUTE para PUBLIC ou anon', async () => {
+  const grants = await db.query("select p.proname from pg_proc p join pg_namespace n on n.oid=p.pronamespace cross join lateral aclexplode(coalesce(p.proacl,acldefault('f',p.proowner))) a where n.nspname in ('erp','erp_private') and p.proname='atualizar_configuracao' and a.privilege_type='EXECUTE' and (a.grantee=0 or a.grantee=(select oid from pg_roles where rolname='anon'))");
+  assert.equal(grants.rows.length, 0);
+});
+
+test('falha de auditoria durante chamada autenticada reverte valores e revisão', async () => {
+  await transaction(5, async () => {
+    await db.exec("create function erp_private.falha_rpc_teste() returns trigger language plpgsql as $$ begin raise exception 'Auditoria indisponível'; end $$; create trigger falha_rpc_teste before insert on erp.auditoria_configuracao for each row execute function erp_private.falha_rpc_teste()");
+    await db.exec('set local role authenticated');
+    await expectSaveError('P0001');
+    assert.equal(Number((await db.query('select margem_percentual,revisao from erp.parametro_unidade where unidade_id=1')).rows[0].margem_percentual), 5);
+    assert.equal(Number((await db.query('select revisao from erp.parametro_unidade where unidade_id=1')).rows[0].revisao), 1);
+    assert.equal((await db.query('select * from erp.auditoria_configuracao where unidade_id=1')).rows.length, 1);
+  }, 'owner');
+});
+
+test('configuração ausente só retorna PT404 após autorizar acesso à unidade', async () => {
+  await transaction(5, async () => {
+    await db.exec("insert into erp.unidade(codigo,nome) values ('SEM_CONFIG','Unidade fictícia sem parâmetros')");
+    const id = (await db.query("select id from erp.unidade where codigo='SEM_CONFIG'")).rows[0].id;
+    await db.query('insert into erp.usuario_unidade values ($1,$2)', [uid(5), id]);
+    await db.exec('set local role authenticated');
+    await expectSaveError('PT404', id);
+  }, 'owner');
+});
+
+test('metadados de perfil enviados em claims não concedem edição', async () => {
+  await transaction(1, async () => {
+    await db.query("select set_config('request.jwt.claims',$1,true)", [JSON.stringify({ user_metadata: { role: 'GESTOR_UNIDADE' } })]);
+    await expectSaveError('42501');
+  });
+});
+
+test('duas conexões com mesma revisão produzem um salvamento e um conflito', {
+  skip: !process.env.DATABASE_TEST_URL,
+  timeout: 15000,
+}, async () => {
+  const first = new pg.Client({ connectionString: process.env.DATABASE_TEST_URL });
+  const second = new pg.Client({ connectionString: process.env.DATABASE_TEST_URL });
+  let pending;
+  try {
+    await first.connect();
+    await second.connect();
+    for (const client of [first, second]) {
+      await client.query('begin');
+      await client.query("set local statement_timeout='5s'");
+      await client.query("select set_config('request.jwt.claim.sub',$1,true)", [uid(5)]);
+      await client.query('set local role authenticated');
+    }
+    const pid = (await second.query('select pg_backend_pid() as pid')).rows[0].pid;
+    const sql = 'select * from erp.atualizar_configuracao($1,$2,$3::jsonb,$4)';
+    await first.query(sql, [1, 1, '{"margem_percentual":"9"}', 'Primeira edição concorrente']);
+    pending = second.query(sql, [1, 1, '{"margem_percentual":"10"}', 'Segunda edição concorrente'])
+      .then((value) => ({ value }), (error) => ({ error }));
+    let blocked = false;
+    const deadline = Date.now() + 3000;
+    while (Date.now() < deadline) {
+      blocked = (await db.query('select cardinality(pg_blocking_pids($1)) > 0 as blocked', [pid])).rows[0].blocked;
+      if (blocked) break;
+      await new Promise((resolve) => setTimeout(resolve, 20));
+    }
+    assert.equal(blocked, true, 'A segunda conexão deve aguardar o lock da primeira.');
+    await first.query('commit');
+    assert.equal((await pending).error?.code, 'PT412');
+    await second.query('rollback');
+    const row = (await db.query('select margem_percentual,revisao from erp.parametro_unidade where unidade_id=1')).rows[0];
+    assert.equal(Number(row.margem_percentual), 9);
+    assert.equal(Number(row.revisao), 2);
+    assert.equal((await db.query('select * from erp.auditoria_configuracao where unidade_id=1')).rows.length, 2);
+  } finally {
+    await first.query('rollback').catch(() => {});
+    if (pending) await pending;
+    await second.query('rollback').catch(() => {});
+    await Promise.all([first.end(), second.end()]);
+  }
 });
