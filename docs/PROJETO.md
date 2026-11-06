@@ -1,6 +1,6 @@
 # PROJETO — ERP Restaurantes Populares de Joinville
 
-> **Estado:** reconciliação documental integrada pela PR #1 em 06/11/2026, commit `a53059b`. Auditoria FND-000 em preparação na branch `docs/fnd-000-auditoria-skills`, ainda sem publicação comprovada. Este documento registra decisões técnicas e planejamento; **não** comprova deploy, código funcional, homologação, nem aceite da Secretaria/AMINC.
+> **Estado:** reconciliação integrada pela PR #1 (`a53059b`); auditoria e skills registradas no commit local `e6d30de`. Fundação iniciada na branch `feat/mono-001-fundacao`, com bootstrap técnico documentado em MONO-001. Isso **não** comprova ERP funcional, deploy, homologação ou aceite da Secretaria/AMINC.
 
 ## 01 — Ponto de partida e fontes de autoridade
 
@@ -83,7 +83,9 @@ A [especificação técnica da arquitetura](arquitetura/MVC_MONOREPO.md) governa
 - Cada issue deve referenciar IDs do DRS e estados da UI, critérios observáveis, dependências, verificações e evidências. Usar branch e PR antes de integrar na `main`; não marcar concluído sem testes/aceite adequados.
 - Não duplicar o backlog neste arquivo: as issues representam o trabalho operacional.
 
-## 11 — Fundação técnica (planejada; não executada)
+## 11 — Fundação técnica (execução inicial)
+
+O bootstrap técnico de `apps/web`, `apps/api` e `packages/contracts`, configuração TypeScript, comandos e workflow de CI está em implementação. Escopo, contrato HTTP e verificações em [MONO-001](fundacao/MONO-001.md). Ainda não há nova modelagem implementada, banco integrado, autenticação ou telas de negócio. A fundação completa continua pendente.
 
 1. Usar os arquivos em `legacy/` somente para auditoria; **criar novos** `apps/web`, `apps/api`, `packages/*` e `supabase/migrations` sem copiar o protótipo como aplicação.
 2. Definir bootstrap do monorepo, versões fixadas, lockfile, lint, testes, build e CI.
@@ -121,5 +123,6 @@ Realizar a primeira implantação operacional no RP1, com duas semanas em parale
 - **Esta alteração:** relocação do código do protótipo para `legacy/`, documentação da reconstrução integral e templates de SDD/PR, sem criação de infraestrutura, migrations, código funcional ou alteração de estilos.
 - **Auditoria em andamento:** [FND-000](auditoria/FND-000.md), vinculada à issue #2, reúne inventário, matriz de investigação, mapa de UI, comparação documental dos dados e decisões/dependências. Seus limites e critérios ainda pendentes estão explícitos no relatório.
 - **Skills do projeto:** `erp-requisitos` e `erp-entregas`, versionadas em `.agents/skills/` e encaminhadas por `AGENTS.md`. Apoiam rastreabilidade e revisão por critério; não concedem autorização operacional nem provam conformidade.
-- **Próximo recorte:** concluir as evidências pendentes da FND-000, revisar/publicar sua PR e só então avaliar fechamento; preparar contratos B e monorepo em recortes posteriores.
+- **Execução iniciada:** [MONO-001](fundacao/MONO-001.md), bootstrap técnico independente dos contratos funcionais ainda abertos. Não declara encerramento de FND-000 nem da fase B inteira.
+- **Próximo recorte:** concluir as evidências pendentes da FND-000, revisar o bootstrap e preparar contratos/modelagem novos na fase B antes de implementar banco e funcionalidades.
 - **Critério de governança:** registrar mudanças futuras na seção afetada e na issue/PR correspondente; nenhuma decisão documental prova implantação real.

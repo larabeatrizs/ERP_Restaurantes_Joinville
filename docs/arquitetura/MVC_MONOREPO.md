@@ -41,7 +41,7 @@
 
 O browser não acessa credenciais privilegiadas. Um cliente Supabase com chave publicável pode autenticar, mas a presença dessa chave não constitui autorização: o JWT, as políticas RLS e permissões por unidade devem impedir operações indevidas. Integrações Supabase via cliente HTTPS/RPC ou conexão direta serão comparadas antes da fundação; não existe decisão de driver/ORM nesta etapa.
 
-## 3. Estrutura alvo (proposta, ainda não migrada)
+## 3. Estrutura alvo (bootstrap inicial em implementação)
 
 ~~~text
 ERP_Restaurantes_Joinville/
@@ -80,7 +80,7 @@ ERP_Restaurantes_Joinville/
 └── package.json               # workspaces, após decisão de toolchain
 ~~~
 
-**Estado após o arquivamento:** `legacy/frontend/`, `legacy/backend/`, `legacy/database/init.sql`, `legacy/escr/` e `legacy/docker-compose.yml` contêm o protótipo anterior. A estrutura `apps/*` ainda não existe e será criada **como implementação nova**, sem migrar `escr/App.jsx` nem importar módulos legados. O banco atual requer inventário e decisão de migração antes de qualquer alteração. O histórico do Git preserva a origem dos arquivos.
+**Estado após o arquivamento e início da fundação:** `legacy/frontend/`, `legacy/backend/`, `legacy/database/init.sql`, `legacy/escr/` e `legacy/docker-compose.yml` contêm o protótipo anterior. O bootstrap MONO-001 cria `apps/web`, `apps/api` e `packages/contracts` **como implementação nova**, sem migrar `escr/App.jsx` nem importar módulos legados. A árvore acima continua sendo o alvo: modelos, repositórios, migrations e demais camadas serão criados nos recortes pertinentes, sem pastas vazias para simular conclusão. O banco atual requer inventário antes de qualquer alteração; a nova modelagem pertence à fase B e sua implementação à C2. O histórico preserva a origem dos arquivos.
 
 ## 4. Responsabilidade das camadas
 
