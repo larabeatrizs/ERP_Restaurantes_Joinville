@@ -1,0 +1,55 @@
+name: "SDD — Incremento verificável"
+description: "Issue de especificação, implementação e teste com rastreabilidade"
+title: "[SDD] "
+labels: []
+body:
+  - type: markdown
+    attributes:
+      value: "Antes de codificar, definir fontes, especificação, critérios, testes e dependências. Não modificar a UI aprovada sem decisão."
+  - type: textarea
+    id: objective
+    attributes:
+      label: "Objetivo e fora de escopo"
+      description: "Entrega vertical mínima, usuário, resultado e limites."
+    validations:
+      required: true
+  - type: textarea
+    id: sources
+    attributes:
+      label: "Fontes e contratos"
+      description: "IDs RF/RN/RNF/CA; caminhos/trechos do DRS e Style Guide; decisões de arquitetura/ADR. Diferenciar decisão, hipótese e pendência."
+    validations:
+      required: true
+  - type: textarea
+    id: specification
+    attributes:
+      label: "Especificação antes do código"
+      description: "Estados, regras, permissões, casos de uso, contrato HTTP, modelo de dados e efeitos colaterais."
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: "Cenários e critérios de aceite"
+      description: "Given/When/Then, cenários positivos, negativos, casos-limite, concorrência e falhas relevantes."
+    validations:
+      required: true
+  - type: textarea
+    id: plan
+    attributes:
+      label: "Plano de testes e implementação"
+      description: "Testes a escrever primeiro/quando viável; migrações/Model/Service/Repository/Controller/View; CI e evidências."
+    validations:
+      required: true
+  - type: textarea
+    id: dependencies
+    attributes:
+      label: "Dependências, fase e autorização"
+      description: "Gate aplicável, outras issues, ambientes, custos, aprovação e condições antes de executar."
+    validations:
+      required: true
+  - type: textarea
+    id: verification
+    attributes:
+      label: "Evidência de conclusão (preencher depois)"
+      description: "PR/commit, testes executados e não executados, capturas relevantes, riscos e próximo passo."

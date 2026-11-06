@@ -37,6 +37,7 @@ Controle de versão
 | 1.1 | 07/10/2026 | Incorporada a análise dos documentos do restaurante (lista de insumos e cardápio do café da manhã): seção 2.4, RF-031 a RF-036, RN-028 a RN- 032 e ajustes nos RF-002, RF-003, RF-004, RF-005, RF-009, RF-011, RF-012, RF-019 e RF-025 |
 | 1.2 | 04/11/2026 | Incorporadas as respostas do questionário de validação do RP1 (27/10/2026): nova seção 2.5, situação das 23 perguntas da seção 17.2, ajustes nas regras RN-006, RN-009, RN-011 e RN-020, novas regras RN-033 a RN-037, refinamentos nos RF-004, RF-009, RF-010, RF-012, RF-013, RF-015, RF- 016, RF-018, RF-019 e RF-032, novo RF-037 e critérios de aceitação CA-021 a CA-026 |
 | 1.3 | 04/11/2026 | Versão para desenvolvimento: pontos sem resposta do cliente fechados com decisões e premissas (seção 17.2), nova seção 15.4 (implantação e parâmetros iniciais), dois novos riscos, linha de aprovação da AMINC e ajustes nos RN-009, RN-011, RN-031, RF-010, RF-018, RF-019 e RNF-001 |
+| 1.3-A (adendo técnico em revisão) | 05/11/2026 | Reconciliação da implementação: MVC em monorepo; Cloudflare para interface/API; Supabase PostgreSQL/Auth em lugar de VPS/Docker. Somente arquitetura/implantação; sem alteração dos RF/RN/CA funcionais ou da UI aprovada. Ver seção 18. |
 
 
 ## 2. Contexto: os Restaurantes Populares de Joinville
@@ -1210,3 +1211,53 @@ RF-013
 |  | Líder da equipe de desenvolvimento |  |  |
 |  | Docente orientador da disciplina |  |  |
 |  | Representante da AMINC (operadora do RP1) |  |  |
+
+
+---
+
+## 18. Adendo técnico de reconciliação arquitetural — 05/11/2026 (em revisão)
+
+**Natureza e autoridade:** este adendo registra a decisão técnica comunicada pela responsável pelo projeto em 05/11/2026. É uma **proposta documental pendente de revisão/integração do PR**, sem assinatura institucional ou evidência de funcionamento. A versão 1.3 permanece baseline funcional e os identificadores/prioridades do DRS são preservados. A documentação de projeto em [`docs/PROJETO.md`](../PROJETO.md) e o detalhamento em [`docs/arquitetura/MVC_MONOREPO.md`](../arquitetura/MVC_MONOREPO.md) são referências técnicas complementares; o [Style Guide](../wireframe/Style%20Guide%20Restaurante%20Popular.html) permanece inegociável, salvo exceção aprovada.
+
+### 18.1 Decisões de implementação
+
+| Aspecto | Premissa legada | Decisão atual | Efeito sobre o contrato |
+| --- | --- | --- | --- |
+| Organização do código | Diretórios independentes de protótipo | **Monorepo** GitHub, com estrutura-alvo `apps/web`, `apps/api`, `packages/contracts` e `supabase/migrations` | Sem mudança funcional |
+| Arquitetura | Camadas não formalizadas no código | **MVC adaptado a aplicação web/API**, com View (React), Controller (API), Model (domínio), Service e Repository | Preserva RNF-011 |
+| Interface | React/Vite e Docker | React/Vite hospedado na **Cloudflare** | Preserva RNF-001 e Style Guide |
+| API | Node/Express de longa duração em contêiner/VPS | API na **Cloudflare Workers**; Express poderá ser reaproveitado somente após teste de compatibilidade | Preserva contratos e segurança |
+| Dados | PostgreSQL em VPS e `database/init.sql` | **Supabase PostgreSQL** e migrations versionadas | Preserva RNF-002/010 e modelo conceitual |
+| Autenticação | `usuario.senha_hash` / JWT próprio no protótipo | **Supabase Auth**, com perfis e unidades em dados de aplicação e RLS | Preserva matriz de permissões e RNF-003 |
+| Operação | `docker-compose.yml` e cópia externa à VPS | **Cloudflare + Supabase + GitHub CI/CD**, com backup/restauração verificados | Preserva metas de RNF-004, RNF-006 e RNF-013 |
+
+### 18.2 Reconciliação de referências antigas
+
+**Seção 5.2 — Hospedagem:** a frase "Hospedagem em VPS com backups automáticos (RNF-004)" é **substituída tecnicamente**, apenas para implementação, por: "Hospedagem de frontend e API na Cloudflare; PostgreSQL e autenticação no Supabase; backups automáticos, recuperação e observabilidade conforme RNF-004, condicionados à validação de plano, configuração, custo e testes." O texto original é mantido para rastreabilidade histórica até a aprovação do PR.
+
+**RNF-004 — Backup e recuperação:** as expressões "na VPS" e "local externo à VPS" passam a referir-se ao **banco gerenciado no Supabase e à cópia independente do ambiente primário**. Permanecem as metas: backups diários, retenção de **30 cópias diárias e 12 mensais**, restauração testada trimestralmente, **RPO 24 horas** e **RTO 4 horas**. Tais metas não estão comprovadas na infraestrutura atual; será necessário escolher e demonstrar mecanismo compatível e custos. Backup do banco não substitui eventual backup de objetos no Storage.
+
+**CA-013 — Cenário de aceitação:** a menção a "cópia para fora da VPS" deve ser interpretada como cópia em destino independente do banco de produção, com evidência de agendamento, alerta de falha e restauração de teste em até 4 horas, mantendo o sentido original do critério. Os IDs não são renumerados.
+
+**Seção 17.1 — Risco:** "Perda de dados por falha da VPS" passa a ser tratado como "Perda de dados por falha do banco gerenciado, erro de configuração, exclusão acidental ou falha do processo de backup", mitigado por cópias independentes, monitoramento e testes de restauração.
+
+**Legado e escopo:** `docker-compose.yml`, Dockerfiles e `database/init.sql` permanecem no histórico do repositório como protótipo; não são a documentação vigente de deploy. A execução local com Docker pode ser opcional no futuro, mas não é pré-requisito de produção.
+
+### 18.3 Segurança e decisões que bloqueiam produção
+
+- Definir a relação `auth.users` com perfis/unidades, concessão e remoção de acesso e segregação de funções. RLS deve ser habilitada com políticas adequadas e teste de bloqueio entre RP1/RP2. O diagnóstico inicial encontrou 14 tabelas `public` com RLS desabilitada; revalidar antes de agir, **não executar SQL automaticamente**.
+- Implementar baixa de estoque, aprovação e auditoria de forma atômica, testável e idempotente; nunca usar chaves administrativas expostas ao navegador.
+- Separar staging e produção; registrar orçamento, localização dos dados, privacidade/LGPD, backups e responsável pela aprovação institucional antes de operar com dados reais.
+- Validar comportamento de API/Worker, armazenamento de anexos e estados não cobertos pela UI; nenhuma lacuna autoriza modificar as telas aprovadas.
+
+### 18.4 Reconstrução do produto e metodologia
+
+A responsável determinou que os diretórios `frontend/`, `backend/`, `database/` e `escr/` fossem arquivados em `legacy/`, incluindo o Compose do protótipo. **O código legado serve somente como referência histórica e não é base de implementação.** Os novos schemas, frontend, backend e regras de negócio serão criados nas etapas adequadas com base neste DRS, no Style Guide e nas decisões de arquitetura, sem presumir que o SQL anterior representa o contrato completo.
+
+A organização do trabalho utilizará desenvolvimento orientado por especificações (*Spec-Driven Development — SDD*) como interpretação operacional provisória de “driven development”, com documentação e templates de issues/PRs em [Plano de reconstrução e fluxo SDD](../planejamento/RECONSTRUCAO_SDD.md). A nomeação da prática deve ser confirmada antes do desenvolvimento funcional. Critérios `CA-*` e controles de qualidade deste DRS permanecem obrigatórios; testes automatizados (TDD/BDD quando apropriado) complementam, mas não substituem o contrato.
+
+A recriação do schema ocorrerá primeiro em banco isolado, versionado por migrations, com segurança RLS e testes. **Este adendo não autoriza apagar/reinicializar o projeto Supabase conectado.** Não ocorre aqui mudança funcional, alteração da UI aprovada, deploy ou liberação com dados reais.
+
+### 18.5 Aceite deste adendo
+
+**Revisão técnica:** pendente de aprovação do PR. **Aprovação da instituição (seção 17.3):** não comprovada. **Implantação Cloudflare/Supabase:** não comprovada. Este adendo não substitui os aceites formais do piloto e da produção.
