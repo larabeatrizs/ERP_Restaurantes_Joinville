@@ -1,6 +1,6 @@
 # PROJETO — ERP Restaurantes Populares de Joinville
 
-> **Estado:** reconciliação integrada pela PR #1 (`a53059b`); auditoria e skills no commit local `e6d30de`; bootstrap local verificado em `ffb174b`. Fase B em elaboração na branch `docs/data-001-modelagem`, com nova modelagem e contratos de acesso/estoque para revisão. Isso **não** comprova ERP funcional, deploy, homologação ou aceite da Secretaria/AMINC.
+> **Estado:** reconciliação integrada pela PR #1 (`a53059b`); auditoria/skills, bootstrap e modelagem publicados nas PRs #3/#4/#5. C2.1 iniciada na branch `feat/db-001-configuracoes`, PR #6, com primeira migration de configurações/identidade e testes isolados. Banco hospedado preservado. Isso **não** comprova ERP funcional, deploy, homologação ou aceite da Secretaria/AMINC.
 
 ## 01 — Ponto de partida e fontes de autoridade
 
@@ -85,7 +85,7 @@ A [especificação técnica da arquitetura](arquitetura/MVC_MONOREPO.md) governa
 
 ## 11 — Fundação técnica (execução inicial)
 
-O bootstrap técnico de `apps/web`, `apps/api` e `packages/contracts`, configuração TypeScript e comandos foi implementado e verificado localmente e no CI remoto dos commits indicados em [revisão da fundação](planejamento/REVISAO_FUNDACAO.md). As PRs #3/#4/#5 estão em rascunho e encadeadas, sem merge. Escopo inicial em [MONO-001](fundacao/MONO-001.md). A [nova modelagem](dados/DATA-001.md) e os [contratos de acesso](seguranca/SEC-001.md) estão propostos para revisão; nenhuma migration ou integração de banco/Auth foi executada. A fundação completa continua pendente.
+O bootstrap técnico de `apps/web`, `apps/api` e `packages/contracts`, configuração TypeScript e comandos foi implementado e verificado localmente e no CI remoto dos commits indicados em [revisão da fundação](planejamento/REVISAO_FUNDACAO.md). As PRs #3/#4/#5/#6 estão em rascunho e encadeadas, sem merge nesta execução. Escopo inicial em [MONO-001](fundacao/MONO-001.md). A [nova modelagem](dados/DATA-001.md) e os [contratos de acesso](seguranca/SEC-001.md) orientam a primeira migration implementada em [DB-001/C2.1](fundacao/DB-001-CONFIGURACOES.md), aplicada somente no laboratório descartável. Nenhuma integração de Supabase Auth real ou alteração de banco hospedado foi executada. A fundação completa continua pendente.
 
 1. Usar os arquivos em `legacy/` somente para auditoria; **criar novos** `apps/web`, `apps/api`, `packages/*` e `supabase/migrations` sem copiar o protótipo como aplicação.
 2. Definir bootstrap do monorepo, versões fixadas, lockfile, lint, testes, build e CI.

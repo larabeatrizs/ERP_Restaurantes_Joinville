@@ -35,6 +35,8 @@ Não há teste de duas conexões simultâneas neste recorte. Concorrência de If
 
 Executados em PGlite: **16 testes passaram**, incluindo separação da leitura do histórico e unidade/autoria inválidas. Também passaram os cinco testes HTTP, lint/tipos/build do monorepo na verificação do recorte. O resultado contra PostgreSQL 17 real deve ser consultado no CI da PR correspondente; não é inferido pelo resultado do PGlite.
 
+**CI remoto comprovado:** PR [#6](https://github.com/larabeatrizs/ERP_Restaurantes_Joinville/pull/6), commit `c45133f`, [execução 42287219801](https://github.com/larabeatrizs/ERP_Restaurantes_Joinville/actions/runs/42287219801). Jobs `check` e `database-postgres` concluíram com **success**; a suíte SQL foi executada no serviço PostgreSQL 17 real. Novos commits exigem conferir a execução correspondente antes do merge. Não houve implantação ou aplicação no banco hospedado.
+
 Cenários: leitura por unidade; perfil sem capacidade; usuário inativo/claim ausente; vínculo revogado; unidade inativa; anon negado; DML direto bloqueado; zero/falso; revisão e antes/depois; dados inválidos; ator derivado da sessão; falha induzida de auditoria com rollback; trilha imutável; histórico segregado. O banco conectado permanece intocado.
 
 ## Próximo recorte

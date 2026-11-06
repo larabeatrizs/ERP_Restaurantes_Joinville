@@ -2,7 +2,7 @@
 
 Sistema web para gestão dos Restaurantes Populares de Joinville, com estoque por lote e unidade, entradas, saídas, cardápios, relatórios e rastreabilidade.
 
-> **Estado atual:** fundação técnica iniciada em branch, com bootstrap de monorepo, API de liveness e raiz React. Os protótipos estão em `legacy/`. As telas, o banco novo e os módulos de negócio ainda não foram implementados; não há ERP funcional ou implantação comprovada.
+> **Estado atual:** fundação técnica em branch, com bootstrap de monorepo, API de liveness, raiz React e primeiro schema de configurações/identidade validado em laboratório. Os protótipos estão em `legacy/`. As telas, o banco integral e os módulos de negócio continuam pendentes; não há ERP funcional ou implantação comprovada.
 
 ## Fontes oficiais
 

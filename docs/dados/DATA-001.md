@@ -90,4 +90,6 @@ Leitura textual do PDF original de 71 páginas, páginas 10, 11, 51 e 52, via pd
 
 **Estado:** desenho proposto, sem SQL executável, migrations, policies ou testes de banco executados. O recorte de modelagem avança a fase B, mas não encerra FND-000 nem atinge FND_READY.
 
+**Continuidade posterior:** o status acima registra a elaboração da modelagem. A [C2.1 / DB-001](../fundacao/DB-001-CONFIGURACOES.md), PR #6, inicia um subconjunto executável de configuração/identidade e testes em laboratório. Não equivale a implantar o modelo completo ou a testar o Supabase Auth conectado.
+
 Verificação estrutural local: sete links relativos dos quatro documentos novos resolvidos; os 37 IDs RF aparecem explicitamente na cobertura; 56 entidades propostas no dicionário, sem nomes duplicados. Isso verifica organização/rastreabilidade, não executabilidade do schema, qualidade dos planos de consulta ou correção de autorização. A revisão de semântica e os testes PostgreSQL continuam necessários na etapa correspondente. Nenhum teste da aplicação foi reexecutado neste recorte exclusivamente documental.
