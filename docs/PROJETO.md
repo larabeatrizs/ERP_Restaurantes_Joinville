@@ -1,6 +1,6 @@
 # PROJETO — ERP Restaurantes Populares de Joinville
 
-> **Estado:** reconciliação integrada pela PR #1 (`a53059b`); auditoria e skills registradas no commit local `e6d30de`. Fundação iniciada na branch `feat/mono-001-fundacao`, com bootstrap técnico documentado em MONO-001. Isso **não** comprova ERP funcional, deploy, homologação ou aceite da Secretaria/AMINC.
+> **Estado:** reconciliação integrada pela PR #1 (`a53059b`); auditoria e skills no commit local `e6d30de`; bootstrap local verificado em `ffb174b`. Fase B em elaboração na branch `docs/data-001-modelagem`, com nova modelagem e contratos de acesso/estoque para revisão. Isso **não** comprova ERP funcional, deploy, homologação ou aceite da Secretaria/AMINC.
 
 ## 01 — Ponto de partida e fontes de autoridade
 
@@ -31,8 +31,8 @@ Riscos identificados no inventário inicial:
 
 | ID | Decisão | Alcance | Estado |
 | --- | --- | --- | --- |
-| ARQ-001 | **Monorepo** para frontend, backend, componentes compartilhados, migrações, testes e documentos | Organização do código | Definida; estrutura física ainda não migrada |
-| ARQ-002 | **MVC adaptado a web/API**, com separação adicional de serviços e repositórios | Arquitetura do software | Definida; implementação pendente |
+| ARQ-001 | **Monorepo** para frontend, backend, componentes compartilhados, migrações, testes e documentos | Organização do código | Bootstrap local implementado e verificado em ffb174b; CI remoto e integração pendentes |
+| ARQ-002 | **MVC adaptado a web/API**, com separação adicional de serviços e repositórios | Arquitetura do software | Controller/Service de liveness implementados; camadas de negócio pendentes |
 | INF-001 | **Cloudflare** para hospedar frontend e backend, em substituição à VPS/Docker como destino de produção | Infraestrutura | Definida; produto Cloudflare e implantação ainda sujeitos a verificação |
 | INF-002 | **Supabase PostgreSQL + Supabase Auth** para persistência e identidade | Dados e autenticação | Definida; integração/autorização pendentes |
 | UX-001 | Manter o Style Guide existente como contrato visual obrigatório, salvo exceções analisadas | Experiência | Reafirmada; estados faltantes pendentes |
@@ -54,11 +54,11 @@ A [especificação técnica da arquitetura](arquitetura/MVC_MONOREPO.md) governa
 | Responsabilidade | Tecnologia estabelecida ou proposta | Observação |
 | --- | --- | --- |
 | Interface | React + Vite (existente no repositório) | Preservar telas/estilo aprovados; versões e toolchain na fundação |
-| API/Controllers | Cloudflare Workers; aproveitamento do Express existente sujeito a teste | `app.listen()` atual não é prova de compatibilidade |
-| Modelos e regras | TypeScript proposto para módulos novos e contratos tipados | Escolha de linguagem ainda não implica migração automática de código JS |
+| API/Controllers | Cloudflare Workers com Web APIs nativas no bootstrap novo | Express legado não foi reutilizado; rotas de negócio pendentes |
+| Modelos e regras | TypeScript no bootstrap novo e contratos tipados | Modelos e regras de negócio ainda não implementados |
 | Persistência | Supabase PostgreSQL (Postgres 17 observado na conexão) | Migrations versionadas, transações e RLS |
 | Identidade | Supabase Auth | Vincular `auth.users.id` ao perfil e às unidades de negócio; abandonar senhas próprias no domínio |
-| Monorepo | npm workspaces **proposto** | Confirmar gerenciador, versões e lockfile na Fase B |
+| Monorepo | npm workspaces implementado no bootstrap | Node 24.22.2, versões diretas fixadas e lockfile; execução local verificada |
 | Automação | GitHub Actions + ferramenta oficial Cloudflare/Supabase | Tokens com escopo mínimo, revisão e ambientes separados |
 
 **Fontes oficiais de tecnologia**: [React/Vite + Cloudflare](https://developers.cloudflare.com/workers/framework-guides/web-apps/react/), [Express em Workers](https://developers.cloudflare.com/workers/tutorials/deploy-an-express-app/), [RLS](https://supabase.com/docs/guides/database/postgres/row-level-security), [migrações e ambientes](https://supabase.com/docs/guides/deployment/managing-environments). Verificar compatibilidade/versões na issue de fundação.
@@ -85,7 +85,7 @@ A [especificação técnica da arquitetura](arquitetura/MVC_MONOREPO.md) governa
 
 ## 11 — Fundação técnica (execução inicial)
 
-O bootstrap técnico de `apps/web`, `apps/api` e `packages/contracts`, configuração TypeScript, comandos e workflow de CI está em implementação. Escopo, contrato HTTP e verificações em [MONO-001](fundacao/MONO-001.md). Ainda não há nova modelagem implementada, banco integrado, autenticação ou telas de negócio. A fundação completa continua pendente.
+O bootstrap técnico de `apps/web`, `apps/api` e `packages/contracts`, configuração TypeScript e comandos foi implementado e verificado localmente e no CI remoto dos commits indicados em [revisão da fundação](planejamento/REVISAO_FUNDACAO.md). As PRs #3/#4/#5 estão em rascunho e encadeadas, sem merge. Escopo inicial em [MONO-001](fundacao/MONO-001.md). A [nova modelagem](dados/DATA-001.md) e os [contratos de acesso](seguranca/SEC-001.md) estão propostos para revisão; nenhuma migration ou integração de banco/Auth foi executada. A fundação completa continua pendente.
 
 1. Usar os arquivos em `legacy/` somente para auditoria; **criar novos** `apps/web`, `apps/api`, `packages/*` e `supabase/migrations` sem copiar o protótipo como aplicação.
 2. Definir bootstrap do monorepo, versões fixadas, lockfile, lint, testes, build e CI.
@@ -111,10 +111,10 @@ Realizar a primeira implantação operacional no RP1, com duas semanas em parale
 
 | Item | Por que importa | Estado |
 | --- | --- | --- |
-| Modelo de autenticação e vínculo `auth.users` / perfil / unidade | Define segurança e migrations | Pendente de desenho e teste |
+| Modelo de autenticação e vínculo `auth.users` / perfil / unidade | Define segurança e migrations | Proposta SEC-001; revisão e testes pendentes |
 | Acesso ao banco via Supabase HTTP/RPC ou acesso direto controlado | Afeta transações, custo e isolamento | Pendente de prova técnica |
 | Staging, backup, região e orçamento | Afeta custos, recuperação e LGPD | Pendente de autorização |
-| Deploy frontend Cloudflare e compatibilidade Express/Workers | Afeta toolchain sem mudar a decisão de plataforma | Pendente de prova |
+| Deploy frontend Cloudflare e API Worker | Afeta toolchain sem mudar a decisão de plataforma | Worker nativo local verificado; implantação remota pendente |
 | Estados e jornadas não cobertos pelo Style Guide | Evita extrapolar UI aprovada | Pendente de inventário |
 | Validação externa e assinaturas da seção 17.3 do DRS | Condição para liberação institucional | Não comprovada |
 
@@ -124,5 +124,9 @@ Realizar a primeira implantação operacional no RP1, com duas semanas em parale
 - **Auditoria em andamento:** [FND-000](auditoria/FND-000.md), vinculada à issue #2, reúne inventário, matriz de investigação, mapa de UI, comparação documental dos dados e decisões/dependências. Seus limites e critérios ainda pendentes estão explícitos no relatório.
 - **Skills do projeto:** `erp-requisitos` e `erp-entregas`, versionadas em `.agents/skills/` e encaminhadas por `AGENTS.md`. Apoiam rastreabilidade e revisão por critério; não concedem autorização operacional nem provam conformidade.
 - **Execução iniciada:** [MONO-001](fundacao/MONO-001.md), bootstrap técnico independente dos contratos funcionais ainda abertos. Não declara encerramento de FND-000 nem da fase B inteira.
-- **Próximo recorte:** concluir as evidências pendentes da FND-000, revisar o bootstrap e preparar contratos/modelagem novos na fase B antes de implementar banco e funcionalidades.
+- **Fase B em revisão:** [DATA-001](dados/DATA-001.md), [dicionário](dados/DICIONARIO.md), [transações](dados/TRANSACOES_ESTOQUE.md) e [SEC-001](seguranca/SEC-001.md). Fonte PDF conferida textualmente nas páginas 10/11/51/52; conflitos de perdas, cotação, transferência, atendimento e abertura de saldo continuam explícitos.
+- **Decisões para revisão:** [DOM-001](decisoes/DOM-001-PROPOSTAS.md) apresenta propostas concretas por item e seus efeitos. Não estão aprovadas por terem sido documentadas; implementar somente o recorte cujas decisões estejam registradas.
+- **Direção de parametrização (06/11/2026):** a responsável definiu painel simples para habilitar/configurar ações onde permitido. [CONFIG-001](fundacao/CONFIG-001.md) detalha mapeamento existente, catálogo, fluxo de interface, contratos, persistência e integração desacoplada. Invariantes permanecem obrigatórias; presets e exceções ainda precisam de consolidação. Especificação na B, dados/segurança na C2, API na C3 e painel na C4.
+- **Revisão publicada:** [PRs e CI](planejamento/REVISAO_FUNDACAO.md), com ordem de dependência e evidências por commit. As branches estão publicadas; main permanece sem essas integrações.
+- **Próximo recorte:** concluir evidências da FND-000, revisar modelo/contratos e resolver conflitos do recorte antes de implementar banco/segurança na C2. Não transformar desenho em migrations sobre o banco conectado sem plano de ambiente.
 - **Critério de governança:** registrar mudanças futuras na seção afetada e na issue/PR correspondente; nenhuma decisão documental prova implantação real.

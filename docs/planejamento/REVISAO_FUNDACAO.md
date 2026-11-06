@@ -1,0 +1,24 @@
+# Revisão da fundação — publicação e evidências
+
+Data: 06/11/2026. As PRs estão em rascunho e encadeadas; nenhuma foi integrada por esta tarefa.
+
+| Ordem | PR | Base → branch revisada | Escopo |
+| --- | --- | --- | --- |
+| 1 | [#3](https://github.com/larabeatrizs/ERP_Restaurantes_Joinville/pull/3) | main → docs/fnd-000-auditoria-skills | Auditoria FND-000, skills e governança |
+| 2 | [#4](https://github.com/larabeatrizs/ERP_Restaurantes_Joinville/pull/4) | docs/fnd-000-auditoria-skills → feat/mono-001-fundacao | Bootstrap, testes HTTP e workflow |
+| 3 | [#5](https://github.com/larabeatrizs/ERP_Restaurantes_Joinville/pull/5) | feat/mono-001-fundacao → docs/data-001-modelagem | Modelagem, contratos e propostas de decisão |
+
+Depois de integrar a primeira PR, conferir a base da seguinte e atualizar para main conforme a estratégia de merge, preservando commits e evitando repetir alterações já integradas. Não usar force-push ou integrar a pilha inteira sem revisão por consequência da publicação.
+
+## CI observado
+
+- Bootstrap `ffb174b`: [execução 42284466740](https://github.com/larabeatrizs/ERP_Restaurantes_Joinville/actions/runs/42284466740), resultado **success**.
+- Modelagem/propostas `cef0e9f`: [execução 42284470353](https://github.com/larabeatrizs/ERP_Restaurantes_Joinville/actions/runs/42284470353), resultado **success**.
+
+Em ambos, `npm ci` e `npm run check` completaram no runner Linux, incluindo lint, tipos, cinco testes HTTP e builds. Essas execuções comprovam a verificação do bootstrap nos commits indicados. Não validam SQL, policies, estados do ERP, revisão visual, recuperação de backup ou ambiente de produção. Novos commits exigem conferir a execução correspondente antes do merge. A PR de auditoria não introduz workflow próprio.
+
+## Decisões e continuidade
+
+[DOM-001](../decisoes/DOM-001-PROPOSTAS.md) reúne cinco propostas prioritárias. A responsável foi consultada sobre adotar o conjunto ou ajustar itens; até existir resposta explícita, o status continua pendente. A publicação das PRs e o CI verde não aprovam essas regras de produto.
+
+A [issue #2](https://github.com/larabeatrizs/ERP_Restaurantes_Joinville/issues/2) continua aberta: não há evidência nova de inspeção visual ou snapshot remoto do banco. Nenhum deploy, mudança de banco, aprovação de produto ou merge ocorreu nesta publicação.

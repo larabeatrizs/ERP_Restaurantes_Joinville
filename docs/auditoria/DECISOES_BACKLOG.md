@@ -29,3 +29,12 @@ Cada recorte deve usar o template de issue para acrescentar cenários, contratos
 | OPS-002 / gate C | OPS-001, staging, CI | Demonstrar logs/alertas e restauração de backup em ambiente isolado; registrar tempo e recuperação observados |
 
 Ordem operacional: auditoria → decisões/especificação B → workspace/CI → dados/segurança/API/View conforme contratos estáveis → integração e recuperação. Não é preciso terminar todos os módulos para validar a fundação. As entregas funcionais seguem a seção 15.2 do DRS, com RF-037 e conflitos registrados para decisão.
+
+## Evidências posteriores à auditoria inicial
+
+- MONO-001 teve bootstrap local registrado e verificado em `ffb174b`; isso não fecha suas dependências funcionais nem configura CI remoto.
+- DATA-001/SPEC-001 e SEC-001 agora têm propostas em [modelagem](../dados/DATA-001.md), [dicionário](../dados/DICIONARIO.md), [transações](../dados/TRANSACOES_ESTOQUE.md) e [acesso](../seguranca/SEC-001.md).
+- DOM-001 passa a incluir conflitos confirmados por conferência textual do PDF: autorização de perdas/cotação, aprovação de transferências, minimização do atendimento, perfil de caixa e aprovação da abertura. A modelagem não concede permissões para resolver esses conflitos por conta própria.
+- Contagem e inventário com operações concorrentes, associação da requisição rápida à refeição e normalização de NF também exigem contrato revisado antes da implementação correspondente.
+
+Os recortes continuam sem número de issue próprio neste registro; nenhum responsável proposto foi tratado como nomeação ou aprovação recebida.

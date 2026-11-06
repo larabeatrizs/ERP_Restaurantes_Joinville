@@ -23,4 +23,6 @@ Não há frames nomeados para unidades de medida/categorias/fornecedores, usuár
 
 ## Critério da próxima revisão visual
 
+Novo fluxo solicitado pela responsável: [painel de configurações CONFIG-001](../fundacao/CONFIG-001.md), especificado com reaproveitamento dos componentes do Style Guide. Não foi identificado frame Configurações no inventário; a especificação nova não altera o HTML mestre nem comprova comparação visual ou implementação.
+
 Abrir o HTML original em navegador, registrar capturas por frame e resolução, extrair tokens sem alterar o arquivo, conferir foco/teclado/rótulos/contraste e documentar diferenças. Dimensões fixas de frames não comprovam responsividade em 768 px ou 360 px. A comparação com a implementação ocorrerá quando existir nova View. Evidências devem indicar data, arquivo/commit e limitações.

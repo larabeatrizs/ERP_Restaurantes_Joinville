@@ -38,6 +38,8 @@ Refazer do zero descreve a origem da modelagem e da implementação; não determ
 
 ## Roteiro obrigatório de uma issue SDD
 
+O recorte [CONFIG-001](../fundacao/CONFIG-001.md), solicitado em 06/11/2026, especifica o painel simples de parâmetros e políticas. A direção está definida; presets e exceções devem ser consolidados na B. Persistência/segurança entram na C2, serviço/contratos HTTP na C3 e interface integrada na C4, preservando invariantes não configuráveis e o Style Guide.
+
 1. **Fonte e rastreabilidade:** links exatos de RF/RN/RNF/CA, seção do DRS, componentes/telas do Style Guide e decisões aprovadas; citar o que é premissa.
 2. **Specification first:** descrever regras, invariantes, estados, autorização por papel/unidade, entradas/saídas, API e dados; explicitar fora de escopo.
 3. **Exemplos executáveis:** cenários Given/When/Then ou critérios observáveis com casos positivos, negativos, fronteira, concorrência e falhas de rede quando relevantes.
