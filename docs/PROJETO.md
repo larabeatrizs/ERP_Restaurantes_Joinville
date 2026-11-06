@@ -1,6 +1,6 @@
 # PROJETO — ERP Restaurantes Populares de Joinville
 
-> **Estado:** reconciliação documental iniciada em 05/11/2026, em revisão por pull request. Este documento registra o plano e as decisões técnicas expressamente determinadas pela responsável do projeto; **não** comprova deploy, código funcional, homologação, nem aceite da Secretaria/AMINC.
+> **Estado:** reconciliação documental integrada pela PR #1 em 06/11/2026, commit `a53059b`. Auditoria FND-000 em preparação na branch `docs/fnd-000-auditoria-skills`, ainda sem publicação comprovada. Este documento registra decisões técnicas e planejamento; **não** comprova deploy, código funcional, homologação, nem aceite da Secretaria/AMINC.
 
 ## 01 — Ponto de partida e fontes de autoridade
 
@@ -8,7 +8,7 @@
 - **Contrato funcional:** [Documento de Requisitos de Software](requisitos/Requisitos_Software_Restaurantes_Populares_Joinville.md), versão 1.3 (04/11/2026) e adendo técnico 1.3-A em revisão (05/11/2026). Os IDs `RF-`, `RN-`, `RNF-` e `CA-`, as prioridades e os critérios funcionais são preservados.
 - **Interface visual de referência obrigatória:** [Style Guide Restaurante Popular](wireframe/Style%20Guide%20Restaurante%20Popular.html). A referência não pode ser modificada sem ressalva/decisão explícita. Abrange as telas identificadas de Login, Painel, Produtos, Cadastro de Produto, Entrada de Materiais, Aprovações e Cardápio; estados e fluxos sem especificação explícita exigem levantamento, não invenção.
 - **Método de trabalho:** [processo de desenvolvimento de MVP de software com IA assistida](https://github.com/jukazilli/processo-de-desenvolvimento-de-mvp-de-software-com-ia-assistida), etapas 01–14. Este arquivo é o documento principal; Issues são a fila de trabalho e PRs guardam alterações revisáveis.
-- **Baseline de código observado:** `main` @ `1baacd0ea5cb2efc265b29cff10bf47d58c067cf`; alterações posteriores devem ser verificadas antes de iniciar novas tarefas.
+- **Baseline desta auditoria:** `main` @ `a53059bb5f1dd32f227bd017cc6ce2342e18b72e`; alterações posteriores devem ser verificadas antes de iniciar novas tarefas. A baseline inicial de `1baacd0` permanece como referência histórica nos diagnósticos antigos.
 
 **Legado:** `legacy/frontend/`, `legacy/backend/`, `legacy/database/`, `legacy/escr/` e `legacy/docker-compose.yml` foram deslocados da raiz sem alteração de conteúdo. Seu uso é exclusivamente como referência histórica; o código novo e os schemas devem nascer de especificações e testes, não de extensão do protótipo. Ver [política do legado](../legacy/README.md).
 
@@ -87,7 +87,7 @@ A [especificação técnica da arquitetura](arquitetura/MVC_MONOREPO.md) governa
 
 1. Usar os arquivos em `legacy/` somente para auditoria; **criar novos** `apps/web`, `apps/api`, `packages/*` e `supabase/migrations` sem copiar o protótipo como aplicação.
 2. Definir bootstrap do monorepo, versões fixadas, lockfile, lint, testes, build e CI.
-3. **Recriar integralmente os schemas pertinentes ao DRS** a partir do modelo conceitual, regras e critérios de aceitação; produzir migrations novas, relacionamentos, constraints, grants/RLS, auditoria e testes em banco isolado. O banco Supabase conectado não deve ser apagado ou alterado sem plano e autorização.
+3. **Refazer do zero a modelagem conceitual, lógica e física do banco conforme o DRS na Fase B (DATA-001/SPEC-001)**. Na **Fase C2 (DB-001/SEC-002)**, implementar esse desenho revisado por migrations novas, relacionamentos, constraints, grants/RLS, auditoria e testes em banco isolado. A FND-000 inventaria e identifica lacunas; não antecipa essas entregas. O SQL legado e o schema atual não são a base obrigatória do novo modelo. O banco Supabase conectado não deve ser apagado ou alterado sem plano e autorização. Ver [momento da reconstrução](planejamento/RECONSTRUCAO_SDD.md#momento-da-reconstrução-do-banco).
 4. Implementar novos Auth, perfis, vínculos por unidade, grants/RLS e testes negativos, sem reaproveitar `legacy/backend`.
 5. **Recriar backend MVC, regras de negócio e contratos HTTP** em `apps/api`, com testes de domínio, autorização, integração e concorrência.
 6. **Recriar frontend** em `apps/web`, aderente ao Style Guide e integrado às APIs, com testes de acessibilidade, estados e comparação visual.
@@ -119,5 +119,7 @@ Realizar a primeira implantação operacional no RP1, com duas semanas em parale
 ## 16 — Continuidade e evidências
 
 - **Esta alteração:** relocação do código do protótipo para `legacy/`, documentação da reconstrução integral e templates de SDD/PR, sem criação de infraestrutura, migrations, código funcional ou alteração de estilos.
-- **Próximo recorte:** revisar/aceitar o PR, abrir/associar `FND-000`, fechar contrato de Auth e modelagem, preparar base do monorepo em PR posterior.
+- **Auditoria em andamento:** [FND-000](auditoria/FND-000.md), vinculada à issue #2, reúne inventário, matriz de investigação, mapa de UI, comparação documental dos dados e decisões/dependências. Seus limites e critérios ainda pendentes estão explícitos no relatório.
+- **Skills do projeto:** `erp-requisitos` e `erp-entregas`, versionadas em `.agents/skills/` e encaminhadas por `AGENTS.md`. Apoiam rastreabilidade e revisão por critério; não concedem autorização operacional nem provam conformidade.
+- **Próximo recorte:** concluir as evidências pendentes da FND-000, revisar/publicar sua PR e só então avaliar fechamento; preparar contratos B e monorepo em recortes posteriores.
 - **Critério de governança:** registrar mudanças futuras na seção afetada e na issue/PR correspondente; nenhuma decisão documental prova implantação real.

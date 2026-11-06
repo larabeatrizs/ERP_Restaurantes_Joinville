@@ -14,7 +14,7 @@
 | Fase | Método | Trabalho novo | Gate |
 | --- | --- | --- | --- |
 | A — Reconciliação | 06–09 | Arquivar legado, auditar DRS/UI, registrar arquitetura MVC/monorepo, avaliar riscos e decisões | Documentação consistente; divergências críticas classificadas |
-| B — Especificação de solução | 07–10 | Matriz RF/RN/RNF/CA → tela → API → domínio → banco → teste; contratos, ADRs, autorização/RLS, modelos físicos e interfaces | Especificação da fundação revisada, sem alteração tácita da UI |
+| B — Especificação de solução | 07–10 | Matriz RF/RN/RNF/CA → tela → API → domínio → banco → teste; contratos, ADRs, autorização/RLS; **refazer do zero a modelagem conceitual, lógica e física do banco conforme os requisitos do sistema**, com relacionamentos, invariantes e interfaces | Modelagem e especificação da fundação revisadas e rastreáveis ao DRS, sem alteração tácita da UI |
 | C1 — Fundação do monorepo | 10–11 | Criar `apps/web`, `apps/api`, `packages/contracts`, toolchain, CI, padrões, lint, tipos, testes e design tokens extraídos da referência | Build reproduzível e CI validado |
 | C2 — Banco e segurança NOVOS | 11 | **Recriar todos os schemas necessários** a partir do modelo conceitual e RF/RN/RNF: modelos e constraints, migrations, seeds sintéticos, auth.users, perfis, unidades, RLS, operações atômicas, auditoria; comparar com schema existente | Banco isolado reconstruído integralmente por migrations; testes de negação/concorrência e advisor sem bloqueadores |
 | C3 — API e domínio NOVOS | 11–12 | Implementar controllers, services, models, repositories, validação, erros, Auth/segregação, documentação de contratos; testes de unidade/integração e publicação de Worker em staging | Chamadas autorizadas/negadas testadas e dados persistidos de forma segura |
@@ -25,6 +25,16 @@
 | E — Piloto e operação | 13–14 | Backup/recuperação, aprovação institucional e privacidade, carga real autorizada, piloto RP1 com planilhas em paralelo, expansão RP2 | Aceite, monitoramento e recuperação demonstrados |
 
 **Observação de paralelismo:** fundações C2/C3/C4 podem ter tarefas preparatórias em paralelo depois que os contratos de B estiverem estáveis; integração ponta a ponta precisa de migrations e segurança completas. Não interpretar a ordem didática como licença para iniciar funcionalidades sem gate.
+
+## Momento da reconstrução do banco
+
+Determinação reafirmada pela responsável em 06/11/2026: **a modelagem do banco deve ser refeita do zero, conforme os requisitos do sistema, na etapa determinada por este plano**. O SQL legado e o banco existente são fontes de comparação histórica, não o modelo a ser continuado ou uma base obrigatória para o novo desenho.
+
+- **Fase A / FND-000:** inventariar o existente, apontar lacunas e preparar as decisões e o backlog. Não exige entregar a nova modelagem nem executar sua implementação para encerrar a auditoria.
+- **Fase B / DATA-001 e SPEC-001:** construir a nova modelagem conceitual, lógica e física a partir do DRS, com vínculo RF/RN/RNF/CA, entidades, relacionamentos, constraints, estados, transações, autorização e auditoria. Revisar o desenho antes de implementá-lo.
+- **Fase C2 / DB-001 e SEC-002:** implementar o desenho revisado em migrations novas, dados sintéticos, Auth, grants/RLS e testes em ambiente isolado, conforme as dependências do plano.
+
+Refazer do zero descreve a origem da modelagem e da implementação; não determina excluir o banco conectado. A eventual substituição do ambiente existente exige plano próprio, inventário atualizado e autorização no momento aplicável. A ausência da nova modelagem durante a FND-000 não é, por si só, pendência de aceite dessa issue.
 
 ## Roteiro obrigatório de uma issue SDD
 
