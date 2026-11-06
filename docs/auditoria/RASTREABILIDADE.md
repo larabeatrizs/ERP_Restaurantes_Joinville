@@ -253,4 +253,6 @@ Os cenários completos e suas relações RF/RN permanecem na seção 14 do DRS. 
 
 ## Manutenção
 
+Na fase B, o desenho proposto dos grupos de dados passou a ser detalhado em [DATA-001](../dados/DATA-001.md) e no [dicionário](../dados/DICIONARIO.md). G02 e as restrições de acesso dos demais grupos têm contrato proposto em [SEC-001](../seguranca/SEC-001.md); G04–G06 e a base de G10 têm estados, atomicidade e cenários em [transações de estoque](../dados/TRANSACOES_ESTOQUE.md). Esses links detalham a especificação; não alteram o status de implementação/teste dos grupos.
+
 Ao especificar uma issue, substituir os caminhos conceituais do seu recorte por links de contratos, arquivos, políticas e testes reais. Registrar status separadamente como proposto, implementado, testado e aceito. Não marcar um grupo inteiro concluído por uma única tela. Atualizar somente com evidências e preservar o histórico de decisões.
