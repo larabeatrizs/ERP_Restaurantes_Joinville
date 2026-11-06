@@ -16,7 +16,7 @@
     "lint": "eslint apps packages",
     "typecheck": "npm run typecheck --workspaces",
     "test": "npm run test:api && npm run test:db",
-    "test:api": "node --test apps/api/src/index.test.ts",
+    "test:api": "node --test apps/api/src/index.test.ts apps/api/src/settings.test.ts apps/api/src/supabase-settings.test.ts",
     "test:db": "node --test tests/database/configuracoes.test.mjs",
     "build": "npm run build --workspaces",
     "check": "npm run lint && npm run typecheck && npm test && npm run build"

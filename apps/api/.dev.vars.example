@@ -1,0 +1,3 @@
+# Copiar para .dev.vars no ambiente autorizado. Não versionar valores reais.
+SUPABASE_URL=https://seu-projeto.supabase.co
+SUPABASE_PUBLISHABLE_KEY=sb_publishable_substituir

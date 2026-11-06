@@ -4,6 +4,8 @@ Sistema web para gestão dos Restaurantes Populares de Joinville, com estoque po
 
 > **Estado atual:** fundação técnica em branch, com bootstrap de monorepo, API de liveness, raiz React e primeiro schema de configurações/identidade validado em laboratório. Os protótipos estão em `legacy/`. As telas, o banco integral e os módulos de negócio continuam pendentes; não há ERP funcional ou implantação comprovada.
 
+Ambiente atual declarado como **staging compartilhado de desenvolvimento e testes**, conforme [ADR-002](docs/decisoes/ADR-002-STAGING-COMPARTILHADO.md). Recortes verificados são integrados à main; ambientes permanentes separados ficam para AMB-001 ao final. Não há reset imediato do banco.
+
 ## Fontes oficiais
 
 - [Documento principal do projeto](docs/PROJETO.md) — decisões, arquitetura, infraestrutura, riscos e continuidade.
@@ -44,6 +46,8 @@ Para desenvolver, use dois terminais: `npm run dev:api` (API em `http://127.0.0.
 `npm run check` executa lint, tipos, testes HTTP e builds. O build da API é um **dry-run**, sem deploy. O health indica apenas liveness, sem testar banco ou autenticação. Veja [escopo e evidências MONO-001](docs/fundacao/MONO-001.md).
 
 O recorte [DB-001/C2.1](docs/fundacao/DB-001-CONFIGURACOES.md) acrescenta testes SQL: `npm run test:db` usa PGlite em memória, e `npm test` executa HTTP e banco. O CI também roda a suíte SQL em PostgreSQL 17 descartável. Não apontar DATABASE_TEST_URL para ambientes existentes: a suíte requer banco de teste vazio e valida o destino local. Não aplicar os arquivos de bootstrap/fixtures no Supabase.
+
+A [API de configurações](docs/fundacao/API-001-CONFIGURACOES.md) implementa GET/PATCH em `/api/unidades/{id}/configuracoes`, com Bearer e revisão por ETag/If-Match. Runtime exige SUPABASE_URL e SUPABASE_PUBLISHABLE_KEY; o exemplo sem valores reais está em `apps/api/.dev.vars.example`. Sem configuração, as rotas protegidas retornam 503. Nenhuma chave administrativa deve ser usada. A integração remota e o painel ainda precisam ser validados/entregues.
 
 Se a rede usa certificados corporativos já confiáveis no Windows e o npm retornar `SELF_SIGNED_CERT_IN_CHAIN`, execute `$env:NODE_USE_SYSTEM_CA = '1'` no PowerShell antes do npm. Não desative a validação TLS. Nesta máquina, o Node portátil foi instalado em `%LOCALAPPDATA%/CodexTools/node-v24.22.2-win-x64`; adicione esse diretório ao PATH da sessão se `node` não for encontrado. Isso não altera o PATH global.
 
