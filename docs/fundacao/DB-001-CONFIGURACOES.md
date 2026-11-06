@@ -41,6 +41,8 @@ Cenários: leitura por unidade; perfil sem capacidade; usuário inativo/claim au
 
 ## Próximo recorte
 
+Continuidade implementada em branch: [CONFIG-002/C2.2](CONFIG-002.md) acrescenta salvamento mediado e revisão esperada. O retrato acima da C2.1 preserva seus resultados; a função privilegiada estreita e suas permissões estão explicitamente documentadas e testadas no novo recorte.
+
 Implementar a operação mediada de atualização com revisão esperada, autorização de edição explícita e histórico atômico; testar conflito e acesso direto, então integrar repository/service/controller na C3. A escolha da fronteira privilegiada precisa de revisão específica antes de conceder execução. Depois construir o painel C4 conforme CONFIG-001. FND-000 continua aberta, e FND_READY ainda não foi atingido.
 
 Fontes técnicas: [PGlite em memória](https://pglite.dev/docs/), [RLS Supabase](https://supabase.com/docs/guides/database/postgres/row-level-security), [mudanças da CLI v3](https://supabase.com/changelog/supabase-cli-v3). Changelog Supabase consultado novamente antes da execução.
