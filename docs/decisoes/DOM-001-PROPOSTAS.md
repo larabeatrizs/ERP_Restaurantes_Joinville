@@ -2,6 +2,8 @@
 
 Data: 06/11/2026. **Status: propostas pendentes de decisão da responsável do projeto.** A autorização para prosseguir com o trabalho não foi interpretada como aprovação destas regras. Não aplicar permissões ou migrations a partir deste registro enquanto os itens pertinentes ao recorte não forem decididos.
 
+**Direção posterior da responsável:** parametrizar as variações possíveis por painel, com baixo acoplamento e baixa complexidade. O encaminhamento está em [CONFIG-001](../fundacao/CONFIG-001.md). A arquitetura de configuração está definida nesse sentido; as cinco propostas abaixo passam a ser candidatas a presets/políticas, não regras únicas fixas aprovadas em bloco. Isso não torna invariantes de integridade opcionais nem concede aprovação aos valores ainda propostos.
+
 Fontes e evidências: [SEC-001](../seguranca/SEC-001.md), [transações](../dados/TRANSACOES_ESTOQUE.md), [DATA-001](../dados/DATA-001.md) e DRS v1.3. A conferência textual do PDF confirmou que as divergências de permissões estão no documento, não apenas na conversão Markdown.
 
 ## Propostas prioritárias

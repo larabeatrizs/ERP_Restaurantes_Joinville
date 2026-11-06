@@ -4,6 +4,8 @@ Parte da fase B / SPEC-001. Fontes: RN-004–011/015/020/022/025–027/033/034/0
 
 ## Invariantes comuns
 
+Complemento [CONFIG-001](../fundacao/CONFIG-001.md): os modos/etapas configuráveis são resolvidos por um serviço central, sem lógica de configuração no JSX/controllers. Documento guarda revisão/snapshot operacional; identidade, vínculo e permissão continuam atuais no momento da ação. Desligar uma etapa permitida nunca desliga os invariantes a seguir.
+
 Toda escrita crítica deve validar identidade/ação/unidade, estado inicial, período aberto, origem e quantidade. Uma transação grava documento/transição, saldo/reserva, livro, auditoria e resultado idempotente juntos. Falha em qualquer parte não pode deixar efeito parcial.
 
 Locks seguem ordem fixa: período/unidade → documento → saldos ordenados por `(unidade,lote,camara)` → demais projeções. Operações de fechamento/reabertura seguem a mesma trava de período, inclusive se ainda não há linha de fechamento (criar/chave única ou protocolo equivalente). Testar a concorrência de primeira gravação, não só linha já existente.

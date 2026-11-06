@@ -14,6 +14,8 @@ Complemento de [DATA-001](DATA-001.md). **Proposta da fase B; não é um schema 
 - Exclusão RESTRICT/NO ACTION para registros vinculados; sem cascata em livro/documentos confirmados. Cadastros sem vínculos podem ser excluídos conforme RN-002; caso contrário, inativar. Exclusão de identidade não apaga história operacional.
 - Indexar FKs com prefixo compatível e medir planos na C2. PK/UNIQUE já cobrem parte dos casos; não duplicar índices automaticamente. Índices propostos abaixo não são evidência de desempenho.
 
+Complemento posterior: [CONFIG-001](../fundacao/CONFIG-001.md) especifica revisão de parâmetros, políticas de ação por unidade e catálogo global, perfis elegíveis e contrato do painel. São extensões propostas ao desenho abaixo, com definição física final na C2; não há tabelas implementadas. Parâmetros numéricos/booleanos tipados não serão substituídos por EAV ou JSON irrestrito.
+
 ## Organização, identidade e cadastros
 
 | Tabela / escopo | Campos específicos e vínculos | Integridade e índices propostos |
