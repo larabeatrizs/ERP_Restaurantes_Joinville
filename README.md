@@ -43,6 +43,8 @@ Para desenvolver, use dois terminais: `npm run dev:api` (API em `http://127.0.0.
 
 `npm run check` executa lint, tipos, testes HTTP e builds. O build da API é um **dry-run**, sem deploy. O health indica apenas liveness, sem testar banco ou autenticação. Veja [escopo e evidências MONO-001](docs/fundacao/MONO-001.md).
 
+O recorte [DB-001/C2.1](docs/fundacao/DB-001-CONFIGURACOES.md) acrescenta testes SQL: `npm run test:db` usa PGlite em memória, e `npm test` executa HTTP e banco. O CI também roda a suíte SQL em PostgreSQL 17 descartável. Não apontar DATABASE_TEST_URL para ambientes existentes: a suíte requer banco de teste vazio e valida o destino local. Não aplicar os arquivos de bootstrap/fixtures no Supabase.
+
 Se a rede usa certificados corporativos já confiáveis no Windows e o npm retornar `SELF_SIGNED_CERT_IN_CHAIN`, execute `$env:NODE_USE_SYSTEM_CA = '1'` no PowerShell antes do npm. Não desative a validação TLS. Nesta máquina, o Node portátil foi instalado em `%LOCALAPPDATA%/CodexTools/node-v24.22.2-win-x64`; adicione esse diretório ao PATH da sessão se `node` não for encontrado. Isso não altera o PATH global.
 
 Não aplicar `legacy/database/init.sql` diretamente ao projeto Supabase existente: o schema foi parcialmente criado e precisa ser reconstruído em migrations a partir dos requisitos, em ambiente isolado e com autorização. Não usar as credenciais de exemplo presentes em `legacy/docker-compose.yml`; se algum valor foi usado fora de ambiente local, rotacioná-lo.
