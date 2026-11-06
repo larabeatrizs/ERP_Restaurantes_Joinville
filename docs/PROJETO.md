@@ -1,6 +1,6 @@
 # PROJETO — ERP Restaurantes Populares de Joinville
 
-> **Estado:** reconciliação integrada pela PR #1 (`a53059b`); auditoria/skills, bootstrap e modelagem publicados nas PRs #3/#4/#5. C2.1 iniciada na branch `feat/db-001-configuracoes`, PR #6, com primeira migration de configurações/identidade e testes isolados. Banco hospedado preservado. Isso **não** comprova ERP funcional, deploy, homologação ou aceite da Secretaria/AMINC.
+> **Estado:** reconciliação integrada pela PR #1 (`a53059b`); auditoria/skills, bootstrap e modelagem nas PRs #3/#4/#5. C2.1 na PR #6 e salvamento mediado C2.2 na PR #7, branch `feat/config-002-salvamento`. Migrations executadas apenas em laboratório. Banco hospedado preservado. Isso **não** comprova ERP funcional, deploy, homologação ou aceite da Secretaria/AMINC.
 
 ## 01 — Ponto de partida e fontes de autoridade
 
@@ -128,7 +128,7 @@ Realizar a primeira implantação operacional no RP1, com duas semanas em parale
 - **Decisões para revisão:** [DOM-001](decisoes/DOM-001-PROPOSTAS.md) apresenta propostas concretas por item e seus efeitos. Não estão aprovadas por terem sido documentadas; implementar somente o recorte cujas decisões estejam registradas.
 - **Direção de parametrização (06/11/2026):** a responsável definiu painel simples para habilitar/configurar ações onde permitido. [CONFIG-001](fundacao/CONFIG-001.md) detalha mapeamento existente, catálogo, fluxo de interface, contratos, persistência e integração desacoplada. Invariantes permanecem obrigatórias; presets e exceções ainda precisam de consolidação. Especificação na B, dados/segurança na C2, API na C3 e painel na C4.
 - **Revisão publicada:** [PRs e CI](planejamento/REVISAO_FUNDACAO.md), com ordem de dependência e evidências por commit. As branches estão publicadas; main permanece sem essas integrações.
-- **C2.1 iniciada:** [DB-001 configurações/identidade](fundacao/DB-001-CONFIGURACOES.md) implementa primeira migration e laboratório isolado, sem provisionamento no banco conectado. Leitura e proteção de parâmetros/trilha; salvamento mediado, API, Auth real e painel continuam pendentes. Esse recorte não resolve automaticamente as permissões de negócio ainda em discussão.
+- **C2.1:** [DB-001 configurações/identidade](fundacao/DB-001-CONFIGURACOES.md) implementa primeira migration e laboratório isolado, sem provisionamento no banco conectado. Leitura e proteção de parâmetros/trilha, complementadas pelo salvamento C2.2 abaixo. API, Auth real e painel continuam pendentes. Esse recorte não resolve automaticamente as permissões de negócio ainda em discussão.
 - **C2.2 / salvamento:** [CONFIG-002](fundacao/CONFIG-002.md), branch `feat/config-002-salvamento`, implementa atualização parcial mediada, papel executor restrito, revisão esperada e auditoria atômica. Não há endpoint ou login real nesta etapa. Concorrência de duas conexões é verificada separadamente no PostgreSQL 17 do CI.
 - **Próximo recorte:** concluir evidências da FND-000, revisar modelo/contratos e resolver conflitos do recorte antes de implementar banco/segurança na C2. Não transformar desenho em migrations sobre o banco conectado sem plano de ambiente.
 - **Critério de governança:** registrar mudanças futuras na seção afetada e na issue/PR correspondente; nenhuma decisão documental prova implantação real.
