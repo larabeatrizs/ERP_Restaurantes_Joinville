@@ -33,7 +33,7 @@ Não há teste de duas conexões simultâneas neste recorte. Concorrência de If
 
 ## Verificação
 
-Executados inicialmente em PGlite: 14 testes passaram, além dos cinco testes HTTP, lint/tipos/build do monorepo. Dois casos adicionais cobrem separação da leitura do histórico e unidade/autoria inválidas; seus resultados e os do CI serão conferidos antes da conclusão do recorte.
+Executados em PGlite: **16 testes passaram**, incluindo separação da leitura do histórico e unidade/autoria inválidas. Também passaram os cinco testes HTTP, lint/tipos/build do monorepo na verificação do recorte. O resultado contra PostgreSQL 17 real deve ser consultado no CI da PR correspondente; não é inferido pelo resultado do PGlite.
 
 Cenários: leitura por unidade; perfil sem capacidade; usuário inativo/claim ausente; vínculo revogado; unidade inativa; anon negado; DML direto bloqueado; zero/falso; revisão e antes/depois; dados inválidos; ator derivado da sessão; falha induzida de auditoria com rollback; trilha imutável; histórico segregado. O banco conectado permanece intocado.
 
