@@ -1,0 +1,24 @@
+{
+  "name": "erp-restaurantes-joinville",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "engines": { "node": ">=24.22.2 <25" },
+  "workspaces": ["apps/*", "packages/*"],
+  "scripts": {
+    "dev:web": "npm run dev --workspace @erp/web",
+    "dev:api": "npm run dev --workspace @erp/api",
+    "lint": "eslint apps packages",
+    "typecheck": "npm run typecheck --workspaces",
+    "test": "node --test apps/api/src/index.test.ts",
+    "build": "npm run build --workspaces",
+    "check": "npm run lint && npm run typecheck && npm test && npm run build"
+  },
+  "overrides": { "minimatch": "11.0.1" },
+  "devDependencies": {
+    "@types/node": "24.10.0",
+    "eslint": "10.14.0",
+    "typescript": "5.9.3",
+    "typescript-eslint": "8.72.1"
+  }
+}

@@ -2,7 +2,7 @@
 
 Sistema web para gestão dos Restaurantes Populares de Joinville, com estoque por lote e unidade, entradas, saídas, cardápios, relatórios e rastreabilidade.
 
-> **Estado atual:** documentação e arquitetura em reconciliação; os protótipos foram isolados em `legacy/`. A nova aplicação MVC/monorepo será construída do zero nas fases de fundação e desenvolvimento. Não há ERP funcional ou implantação comprovada.
+> **Estado atual:** fundação técnica iniciada em branch, com bootstrap de monorepo, API de liveness e raiz React. Os protótipos estão em `legacy/`. As telas, o banco novo e os módulos de negócio ainda não foram implementados; não há ERP funcional ou implantação comprovada.
 
 ## Fontes oficiais
 
@@ -21,7 +21,7 @@ Sistema web para gestão dos Restaurantes Populares de Joinville, com estoque po
 - **Banco e autenticação:** Supabase PostgreSQL e Supabase Auth.
 - **Gestão e integração:** GitHub, PRs, Issues e CI/CD (a configurar).
 
-A proposta de layout de código é `apps/web`, `apps/api`, `packages/contracts` e `supabase/migrations`, **ainda não criada**. Consulte a documentação arquitetural antes de mover arquivos.
+O bootstrap usa `apps/web`, `apps/api` e `packages/contracts`. `supabase/migrations` será criado na fase C2, após a modelagem nova na fase B. Consulte a documentação arquitetural antes de mover arquivos.
 
 ## Legado arquivado — não reutilizar como base do novo código
 
@@ -31,7 +31,18 @@ A arquitetura de produção não utiliza VPS/Docker. Instalar Docker não é pr�
 
 ## Como iniciar o desenvolvimento
 
-A configuração atual do repositório **ainda não dispõe de um caminho validado de execução do monorepo**. Antes de declarar um comando oficial, concluir a fundação: dependências fixadas, workspaces, migrations, Supabase Auth e RLS, runtime Workers, variáveis e secrets, CI, staging e testes de integração.
+Use Node **24.22.2** (também indicado em `.node-version`) e o npm incluído nessa distribuição. Na raiz:
+
+```sh
+npm ci
+npm run check
+```
+
+Para desenvolver, use dois terminais: `npm run dev:api` (API em `http://127.0.0.1:8787/api/health`) e `npm run dev:web` (Vite em `http://127.0.0.1:5173`). A View renderiza vazia neste bootstrap: as telas aprovadas serão implementadas em WEB-001. O proxy `/api` do Vite aponta para a API local.
+
+`npm run check` executa lint, tipos, testes HTTP e builds. O build da API é um **dry-run**, sem deploy. O health indica apenas liveness, sem testar banco ou autenticação. Veja [escopo e evidências MONO-001](docs/fundacao/MONO-001.md).
+
+Se a rede usa certificados corporativos já confiáveis no Windows e o npm retornar `SELF_SIGNED_CERT_IN_CHAIN`, execute `$env:NODE_USE_SYSTEM_CA = '1'` no PowerShell antes do npm. Não desative a validação TLS. Nesta máquina, o Node portátil foi instalado em `%LOCALAPPDATA%/CodexTools/node-v24.22.2-win-x64`; adicione esse diretório ao PATH da sessão se `node` não for encontrado. Isso não altera o PATH global.
 
 Não aplicar `legacy/database/init.sql` diretamente ao projeto Supabase existente: o schema foi parcialmente criado e precisa ser reconstruído em migrations a partir dos requisitos, em ambiente isolado e com autorização. Não usar as credenciais de exemplo presentes em `legacy/docker-compose.yml`; se algum valor foi usado fora de ambiente local, rotacioná-lo.
 
@@ -41,4 +52,4 @@ Adota-se **desenvolvimento orientado por especificações (Spec-Driven Developme
 
 ## Próximos trabalhos
 
-Iniciar pela auditoria documental `FND-000`, validar decisões de backend/Auth/modelo de dados e executar a fundação técnica em uma branch/PR. O trabalho funcional segue a **Entrega 1 — Fundação e Estoque** da seção 15.2 do DRS, sem alterar o design aprovado.
+Concluir as evidências da auditoria `FND-000`, revisar o bootstrap `MONO-001` e avançar os contratos da fase B, incluindo a modelagem do banco refeita do zero a partir do DRS. Migrations, segurança e testes de banco pertencem à C2. O trabalho funcional segue a **Entrega 1 — Fundação e Estoque** da seção 15.2 do DRS, sem alterar o design aprovado.
