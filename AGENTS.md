@@ -10,4 +10,6 @@ O índice da auditoria está em `docs/auditoria/FND-000.md`. Diferencie situaç�
 
 Trabalhe em branch e PR, preservando alterações locais existentes. Registre os testes efetivamente executados e suas limitações. Fechar issue exige comprovar os critérios aplicáveis; merge documental não demonstra implantação.
 
+Decisão vigente em `docs/decisoes/ADR-002-STAGING-COMPARTILHADO.md`: staging compartilhado é desenvolvimento/testes durante a construção. Commitar e integrar recortes verificados na main, mantendo a branch ativa atualizada. Não provisionar ambientes permanentes separados até AMB-001 no encerramento. Testes em memória/CI descartável continuam permitidos. Limpeza de banco é etapa futura planejada, sem reset imediato por inferência.
+
 Este arquivo não amplia a autorização do usuário: nenhuma skill autoriza sozinha gastos, publicação, comunicação externa ou alteração de banco conectado. Considere a autorização já existente na conversa antes de pedir confirmação.

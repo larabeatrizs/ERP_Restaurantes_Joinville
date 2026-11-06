@@ -2,6 +2,8 @@
 
 Data: 06/11/2026. As PRs estão em rascunho e encadeadas; nenhuma foi integrada por esta tarefa.
 
+**Atualização posterior:** por autorização expressa para manter main atualizada, PRs #3–#7 foram marcadas prontas e integradas, em ordem, com merge commits. main alcançou `88ec253` antes da API-001. A descrição inicial e a tabela abaixo registram a pilha de revisão histórica, não o estado atual de PR aberta. A política de integração agora segue ADR-002.
+
 | Ordem | PR | Base → branch revisada | Escopo |
 | --- | --- | --- | --- |
 | 1 | [#3](https://github.com/larabeatrizs/ERP_Restaurantes_Joinville/pull/3) | main → docs/fnd-000-auditoria-skills | Auditoria FND-000, skills e governança |

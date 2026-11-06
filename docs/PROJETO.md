@@ -1,6 +1,6 @@
 # PROJETO — ERP Restaurantes Populares de Joinville
 
-> **Estado:** reconciliação integrada pela PR #1 (`a53059b`); auditoria/skills, bootstrap e modelagem nas PRs #3/#4/#5. C2.1 na PR #6 e salvamento mediado C2.2 na PR #7, branch `feat/config-002-salvamento`. Migrations executadas apenas em laboratório. Banco hospedado preservado. Isso **não** comprova ERP funcional, deploy, homologação ou aceite da Secretaria/AMINC.
+> **Estado:** PRs #3–#7 integradas à main em 06/11/2026. API de configurações C3 em implementação na branch `feat/api-001-configuracoes`. Ambiente declarado pela responsável como staging compartilhado de desenvolvimento/testes; separação permanente congelada até o encerramento (ADR-002/AMB-001). Migrations executadas até aqui somente em laboratório, sem mudança no banco hospedado. Não comprova deploy, homologação ou liberação de produção.
 
 ## 01 — Ponto de partida e fontes de autoridade
 
@@ -31,7 +31,7 @@ Riscos identificados no inventário inicial:
 
 | ID | Decisão | Alcance | Estado |
 | --- | --- | --- | --- |
-| ARQ-001 | **Monorepo** para frontend, backend, componentes compartilhados, migrações, testes e documentos | Organização do código | Bootstrap local implementado e verificado em ffb174b; CI remoto e integração pendentes |
+| ARQ-001 | **Monorepo** para frontend, backend, componentes compartilhados, migrações, testes e documentos | Organização do código | Bootstrap e CI verificados; integrado à main |
 | ARQ-002 | **MVC adaptado a web/API**, com separação adicional de serviços e repositórios | Arquitetura do software | Controller/Service de liveness implementados; camadas de negócio pendentes |
 | INF-001 | **Cloudflare** para hospedar frontend e backend, em substituição à VPS/Docker como destino de produção | Infraestrutura | Definida; produto Cloudflare e implantação ainda sujeitos a verificação |
 | INF-002 | **Supabase PostgreSQL + Supabase Auth** para persistência e identidade | Dados e autenticação | Definida; integração/autorização pendentes |
@@ -70,7 +70,7 @@ A [especificação técnica da arquitetura](arquitetura/MVC_MONOREPO.md) governa
 - **Frontend:** somente URL pública da API, URL e chave publicável do Supabase; nunca usar `service_role`, chave secreta, senha ou token de deploy no navegador.
 - **Worker:** credenciais server-side apenas por Secrets do runtime e apenas onde indispensáveis; validar JWT e autorização por operação; não usar chave administrativa para contornar RLS em rotas de usuário.
 - **Dados:** migrations com histórico, transações atômicas para movimentos de estoque, bloqueio de saldo negativo, idempotência, auditoria e testes de isolamento entre RP1 e RP2.
-- **Ambientes:** local/teste, staging e produção isolados de forma verificável. Projeto Supabase existente não é automaticamente considerado produção; custos e criação de novos recursos requerem autorização.
+- **Ambientes:** conforme [ADR-002](decisoes/ADR-002-STAGING-COMPARTILHADO.md), staging compartilhado para desenvolvimento/testes durante a construção. Provisão de ambientes permanentes separados congelada em AMB-001 até o encerramento. Testes locais/CI efêmeros continuam; staging não é produção liberada.
 - **Operação:** backup e restauração testados, observabilidade, recuperação e rollback planejados antes de pilotar com dados reais; região e bases legais sujeitas a aceite institucional.
 
 ## 10 — Trabalho no GitHub
@@ -85,7 +85,7 @@ A [especificação técnica da arquitetura](arquitetura/MVC_MONOREPO.md) governa
 
 ## 11 — Fundação técnica (execução inicial)
 
-O bootstrap técnico de `apps/web`, `apps/api` e `packages/contracts`, configuração TypeScript e comandos foi implementado e verificado localmente e no CI remoto dos commits indicados em [revisão da fundação](planejamento/REVISAO_FUNDACAO.md). As PRs #3/#4/#5/#6 estão em rascunho e encadeadas, sem merge nesta execução. Escopo inicial em [MONO-001](fundacao/MONO-001.md). A [nova modelagem](dados/DATA-001.md) e os [contratos de acesso](seguranca/SEC-001.md) orientam a primeira migration implementada em [DB-001/C2.1](fundacao/DB-001-CONFIGURACOES.md), aplicada somente no laboratório descartável. Nenhuma integração de Supabase Auth real ou alteração de banco hospedado foi executada. A fundação completa continua pendente.
+O bootstrap, a modelagem e os recortes C2.1/C2.2 foram integrados à main pelas PRs #3–#7. Evidências locais/CI em [revisão da fundação](planejamento/REVISAO_FUNDACAO.md). A [API-001](fundacao/API-001-CONFIGURACOES.md) acrescenta rotas e adaptador de Auth/RPC; validação ponta a ponta no staging ainda depende das variáveis, schema exposto e acesso reais. Nenhum teste de SDK simulado será tratado como login real verificado. A fundação completa continua pendente.
 
 1. Usar os arquivos em `legacy/` somente para auditoria; **criar novos** `apps/web`, `apps/api`, `packages/*` e `supabase/migrations` sem copiar o protótipo como aplicação.
 2. Definir bootstrap do monorepo, versões fixadas, lockfile, lint, testes, build e CI.
@@ -117,6 +117,7 @@ Realizar a primeira implantação operacional no RP1, com duas semanas em parale
 | Deploy frontend Cloudflare e API Worker | Afeta toolchain sem mudar a decisão de plataforma | Worker nativo local verificado; implantação remota pendente |
 | Estados e jornadas não cobertos pelo Style Guide | Evita extrapolar UI aprovada | Pendente de inventário |
 | Validação externa e assinaturas da seção 17.3 do DRS | Condição para liberação institucional | Não comprovada |
+| AMB-001 — separar ambientes permanentes e preparar limpeza/reconstrução | Decisão da responsável: usar staging compartilhado agora | Congelada até o encerramento funcional; sem reset imediato |
 
 ## 16 — Continuidade e evidências
 
@@ -130,5 +131,6 @@ Realizar a primeira implantação operacional no RP1, com duas semanas em parale
 - **Revisão publicada:** [PRs e CI](planejamento/REVISAO_FUNDACAO.md), com ordem de dependência e evidências por commit. As branches estão publicadas; main permanece sem essas integrações.
 - **C2.1:** [DB-001 configurações/identidade](fundacao/DB-001-CONFIGURACOES.md) implementa primeira migration e laboratório isolado, sem provisionamento no banco conectado. Leitura e proteção de parâmetros/trilha, complementadas pelo salvamento C2.2 abaixo. API, Auth real e painel continuam pendentes. Esse recorte não resolve automaticamente as permissões de negócio ainda em discussão.
 - **C2.2 / salvamento:** [CONFIG-002](fundacao/CONFIG-002.md), branch `feat/config-002-salvamento`, implementa atualização parcial mediada, papel executor restrito, revisão esperada e auditoria atômica. Não há endpoint ou login real nesta etapa. Concorrência de duas conexões é verificada separadamente no PostgreSQL 17 do CI.
+- **Política vigente:** [ADR-002](decisoes/ADR-002-STAGING-COMPARTILHADO.md) define staging compartilhado e integração de recortes verificados à main. [API-001](fundacao/API-001-CONFIGURACOES.md) registra a evolução HTTP e suas limitações de validação. AMB-001 não bloqueia os laboratórios descartáveis ou a implementação.
 - **Próximo recorte:** concluir evidências da FND-000, revisar modelo/contratos e resolver conflitos do recorte antes de implementar banco/segurança na C2. Não transformar desenho em migrations sobre o banco conectado sem plano de ambiente.
 - **Critério de governança:** registrar mudanças futuras na seção afetada e na issue/PR correspondente; nenhuma decisão documental prova implantação real.

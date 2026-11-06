@@ -1,24 +1,38 @@
-import type { ErrorResponse } from '@erp/contracts';
 import { healthController } from './controllers/health-controller.ts';
+import { settingsController } from './controllers/settings-controller.ts';
+import { createSupabaseSession } from './repositories/supabase-settings.ts';
+import type { RuntimeEnv, SessionFactory } from './repositories/settings-repository.ts';
+import { ApiError } from './errors.ts';
 
-function errorResponse(status: number, code: ErrorResponse['error']['code'], message: string): Response {
-  return Response.json({ error: { code, message } } satisfies ErrorResponse, {
-    status,
-    headers: { 'Cache-Control': 'no-store' },
-  });
+export function createApp(factory: SessionFactory = createSupabaseSession) {
+  return {
+    async fetch(request: Request, env: RuntimeEnv = {}): Promise<Response> {
+      try {
+        const path = new URL(request.url).pathname;
+        if (path === '/api/health') {
+          if (request.method === 'GET' || request.method === 'HEAD') return healthController(request);
+          return methodNotAllowed('GET, HEAD', request.method === 'HEAD');
+        }
+        const match = /^\/api\/unidades\/([^/]+)\/configuracoes$/.exec(path);
+        if (match?.[1]) {
+          if (request.method !== 'GET' && request.method !== 'PATCH') return methodNotAllowed('GET, PATCH', request.method === 'HEAD');
+          return await settingsController(request, env, match[1], factory);
+        }
+        throw new ApiError(404, 'NOT_FOUND', 'Rota não encontrada.');
+      } catch (error) {
+        const problem = error instanceof ApiError ? error : new ApiError(503, 'SERVICE_UNAVAILABLE', 'Serviço temporariamente indisponível.');
+        const headers: Record<string, string> = { 'Cache-Control': 'no-store' };
+        if (problem.status === 401) headers['WWW-Authenticate'] = 'Bearer';
+        const response = Response.json({ error: { code: problem.code, message: problem.message } }, { status: problem.status, headers });
+        return request.method === 'HEAD' ? new Response(null, response) : response;
+      }
+    },
+  };
 }
-
-export default {
-  fetch(request: Request): Response {
-    if (new URL(request.url).pathname !== '/api/health') {
-      const response = errorResponse(404, 'NOT_FOUND', 'Rota não encontrada.');
-      return request.method === 'HEAD' ? new Response(null, response) : response;
-    }
-    if (request.method !== 'GET' && request.method !== 'HEAD') {
-      const response = errorResponse(405, 'METHOD_NOT_ALLOWED', 'Método não permitido.');
-      response.headers.set('Allow', 'GET, HEAD');
-      return response;
-    }
-    return healthController(request);
-  },
-};
+function methodNotAllowed(allow: string, head = false): Response {
+  const response = Response.json({ error: { code: 'METHOD_NOT_ALLOWED', message: 'Método não permitido.' } }, {
+    status: 405, headers: { Allow: allow, 'Cache-Control': 'no-store' },
+  });
+  return head ? new Response(null, response) : response;
+}
+export default createApp();
