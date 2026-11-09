@@ -66,7 +66,7 @@ Registros sintéticos usados na validação ficam identificados para o plano de 
 
 O script foi executado em PGlite vazio (antes de erp existir) e no laboratório com migrations/fixtures. Teste de regressão verifica transação readonly, metadados de RLS/owner e preservação de revisões/auditoria; CI também o executa no PostgreSQL 17 descartável. Não é inventário remoto. A suite SQL passa a 29 casos (28 + 1 concorrente omitido em PGlite; 29 esperados no PostgreSQL 17).
 
-`npm run check` passou localmente em 09/11/2026: lint, tipos, 27 HTTP/adaptador, 28 SQL aprovados e 1 omitido no PGlite, builds e dry-run sem deploy. Nenhuma alteração na View; a suíte de 13 navegadores/cenários permanece no CI para verificação do commit publicado. O resultado remoto deve ser consultado na PR antes do merge.
+`npm run check` passou localmente em 09/11/2026: lint, tipos, 27 HTTP/adaptador, 28 SQL aprovados e 1 omitido no PGlite, builds e dry-run sem deploy. Nenhuma alteração na View; a suíte de 13 cenários de navegador permanece no CI para verificação do commit publicado. O resultado remoto deve ser consultado na PR antes do merge.
 
 O gate real permanece aberto até a tabela de cenários ter resultados hospedados e a fronteira Auth/RLS estar comprovada. FND-000 não foi fechada; AMB-001 não foi descongelada. Depois desse gate, seguir para políticas de aprovação e demais parâmetros CONFIG-001/DOM-001, preservando o DRS e suas decisões ainda abertas.
 
