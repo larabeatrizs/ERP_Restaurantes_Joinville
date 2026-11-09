@@ -1,0 +1,69 @@
+{
+    "anon_sequences_with_access":  0,
+    "anon_tables_with_access":  0,
+    "authenticated_sequences_with_access":  0,
+    "authenticated_tables_with_access":  0,
+    "captured_at":  "2026-11-09T13:25:36.751398+00:00",
+    "erp_schema_exists":  false,
+    "public_tables":  14,
+    "rows_by_table":  [
+                          {
+                              "count":  0,
+                              "table":  "auditoria"
+                          },
+                          {
+                              "count":  0,
+                              "table":  "categoria"
+                          },
+                          {
+                              "count":  0,
+                              "table":  "cotacao"
+                          },
+                          {
+                              "count":  0,
+                              "table":  "fornecedor"
+                          },
+                          {
+                              "count":  0,
+                              "table":  "lote"
+                          },
+                          {
+                              "count":  0,
+                              "table":  "movimento_estoque"
+                          },
+                          {
+                              "count":  0,
+                              "table":  "perfil"
+                          },
+                          {
+                              "count":  0,
+                              "table":  "prato"
+                          },
+                          {
+                              "count":  0,
+                              "table":  "produto"
+                          },
+                          {
+                              "count":  0,
+                              "table":  "refeicao_servida"
+                          },
+                          {
+                              "count":  0,
+                              "table":  "unidade_medida"
+                          },
+                          {
+                              "count":  0,
+                              "table":  "unidade_restaurante"
+                          },
+                          {
+                              "count":  0,
+                              "table":  "usuario"
+                          },
+                          {
+                              "count":  0,
+                              "table":  "usuario_unidade"
+                          }
+                      ],
+    "service_role_select_tables":  14,
+    "tables_with_rls":  14
+}
