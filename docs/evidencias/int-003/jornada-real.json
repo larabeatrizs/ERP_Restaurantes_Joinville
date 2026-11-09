@@ -1,0 +1,212 @@
+{
+  "project": "rp-joinville-db",
+  "reference": "vpowsedoajpdbeckimuv",
+  "environment": "View/Worker locais + Supabase staging real",
+  "deployment": false,
+  "http": {
+    "executedAt": "2026-11-09T14:41:00.631Z",
+    "environment": "Worker local + Supabase staging real",
+    "mocked": false,
+    "completed": true,
+    "results": [
+      {
+        "scenario": "login e getUser reais para três identidades sintéticas",
+        "passed": true
+      },
+      {
+        "scenario": "API sem Bearer nega acesso",
+        "passed": true
+      },
+      {
+        "scenario": "RLS lista somente a unidade vinculada",
+        "passed": true
+      },
+      {
+        "scenario": "consulta sem capacidade de escrita não altera configuração",
+        "passed": true
+      },
+      {
+        "scenario": "leitura e edição cruzadas entre unidades são negadas",
+        "passed": true
+      },
+      {
+        "scenario": "PATCH real persiste e incrementa revisão",
+        "passed": true
+      },
+      {
+        "scenario": "concorrência hospedada produz um sucesso e um conflito",
+        "passed": true
+      },
+      {
+        "scenario": "ator inativo nega operações com o mesmo JWT; retorno controlado funciona",
+        "passed": true
+      },
+      {
+        "scenario": "vínculo revogado nega operações com o mesmo JWT; retorno controlado funciona",
+        "passed": true
+      },
+      {
+        "scenario": "Data API não expõe public nem erp_private",
+        "passed": true
+      },
+      {
+        "scenario": "DML direto pela Data API é negado",
+        "passed": true
+      },
+      {
+        "scenario": "anon não consulta parâmetros no schema exposto",
+        "passed": true
+      }
+    ]
+  },
+  "browser": {
+    "executedAt": "2026-11-09T14:46:18.099Z",
+    "mocked": false,
+    "completed": true,
+    "scenarios": [
+      "login real",
+      "editor salva com revisão/motivo",
+      "retorno do valor via UI",
+      "leitor readonly",
+      "uma unidade por vínculo",
+      "layout desktop/mobile"
+    ]
+  },
+  "configuration": {
+    "api_schemas": [
+      "erp"
+    ],
+    "unchanged_undeclared_properties": 11
+  },
+  "audit": {
+    "actor_helper_invoker": true,
+    "administrative_seed_events": 2,
+    "audit_actors_match_units": true,
+    "audit_events": 9,
+    "captured_at": "2026-11-09T14:48:53.902422+00:00",
+    "configurations": [
+      {
+        "margin": "5.00",
+        "mode": "POSTERIOR",
+        "revision": "8",
+        "unit": "STG-INT003-A"
+      },
+      {
+        "margin": "5.00",
+        "mode": "POSTERIOR",
+        "revision": "1",
+        "unit": "STG-INT003-B"
+      }
+    ],
+    "links_restored": true,
+    "reader_audit_events": 0,
+    "rpc_update_events": 7,
+    "synthetic_users_active": 3,
+    "writer_auth_usage": false
+  },
+  "legacy": {
+    "anon_sequences_with_access": 0,
+    "anon_tables_with_access": 0,
+    "authenticated_sequences_with_access": 0,
+    "authenticated_tables_with_access": 0,
+    "captured_at": "2026-11-09T14:45:35.461208+00:00",
+    "erp_schema_exists": true,
+    "public_tables": 14,
+    "rows_by_table": [
+      {
+        "count": 0,
+        "table": "auditoria"
+      },
+      {
+        "count": 0,
+        "table": "categoria"
+      },
+      {
+        "count": 0,
+        "table": "cotacao"
+      },
+      {
+        "count": 0,
+        "table": "fornecedor"
+      },
+      {
+        "count": 0,
+        "table": "lote"
+      },
+      {
+        "count": 0,
+        "table": "movimento_estoque"
+      },
+      {
+        "count": 0,
+        "table": "perfil"
+      },
+      {
+        "count": 0,
+        "table": "prato"
+      },
+      {
+        "count": 0,
+        "table": "produto"
+      },
+      {
+        "count": 0,
+        "table": "refeicao_servida"
+      },
+      {
+        "count": 0,
+        "table": "unidade_medida"
+      },
+      {
+        "count": 0,
+        "table": "unidade_restaurante"
+      },
+      {
+        "count": 0,
+        "table": "usuario"
+      },
+      {
+        "count": 0,
+        "table": "usuario_unidade"
+      }
+    ],
+    "service_role_select_tables": 14,
+    "tables_with_rls": 14
+  },
+  "cli_database_security_findings": [
+    {
+      "name": "auth_leaked_password_protection",
+      "title": "Leaked Password Protection Disabled",
+      "level": "WARN",
+      "facing": "EXTERNAL",
+      "categories": [
+        "SECURITY"
+      ],
+      "description": "Leaked password protection is currently disabled.",
+      "detail": "Supabase Auth prevents the use of compromised passwords by checking against HaveIBeenPwned.org. Enable this feature to enhance security.",
+      "remediation": "https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection",
+      "metadata": {
+        "entity": "Auth",
+        "type": "auth"
+      },
+      "cacheKey": "auth_leaked_password_protection"
+    }
+  ],
+  "migration_history": [
+    {
+      "local": "20261106201235",
+      "remote": "20261106201235",
+      "time": "2026-11-06 20:12:35"
+    },
+    {
+      "local": "20261106202428",
+      "remote": "20261106202428",
+      "time": "2026-11-06 20:24:28"
+    },
+    {
+      "local": "20261109142946",
+      "remote": "20261109142946",
+      "time": "2026-11-09 14:29:46"
+    }
+  ]
+}

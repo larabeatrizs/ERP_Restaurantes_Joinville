@@ -134,6 +134,7 @@ test('login, revisão cancelável e gravação com ETag e somente campos alterad
   await expect(page.getByRole('status')).toHaveText(
     'Configurações salvas com sucesso.',
   );
+  await expect(page.getByLabel('Margem (%)', { exact: true })).toHaveValue('6,25');
   expect(state.writes).toEqual([
     {
       etag: '"cfg-1-1"',
