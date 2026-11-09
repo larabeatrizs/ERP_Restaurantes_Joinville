@@ -2,7 +2,7 @@
 
 Sistema web para gestão dos Restaurantes Populares de Joinville, com estoque por lote e unidade, entradas, saídas, cardápios, relatórios e rastreabilidade.
 
-> **Estado atual:** fundação técnica em branch, com bootstrap de monorepo, API de liveness, raiz React e primeiro schema de configurações/identidade validado em laboratório. Os protótipos estão em `legacy/`. As telas, o banco integral e os módulos de negócio continuam pendentes; não há ERP funcional ou implantação comprovada.
+> **Estado atual:** fundação com API e primeiro painel de configurações por unidade, login Supabase Auth, revisão e controle de concorrência. Migrations, autorização e fluxos foram verificados em laboratórios e transporte simulado; integração no staging remoto, banco integral e demais módulos continuam pendentes. Os protótipos estão em `legacy/`. Não há liberação operacional comprovada.
 
 Ambiente atual declarado como **staging compartilhado de desenvolvimento e testes**, conforme [ADR-002](docs/decisoes/ADR-002-STAGING-COMPARTILHADO.md). Recortes verificados são integrados à main; ambientes permanentes separados ficam para AMB-001 ao final. Não há reset imediato do banco.
 
@@ -22,9 +22,9 @@ Ambiente atual declarado como **staging compartilhado de desenvolvimento e teste
 - **View:** React + Vite, hospedado na Cloudflare.
 - **API/Controllers:** Cloudflare Workers.
 - **Banco e autenticação:** Supabase PostgreSQL e Supabase Auth.
-- **Gestão e integração:** GitHub, PRs, Issues e CI/CD (a configurar).
+- **Gestão e integração:** GitHub, PRs, Issues e CI com checks, PostgreSQL descartável e navegador. Deploy ainda pendente.
 
-O bootstrap usa `apps/web`, `apps/api` e `packages/contracts`. `supabase/migrations` será criado na fase C2, após a modelagem nova na fase B. Consulte a documentação arquitetural antes de mover arquivos.
+O código novo usa `apps/web`, `apps/api` e `packages/contracts`. `supabase/migrations` contém os recortes de configurações/identidade da fase C2, derivados da modelagem nova. Consulte a documentação arquitetural antes de mover arquivos.
 
 ## Legado arquivado — não reutilizar como base do novo código
 
@@ -41,7 +41,11 @@ npm ci
 npm run check
 ```
 
-Para desenvolver, use dois terminais: `npm run dev:api` (API em `http://127.0.0.1:8787/api/health`) e `npm run dev:web` (Vite em `http://127.0.0.1:5173`). A View renderiza vazia neste bootstrap: as telas aprovadas serão implementadas em WEB-001. O proxy `/api` do Vite aponta para a API local.
+Para desenvolver, use dois terminais: `npm run dev:api` (API em `http://127.0.0.1:8787/api/health`) e `npm run dev:web` (Vite em `http://127.0.0.1:5173`). O proxy `/api` do Vite aponta para a API local. Copie os exemplos `apps/web/.env.example` para `.env.local` e `apps/api/.dev.vars.example` para `.dev.vars`, preenchendo somente URL/chave publicável do projeto existente em uso. Sem esses valores, o login informa acesso não configurado e a API protegida não libera acesso. Não versionar os arquivos preenchidos.
+
+O painel exige identidade, perfil, vínculo/capacidades e configuração da unidade no schema `erp`; expor somente esse schema na Data API após revisão das migrations/RLS. Não há provisionamento automático de conta/unidade nem aplicação de migrations no banco remoto pelo frontend. Consulte [WEB-001](docs/fundacao/WEB-001-CONFIGURACOES.md) para escopo, estados e limitações.
+
+Testes do navegador: `npx playwright install chromium` e `npm run test:web`. No Windows, também é possível usar Edge já instalado: `$env:PLAYWRIGHT_CHANNEL='msedge'` no PowerShell. As respostas Auth/API dos testes são fictícias e não usam o staging real. Para repetir a extração dos assets da referência: `node scripts/extract-styleguide-assets.mjs`; o HTML mestre permanece intacto.
 
 `npm run check` executa lint, tipos, testes HTTP e builds. O build da API é um **dry-run**, sem deploy. O health indica apenas liveness, sem testar banco ou autenticação. Veja [escopo e evidências MONO-001](docs/fundacao/MONO-001.md).
 

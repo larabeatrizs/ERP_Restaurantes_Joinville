@@ -57,6 +57,16 @@ export function createSupabaseSession(env: RuntimeEnv, token: string, fetcher: t
       }
     },
     repository: {
+      async listUnits() {
+        const { data, error, status } = await database.from('unidade').select('id::text,codigo,nome').eq('status', 'ATIVO').order('nome');
+        translateError(error, status);
+        if (!Array.isArray(data)) unavailable();
+        return data.map((item: unknown) => {
+          if (!isRecord(item) || typeof item.id !== 'string' || !isPositiveBigint(item.id)
+            || typeof item.nome !== 'string' || !item.nome.trim() || typeof item.codigo !== 'string') unavailable();
+          return { id: item.id, nome: item.nome, codigo: item.codigo };
+        });
+      },
       async read(unit) {
         const { data, error, status } = await database.from('parametro_unidade').select(columns).eq('unidade_id', unit).maybeSingle();
         translateError(error, status);

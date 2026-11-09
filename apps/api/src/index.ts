@@ -1,5 +1,5 @@
 import { healthController } from './controllers/health-controller.ts';
-import { settingsController } from './controllers/settings-controller.ts';
+import { settingsController, unitsController } from './controllers/settings-controller.ts';
 import { createSupabaseSession } from './repositories/supabase-settings.ts';
 import type { RuntimeEnv, SessionFactory } from './repositories/settings-repository.ts';
 import { ApiError } from './errors.ts';
@@ -9,6 +9,10 @@ export function createApp(factory: SessionFactory = createSupabaseSession) {
     async fetch(request: Request, env: RuntimeEnv = {}): Promise<Response> {
       try {
         const path = new URL(request.url).pathname;
+        if (path === '/api/unidades') {
+          if (request.method !== 'GET') return methodNotAllowed('GET', request.method === 'HEAD');
+          return await unitsController(request, env, factory);
+        }
         if (path === '/api/health') {
           if (request.method === 'GET' || request.method === 'HEAD') return healthController(request);
           return methodNotAllowed('GET, HEAD', request.method === 'HEAD');

@@ -1,5 +1,6 @@
-import type { Configuration, ConfigurationPatch, ConfigurationResult } from '@erp/contracts';
+import type { Configuration, ConfigurationPatch, ConfigurationResult, UnitSummary } from '@erp/contracts';
 export interface SettingsRepository {
+  listUnits(): Promise<UnitSummary[]>;
   read(unit: string): Promise<ConfigurationResult>;
   update(unit: string, revision: string, patch: ConfigurationPatch): Promise<Configuration>;
 }

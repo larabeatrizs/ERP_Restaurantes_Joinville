@@ -18,6 +18,7 @@ function transport(options: { authStatus?: number; databaseCode?: string; databa
       return Response.json(options.authStatus ? { msg: 'Detalhe interno não deve vazar' } : { ...user, is_anonymous: options.anonymous ?? false }, { status: options.authStatus ?? 200 });
     }
     if (options.databaseCode) return Response.json({ code: options.databaseCode, message: 'SQL e detalhe interno' }, { status: options.databaseStatus ?? 400 });
+    if (url.pathname.endsWith('/unidade')) return Response.json([{ id: '1', codigo: 'TESTE_A', nome: 'Unidade fictícia A' }]);
     if (url.pathname.endsWith('/perfil_permissao')) return Response.json([{ permissao: 'CONFIGURACAO_EDITAR' }]);
     if (url.pathname.includes('/rpc/')) return Response.json({ ...row, revisao: '3' });
     if (options.badRow) return Response.json({ ...row, revisao: 9007199254740992 });
@@ -53,6 +54,13 @@ test('RPC usa revisão e unidade string e não usa update direto', async () => {
   const rpc = requests.find((request) => request.url.pathname.endsWith('/rpc/atualizar_configuracao'));
   assert.equal(rpc?.headers.get('Content-Profile'), 'erp');
   assert.deepEqual(rpc?.body, { p_unidade: '1', p_revisao: '2', p_campos: { margem_percentual: '0' }, p_motivo: 'Teste de ajuste' });
+});
+test('listagem consulta unidades ativas com RLS e IDs textuais', async () => {
+  const { fetcher, requests } = transport();
+  const session = createSupabaseSession(env, 'ficticio', fetcher);
+  assert.deepEqual(await session.repository.listUnits(), [{ id: '1', codigo: 'TESTE_A', nome: 'Unidade fictícia A' }]);
+  assert.equal(requests[0]?.url.searchParams.get('status'), 'eq.ATIVO');
+  assert.equal(requests[0]?.headers.get('Accept-Profile'), 'erp');
 });
 test('erros de sessão são 401 e falha de Auth é 503', async () => {
   for (const status of [401, 403, 500]) {
