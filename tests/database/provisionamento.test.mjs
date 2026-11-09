@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { readFile, readdir } from 'node:fs/promises';
 import { PGlite } from '@electric-sql/pglite';
-import { provisionSql } from '../../scripts/staging/identidades-sinteticas.mjs';
+import { provisionSql, syntheticAccessSql } from '../../scripts/staging/identidades-sinteticas.mjs';
 const ids={editorA:'00000000-0000-4000-8000-000000000001',readerA:'00000000-0000-4000-8000-000000000002',editorB:'00000000-0000-4000-8000-000000000003'};
 test('bootstrap sintético provisiona escopos/capacidades e trilha, sem permitir sobrescrita', async () => {
   const db=new PGlite();
@@ -19,6 +19,14 @@ test('bootstrap sintético provisiona escopos/capacidades e trilha, sem permitir
     assert.deepEqual(await read(ids.editorA),[{unidade_id:'1'}]);
     assert.deepEqual(await read(ids.readerA),[{unidade_id:'1'}]);
     assert.deepEqual(await read(ids.editorB),[{unidade_id:'2'}]);
+    await db.exec(syntheticAccessSql(ids.editorA,'1','inactive'));
+    assert.deepEqual(await read(ids.editorA),[]);
+    await db.exec(syntheticAccessSql(ids.editorA,'1','active'));
+    assert.deepEqual(await read(ids.editorA),[{unidade_id:'1'}]);
+    await db.exec(syntheticAccessSql(ids.editorA,'1','unlink'));
+    assert.deepEqual(await read(ids.editorA),[]);
+    await db.exec(syntheticAccessSql(ids.editorA,'1','relink'));
+    assert.deepEqual(await read(ids.editorA),[{unidade_id:'1'}]);
     await assert.rejects(()=>db.exec(provisionSql(ids)));
     await db.exec('rollback');
     assert.equal((await db.query('select count(*)::int as n from erp.usuario')).rows[0].n,3);

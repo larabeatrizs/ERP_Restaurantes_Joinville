@@ -30,3 +30,21 @@ END $bootstrap$;
 COMMIT;
 `;
 }
+
+export function syntheticAccessSql(id, unit, action) {
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id) || !/^[1-9]\d*$/.test(unit) || !['inactive','active','unlink','relink'].includes(action)) throw Error('Ação sintética inválida');
+  const statements={
+    inactive:`UPDATE erp.usuario SET status='INATIVO' WHERE id='${id}';`,
+    active:`UPDATE erp.usuario SET status='ATIVO' WHERE id='${id}';`,
+    unlink:`DELETE FROM erp.usuario_unidade WHERE usuario_id='${id}' AND unidade_id=${unit};`,
+    relink:`INSERT INTO erp.usuario_unidade(usuario_id,unidade_id) VALUES('${id}',${unit}) ON CONFLICT DO NOTHING;`,
+  };
+  return `DO $synthetic$ DECLARE affected integer; BEGIN
+PERFORM set_config('lock_timeout','5s',true);
+IF NOT EXISTS(SELECT 1 FROM erp.usuario WHERE id='${id}' AND nome='Conta sintética INT003 edição A')
+ OR NOT EXISTS(SELECT 1 FROM erp.unidade WHERE id=${unit} AND codigo='STG-INT003-A') THEN RAISE EXCEPTION 'Escopo sintético INT-003 não confirmado'; END IF;
+${statements[action]}
+GET DIAGNOSTICS affected = ROW_COUNT;
+${action==='relink' ? `IF NOT EXISTS(SELECT 1 FROM erp.usuario_unidade WHERE usuario_id='${id}' AND unidade_id=${unit}) THEN RAISE EXCEPTION 'Vínculo não restaurado'; END IF;` : "IF affected <> 1 THEN RAISE EXCEPTION 'Alvo sintético não encontrado'; END IF;"}
+END $synthetic$;`;
+}

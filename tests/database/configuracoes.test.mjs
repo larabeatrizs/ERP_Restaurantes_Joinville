@@ -118,6 +118,23 @@ test('RLS nas tabelas e única função privilegiada com executor restrito', asy
   assert.deepEqual(grants, { member: false, can_create: false, actor_write: false });
 });
 
+test('RPC e auditoria funcionam sem USAGE auth para o executor, com UID do Auth preservado', async () => {
+  await db.exec('begin');
+  try {
+    await db.exec('revoke usage on schema auth from erp_config_writer');
+    assert.equal((await db.query("select has_schema_privilege('erp_config_writer','auth','USAGE') as allowed")).rows[0].allowed,false);
+    await db.query("select set_config('request.jwt.claim.sub',$1,true)",[uid(5)]);
+    await db.exec('set local role authenticated');
+    const saved=(await db.query("select revisao::text from erp.atualizar_configuracao(1,1,'{\"margem_percentual\":\"6.25\"}'::jsonb,'regressão schema Auth')")).rows[0];
+    assert.equal(saved.revisao,'2');
+    await db.exec('reset role');
+    const audit=(await db.query('select ator_id from erp.auditoria_configuracao where unidade_id=1 and revisao=2')).rows[0];
+    assert.equal(audit.ator_id,uid(5));
+    const helper=(await db.query("select prosecdef,prosqlbody is not null as parsed from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='erp_private' and p.proname='ator_autenticado'")).rows[0];
+    assert.deepEqual(helper,{prosecdef:false,parsed:true});
+  } finally {await db.exec('rollback');}
+});
+
 test('leitura acontece como authenticated e retorna apenas a unidade vinculada', async () => {
   await transaction(1, async () => {
     assert.equal((await db.query('select current_user as role')).rows[0].role, 'authenticated');

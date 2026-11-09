@@ -20,6 +20,7 @@
     "test:db": "node --test tests/database/configuracoes.test.mjs",
     "test:legacy": "node --test tests/database/legado.test.mjs",
     "test:provision": "node --test tests/database/provisionamento.test.mjs",
+    "test:staging": "node scripts/staging/verificar-jornada.mjs",
     "test:web": "playwright test",
     "build": "npm run build --workspaces",
     "check": "npm run lint && npm run typecheck && npm test && npm run build"

@@ -10,7 +10,7 @@ dist/
 coverage/
 *.tsbuildinfo
 *.log
-supabase/.temp/
-supabase/.branches/
+**/supabase/.temp/
+**/supabase/.branches/
 playwright-report/
 test-results/
