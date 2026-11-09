@@ -50,6 +50,22 @@ async function expectSqlError(sql, code) {
   await db.exec('rollback to savepoint error_case');
 }
 
+test('inventário de staging lê metadados em transação readonly sem alterar configuração ou auditoria', async () => {
+  const state = () => db.query('select revisao::text from erp.parametro_unidade order by unidade_id');
+  const before = (await state()).rows;
+  const audit = () => db.query('select count(*)::text as total from erp.auditoria_configuracao');
+  const auditBefore = (await audit()).rows;
+  const results = await db.exec(await readFile(new URL('../../scripts/staging/inventario.sql', import.meta.url), 'utf8'));
+  const report = results.find(result => result.rows?.[0]?.inventario)?.rows[0].inventario;
+  assert.ok(report);
+  assert.equal(report.somente_leitura, 'on');
+  assert.equal(report.relacoes.filter(row => row.schema === 'erp').length, 7);
+  assert.ok(report.relacoes.filter(row => row.schema === 'erp').every(row => row.rls));
+  assert.equal(report.funcoes.find(row => row.schema === 'erp_private' && row.security_definer).proprietario, 'erp_config_writer');
+  assert.deepEqual((await state()).rows, before);
+  assert.deepEqual((await audit()).rows, auditBefore);
+});
+
 test('RLS nas tabelas e única função privilegiada com executor restrito', async () => {
   const tables = await db.query("select relname,relrowsecurity from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname='erp' and c.relkind='r'");
   assert.equal(tables.rows.length, 7);
