@@ -1,0 +1,4 @@
+# Patch parcial CLI v3: apenas a configuração declarada será publicada.
+project_id = "erp-joinville"
+[api]
+schemas = ["erp"]

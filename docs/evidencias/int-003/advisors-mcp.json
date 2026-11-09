@@ -1,0 +1,19 @@
+{
+  "source": "Supabase MCP get_advisors (security)",
+  "date": "2026-11-09",
+  "findings": [
+    {
+      "name": "rls_enabled_no_policy",
+      "level": "INFO",
+      "count": 14,
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy"
+    },
+    {
+      "name": "auth_leaked_password_protection",
+      "level": "WARN",
+      "count": 1,
+      "remediation": "https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection"
+    }
+  ],
+  "note": "Confirma o WARN de Auth também retornado pela CLI e acrescenta INFO do legado intencionalmente sem políticas."
+}

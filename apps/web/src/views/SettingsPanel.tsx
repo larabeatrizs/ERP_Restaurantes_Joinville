@@ -21,7 +21,7 @@ type Draft = Record<Field, string>;
 const keys = Object.keys(labels) as Field[];
 function draftOf(config: Configuration): Draft {
   return Object.fromEntries(
-    keys.map((key) => [key, String(config[key])]),
+    keys.map((key) => [key, key === 'margem_percentual' ? String(config[key]).replace('.', ',') : String(config[key])]),
   ) as Draft;
 }
 function changes(

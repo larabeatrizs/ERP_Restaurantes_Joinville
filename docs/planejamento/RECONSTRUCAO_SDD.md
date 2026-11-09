@@ -30,7 +30,9 @@
 
 ## Continuidade em 09/11/2026
 
-API-001/PR #8 integrada à main. O recorte [WEB-001](../fundacao/WEB-001-CONFIGURACOES.md) compõe login e configurações por unidade (C4), sobre as migrations C2 e a API C3 já versionadas. Testes de navegador usam Auth/API sintéticas; não encerram o gate de integração real. Próxima dependência: inventário e plano para aplicar/verificar os recortes no **staging compartilhado existente**, incluindo identidade, vínculos e Data API, sem reset ou criação de ambientes separados. As opções de aprovação ainda não implementadas continuam no CONFIG-001/DOM-001, sujeitas aos contratos correspondentes. AMB-001/issue #9 permanece congelada até o encerramento.
+API-001/PR #8 e WEB-001/PR #10 integradas à main. Depois de INT-001/002, SEC-003 e DB-004, [INT-003](../fundacao/INT-003-JORNADA-REAL.md) demonstrou login/configurações reais com View/Worker locais e Supabase hospedado, três identidades sintéticas, duas unidades e Data API restrita a erp. A terceira migration corrigiu resolução de auth.uid sem ampliar acesso ao schema auth. Doze cenários HTTP e fluxo real de navegador verificaram edição, auditoria, concorrência, revogação e isolamento; isso complementa os testes sintéticos anteriores, sem comprovar deploy.
+
+Próxima dependência: publicação controlada de View/Worker na Cloudflare do **mesmo staging compartilhado**, com smoke no endereço hospedado, seguida pelas jornadas de cadastros/estoque D1. Os demais controles de Auth, recuperação, modelagem integral e políticas CONFIG-001/DOM-001 continuam sujeitos aos seus contratos/gates; advisor atual contém WARN de proteção contra senhas vazadas e INFO do legado intencionalmente contido. AMB-001/issue #9 permanece congelada até o encerramento, sem reset ou ambientes permanentes adicionais. [Estimativa inicial de 09/11](ESTIMATIVA-2026-11-09.md) registrada sob premissas explícitas, para recalibrar após duas jornadas de negócio.
 
 ## Momento da reconstrução do banco
 
