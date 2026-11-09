@@ -164,12 +164,44 @@ a:focus-visible {
   display: block;
   padding: 11px 14px;
   border-radius: 8px;
-  background: white;
-  color: #5b0f1a;
+  color: #f3dde0;
   text-decoration: none;
   font-weight: 600;
   font-size: 15px;
 }
+.side nav { display: grid; gap: 4px; }
+.side nav a[aria-current='page'] { background: white; color: #5b0f1a; }
+.side nav a:hover { background: #712633; color: white; }
+.side nav a[aria-current='page']:hover { background: #f1ebe8; color: #5b0f1a; }
+.side nav a[aria-disabled='true'] { opacity: 0.6; cursor: default; }
+.stock-fields { display: grid; gap: 20px; }
+.stock-fields h3 { margin: 8px 0 0; font-size: 17px; color: #5b0f1a; }
+.stock-form-heading { margin-bottom: 20px; }
+.stock-filters { display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-end; margin-bottom: 24px; }
+.stock-filters .compact-field { flex: 0 1 180px; }
+.pagination { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin-top: 20px; }
+.pagination p { margin: 0; }
+.numeric { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.table-secondary { display: block; font-size: 12px; font-weight: 400; color: #6b5c60; margin-top: 4px; }
+.table-action { padding: 6px 12px; min-height: 40px; color: #5b0f1a; border: 0; text-decoration: underline; }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
+.empty { padding: 28px 0; color: #6b5c60; }
+.stock-footnote { margin-top: 20px; }
+.receipt-item { border: 1px solid #e6dedb; padding: 20px; border-radius: 8px; gap: 16px; }
+.receipt-item legend { padding: 0 8px; color: #5b0f1a; font-weight: 700; }
+.receipt-item > button { justify-self: start; }
+.receipt-summary { display: grid; grid-template-columns: repeat(auto-fit,minmax(170px,1fr)); gap: 20px; margin: 0; }
+.receipt-summary dt { color: #6b5c60; font-size: 13px; }
+.receipt-summary dd { margin: 4px 0 0; font-weight: 600; overflow-wrap: anywhere; }
+.badge-success { background: #eaf5e9; color: #1d4d25; }
+.warning form { display: grid; gap: 16px; margin-top: 20px; }
+.warning form button { justify-self: start; }
+.stock-main .table-wrap { max-width: 100%; }
+.stock-main table { font-size: 15px; }
+.stock-main thead th { background: #faf7f5; font-size: 13px; font-weight: 700; padding: 10px 14px; }
+.stock-main tbody td, .stock-main tbody th { padding: 10px 14px; }
+button.confirm-receipt { background: #2f7d3a; border-color: #2f7d3a; }
+button.confirm-receipt:hover { background: #256530; border-color: #256530; }
 .side a:focus-visible,
 .side button:focus-visible {
   outline-color: #7dbb7a;

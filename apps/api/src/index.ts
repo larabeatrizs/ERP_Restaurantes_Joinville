@@ -3,8 +3,11 @@ import { settingsController, unitsController } from './controllers/settings-cont
 import { createSupabaseSession } from './repositories/supabase-settings.ts';
 import type { RuntimeEnv, SessionFactory } from './repositories/settings-repository.ts';
 import { ApiError } from './errors.ts';
+import { stockController } from './controllers/stock-controller.ts';
+import { createSupabaseStockSession } from './repositories/supabase-stock.ts';
+import type { StockSessionFactory } from './repositories/stock-repository.ts';
 
-export function createApp(factory: SessionFactory = createSupabaseSession) {
+export function createApp(factory: SessionFactory = createSupabaseSession, stockFactory: StockSessionFactory = createSupabaseStockSession) {
   return {
     async fetch(request: Request, env: RuntimeEnv = {}): Promise<Response> {
       try {
@@ -17,6 +20,8 @@ export function createApp(factory: SessionFactory = createSupabaseSession) {
           if (request.method === 'GET' || request.method === 'HEAD') return healthController(request);
           return methodNotAllowed('GET, HEAD', request.method === 'HEAD');
         }
+        const stock = /^\/api\/unidades\/([^/]+)\/(estoque\/(?:contexto|saldos)|produtos(?:\/[^/]+)?|entradas(?:\/[^/]+\/(?:confirmar|aprovar-divergencia))?)$/.exec(path);
+        if (stock?.[1] && stock[2]) return await stockController(request, env, stock[1], stock[2], stockFactory);
         const match = /^\/api\/unidades\/([^/]+)\/configuracoes$/.exec(path);
         if (match?.[1]) {
           if (request.method !== 'GET' && request.method !== 'PATCH') return methodNotAllowed('GET, PATCH', request.method === 'HEAD');
