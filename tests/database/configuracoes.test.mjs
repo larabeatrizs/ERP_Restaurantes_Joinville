@@ -90,6 +90,10 @@ test('retorno por desativação nega leitura/RPC sem excluir dados', async () =>
   const before = (await db.query('select unidade_id::text,revisao::text from erp.parametro_unidade order by unidade_id')).rows;
   await db.exec('begin');
   try {
+    await db.query("select set_config('request.jwt.claim.sub',$1,true)", [uid(1)]);
+    await db.exec('set local role authenticated');
+    assert.equal((await db.query('select * from erp.parametro_unidade')).rows.length,1);
+    await db.exec('reset role');
     await db.exec(await readFile(new URL('../../scripts/staging/desativar-fundacao.sql', import.meta.url), 'utf8'));
     await db.exec('set local role authenticated');
     await expectSqlError('select * from erp.parametro_unidade', '42501');

@@ -8,6 +8,8 @@ begin
     raise exception 'Schemas esperados da fundação ausentes';
   end if;
   revoke usage on schema erp, erp_private from authenticated;
+  revoke all on all tables in schema erp from authenticated;
+  revoke all on all sequences in schema erp from authenticated;
   if to_regprocedure('erp.atualizar_configuracao(bigint,bigint,jsonb,text)') is not null then
     revoke execute on function erp.atualizar_configuracao(bigint,bigint,jsonb,text) from authenticated;
   end if;

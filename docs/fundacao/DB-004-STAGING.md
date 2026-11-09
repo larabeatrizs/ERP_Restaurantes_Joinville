@@ -12,7 +12,7 @@ O dry-run da CLI 3.0.0 com destino explícito e `--skip-vault` retornou exatamen
 
 ## Retorno não destrutivo
 
-[desativar-fundacao.sql](../../scripts/staging/desativar-fundacao.sql) suspende USAGE de authenticated nos schemas novos e EXECUTE nos dois entrypoints de salvamento, se existirem. Um bloco DO fornece atomicidade inclusive quando apenas a primeira migration tiver sido concluída. Preserva dados, trilha, schemas, função interna, papel executor, public e histórico de migrations. Não equivale a retornar fisicamente ao schema anterior: é isolamento por desativação até correção aditiva revisada.
+[desativar-fundacao.sql](../../scripts/staging/desativar-fundacao.sql) suspende USAGE de authenticated nos schemas novos, privilégios nas tabelas/sequências erp e EXECUTE nos dois entrypoints de salvamento, se existirem. A revogação de privilégios das relações complementa USAGE para sessões que já resolveram objetos. Um bloco DO fornece atomicidade inclusive quando apenas a primeira migration tiver sido concluída. Preserva dados, trilha, schemas, função interna, papel executor, public e histórico de migrations. Não equivale a retornar fisicamente ao schema anterior: é isolamento por desativação até correção aditiva revisada.
 
 Se necessário, suspender também consumo na aplicação/exposição nova conforme o destino realmente configurado; neste recorte nada disso foi habilitado. Não reabrir acesso de aplicação ao public legado como fallback. Reativação demanda correção/verificação e grants revisados; não será automática. Usuários administrativos continuam responsáveis por preservar o estado para diagnóstico.
 
