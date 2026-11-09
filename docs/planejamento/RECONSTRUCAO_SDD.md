@@ -28,6 +28,10 @@
 
 **Observação de paralelismo:** fundações C2/C3/C4 podem ter tarefas preparatórias em paralelo depois que os contratos de B estiverem estáveis; integração ponta a ponta precisa de migrations e segurança completas. Não interpretar a ordem didática como licença para iniciar funcionalidades sem gate.
 
+## Continuidade em 09/11/2026
+
+API-001/PR #8 integrada à main. O recorte [WEB-001](../fundacao/WEB-001-CONFIGURACOES.md) compõe login e configurações por unidade (C4), sobre as migrations C2 e a API C3 já versionadas. Testes de navegador usam Auth/API sintéticas; não encerram o gate de integração real. Próxima dependência: inventário e plano para aplicar/verificar os recortes no **staging compartilhado existente**, incluindo identidade, vínculos e Data API, sem reset ou criação de ambientes separados. As opções de aprovação ainda não implementadas continuam no CONFIG-001/DOM-001, sujeitas aos contratos correspondentes. AMB-001/issue #9 permanece congelada até o encerramento.
+
 ## Momento da reconstrução do banco
 
 Determinação reafirmada pela responsável em 06/11/2026: **a modelagem do banco deve ser refeita do zero, conforme os requisitos do sistema, na etapa determinada por este plano**. O SQL legado e o banco existente são fontes de comparação histórica, não o modelo a ser continuado ou uma base obrigatória para o novo desenho.

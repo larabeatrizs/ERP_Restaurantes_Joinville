@@ -57,3 +57,11 @@ export async function settingsController(request: Request, env: RuntimeEnv, unit
     headers: { ETag: etag(unit, configuration.revisao), 'Cache-Control': 'no-store' },
   });
 }
+
+export async function unitsController(request: Request, env: RuntimeEnv, factory: SessionFactory): Promise<Response> {
+  const token = /^Bearer\s+(\S+)$/i.exec(request.headers.get('Authorization') ?? '')?.[1];
+  if (!token) throw new ApiError(401, 'UNAUTHORIZED', 'Informe uma sessão válida.');
+  const session = factory(env, token);
+  await session.authenticate();
+  return Response.json({ unidades: await session.repository.listUnits() }, { headers: { 'Cache-Control': 'no-store' } });
+}

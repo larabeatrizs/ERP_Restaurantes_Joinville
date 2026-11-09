@@ -23,6 +23,7 @@ export interface ConfigurationFields {
 export interface Configuration extends ConfigurationFields { unidade_id: string; revisao: string }
 export interface ConfigurationPatch { campos: Partial<ConfigurationFields>; motivo: string }
 export interface ConfigurationResult { configuracao: Configuration; pode_editar: boolean }
+export interface UnitSummary { id: string; codigo: string; nome: string }
 
 export function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);

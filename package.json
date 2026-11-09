@@ -18,6 +18,7 @@
     "test": "npm run test:api && npm run test:db",
     "test:api": "node --test apps/api/src/index.test.ts apps/api/src/settings.test.ts apps/api/src/supabase-settings.test.ts",
     "test:db": "node --test tests/database/configuracoes.test.mjs",
+    "test:web": "playwright test",
     "build": "npm run build --workspaces",
     "check": "npm run lint && npm run typecheck && npm test && npm run build"
   },
@@ -26,6 +27,7 @@
   },
   "devDependencies": {
     "@electric-sql/pglite": "0.5.15",
+    "@playwright/test": "1.65.0",
     "@types/node": "24.10.0",
     "eslint": "10.14.0",
     "pg": "8.23.1",

@@ -16,6 +16,7 @@ const validPatch: ConfigurationPatch = { campos: { margem_percentual: '0', alert
 function fixture(options: { authError?: Error; repositoryError?: Error } = {}) {
   const received: { token?: string; unit?: string; revision?: string; patch?: ConfigurationPatch; writes: number } = { writes: 0 };
   const repository: SettingsRepository = {
+    async listUnits() { return [{ id: '1', nome: 'Unidade fictícia A', codigo: 'TESTE_A' }]; },
     async read(unit) {
       received.unit = unit;
       if (options.repositoryError) throw options.repositoryError;
@@ -50,6 +51,14 @@ test('GET exige Bearer antes de consultar o repositório', async () => {
   assert.equal(response.status, 401);
   assert.equal(response.headers.get('WWW-Authenticate'), 'Bearer');
   assert.equal(received.unit, undefined);
+});
+test('listagem de unidades exige sessão e devolve somente resultado do repository', async () => {
+  const { app } = fixture();
+  const url = 'https://erp.test/api/unidades';
+  assert.equal((await app.fetch(new Request(url))).status, 401);
+  const response = await app.fetch(new Request(url, { headers: { Authorization: 'Bearer ficticio' } }));
+  assert.deepEqual(await response.json(), { unidades: [{ id: '1', nome: 'Unidade fictícia A', codigo: 'TESTE_A' }] });
+  assert.equal(response.headers.get('Cache-Control'), 'no-store');
 });
 test('autenticação rejeitada não consulta configurações', async () => {
   const { app, received } = fixture({ authError: new ApiError(401, 'UNAUTHORIZED', 'Sessão inválida.') });
