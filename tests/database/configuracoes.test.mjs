@@ -55,7 +55,11 @@ test('inventário de staging lê metadados em transação readonly sem alterar c
   const before = (await state()).rows;
   const audit = () => db.query('select count(*)::text as total from erp.auditoria_configuracao');
   const auditBefore = (await audit()).rows;
-  const results = await db.exec(await readFile(new URL('../../scripts/staging/inventario.sql', import.meta.url), 'utf8'));
+  const sql = await readFile(new URL('../../scripts/staging/inventario.sql', import.meta.url), 'utf8');
+  const statements = sql.replace(/^--.*$/gm, '').trim();
+  assert.match(statements, /^select\b/i);
+  assert.doesNotMatch(statements, /^\s*(begin|commit|rollback|set)\b/im, 'CLI --read-only aceita consulta, não controle de transação no arquivo');
+  const results = await db.exec(`begin transaction read only; ${sql} rollback;`);
   const report = results.find(result => result.rows?.[0]?.inventario)?.rows[0].inventario;
   assert.ok(report);
   assert.equal(report.somente_leitura, 'on');
