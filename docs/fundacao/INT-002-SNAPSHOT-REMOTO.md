@@ -25,6 +25,8 @@ O coletor passou a conter somente SELECT; a CLI fornece a transação readonly. 
 
 ## Decisões de continuidade
 
+Atualização posterior em 09/11/2026: [SEC-003](SEC-003-CONTENCAO-LEGADO.md) demonstrou salvaguarda restrita e retorno locais, aplicou contenção do public e verificou zero achados no advisor de segurança. Os 14 erros e grants descritos neste snapshot são a baseline anterior à contenção. Migrations novas e backup completo continuam pendentes.
+
 O bloqueio de autenticação foi resolvido. **Os pré-requisitos de segurança e retorno da INT-001 ainda não foram satisfeitos**: backup restaurável não demonstrado e exposição/permissões do legado precisam de tratamento revisado. Não aplicar migrations ou provisionar dados de teste como se esses gates estivessem concluídos.
 
 Próximo recorte concreto:

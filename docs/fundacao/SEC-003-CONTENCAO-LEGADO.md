@@ -32,4 +32,18 @@ Testes automatizados em `tests/database/legado.test.mjs`: rejeição de dados/ob
 
 Até esta preparação, nenhuma contenção foi aplicada no Supabase. Executar o SQL versionado somente após checks e conferência de destino/hash; depois repetir inventário, contagens/privilégios e advisor. A confirmação de êxito deve registrar as consultas posteriores, sem equiparar laboratório a operação remota.
 
+## Execução e pós-condições no staging
+
+Depois da preparação acima, a operação foi aplicada em 09/11/2026 ao projeto confirmado `rp-joinville-db` / `vpowsedoajpdbeckimuv`, sob autorização vigente para avançar o planejamento no staging compartilhado. O commit `c346a6f` teve CI [42625047242](https://github.com/larabeatrizs/ERP_Restaurantes_Joinville/actions/runs/42625047242) com success em check, database-postgres e browser antes da aplicação. O SQL concreto já estava versionado; seu hash foi comparado ao artefato privado aprovado, e os arquivos da salvaguarda foram conferidos contra o manifesto.
+
+`supabase db query --remote=vpowsedoajpdbeckimuv --file scripts/staging/conter-public-legado.sql --yes` concluiu. A confirmação CLI é da operação já autorizada; não foi usada para criar recursos ou ampliar escopo. O rótulo production da plataforma não altera a classificação operacional definida no ADR-002.
+
+Consulta posterior [verificar-contencao.sql](../../scripts/staging/verificar-contencao.sql), em modo readonly, produziu a [evidência sanitizada](../evidencias/sec-003/staging-after.json): 14 tabelas preservadas, 14 com RLS, zero tabelas/sequências com privilégios para anon/authenticated, SELECT de service_role preservado nas 14 e zero linhas em cada tabela. `erp` ainda não existe: as migrations novas não foram aplicadas neste recorte. O advisor de segurança posterior retornou **zero achados**, contra 14 erros anteriores. Não houve ensaio de escrita REST, mudança de Auth/Storage/Vault ou eliminação de dados.
+
+O cluster local usado na reconstrução foi encerrado após a verificação. Nenhum serviço/ambiente permanente novo ficou em execução. O retorno remoto não foi executado, pois as pós-condições passaram; sua reconstrução/execução foi demonstrada somente no laboratório. Documentação e consulta posterior adicionadas após a aplicação exigem seu próprio CI antes do merge.
+
+## Próximo recorte
+
+Preparar/aplicar as duas migrations do schema novo com dry-run/skip-vault e plano de retorno aditivo que preserve public e a contenção. Depois conferir grants/RLS/advisors e expor somente erp, mantendo erp_private privado, para provisionamento controlado de identidades/vínculos sintéticos e validação Auth → API → RPC. A salvaguarda restrita demonstrada aqui não encerra backup completo/RNF-004 nem o gate de integração real. AMB-001 continua congelada; nenhum reset ou ambiente separado foi criado.
+
 Fontes: [backup/restauração Supabase](https://supabase.com/docs/guides/platform/migrating-within-supabase/backup-restore), [PostgreSQL para Windows e binários EDB](https://www.postgresql.org/download/windows/), [pacotes EDB](https://www.enterprisedb.com/download-postgresql-binaries) e [TLS do PostgreSQL no Supabase](https://supabase.com/docs/guides/platform/ssl-enforcement). A CA Supabase foi obtida do bucket de distribuição `supabase-downloads` via HTTPS; verificação TLS não foi desabilitada.

@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { after, before, test } from 'node:test';
+import { readFile } from 'node:fs/promises';
 import { PGlite } from '@electric-sql/pglite';
 import pg from 'pg';
 import { legacyTables, renderRestore, renderContainment, renderRollback, validateSnapshot } from '../../scripts/staging/public-vazio.mjs';
@@ -35,6 +36,10 @@ test('exportador rejeita dados, objetos adicionais, coluna identity e extensão 
 test('contenção bloqueia anon/authenticated, preserva administração e retorno restaura ACL/RLS', async () => {
   const before=(await access()).rows;
   await db.exec(renderContainment(snapshot));
+  const verification=(await db.query(await readFile(new URL('../../scripts/staging/verificar-contencao.sql',import.meta.url),'utf8'))).rows[0].verification;
+  assert.equal(verification.tables_with_rls,14);
+  assert.equal(verification.anon_sequences_with_access,0);
+  assert.equal(verification.authenticated_sequences_with_access,0);
   assert.equal((await db.query("SELECT count(*)::int AS total FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='public' AND c.relkind='r' AND c.relrowsecurity AND NOT has_table_privilege('anon',c.oid,'SELECT,INSERT,UPDATE,DELETE') AND NOT has_table_privilege('authenticated',c.oid,'SELECT,INSERT,UPDATE,DELETE')")).rows[0].total,14);
   for(const role of ['anon','authenticated']) {
     await db.exec(`SET ROLE ${role}`);
