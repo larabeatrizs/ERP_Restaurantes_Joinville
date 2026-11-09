@@ -1,0 +1,246 @@
+{
+    "project":  "rp-joinville-db",
+    "reference":  "vpowsedoajpdbeckimuv",
+    "operational_environment":  "staging compartilhado",
+    "foundation":  {
+                       "anon_erp_usage":  false,
+                       "anon_private_usage":  false,
+                       "authenticated_erp_usage":  true,
+                       "captured_at":  "2026-11-09T13:55:23.858174+00:00",
+                       "functions":  [
+                                         {
+                                             "anon_execute":  false,
+                                             "authenticated_execute":  true,
+                                             "config":  [
+                                                            "search_path=\"\""
+                                                        ],
+                                             "definer":  false,
+                                             "name":  "atualizar_configuracao",
+                                             "owner":  "postgres",
+                                             "schema":  "erp"
+                                         },
+                                         {
+                                             "anon_execute":  false,
+                                             "authenticated_execute":  true,
+                                             "config":  [
+                                                            "search_path=\"\""
+                                                        ],
+                                             "definer":  true,
+                                             "name":  "atualizar_configuracao",
+                                             "owner":  "erp_config_writer",
+                                             "schema":  "erp_private"
+                                         },
+                                         {
+                                             "anon_execute":  false,
+                                             "authenticated_execute":  false,
+                                             "config":  [
+                                                            "search_path=\"\""
+                                                        ],
+                                             "definer":  false,
+                                             "name":  "auditar_parametro",
+                                             "owner":  "postgres",
+                                             "schema":  "erp_private"
+                                         },
+                                         {
+                                             "anon_execute":  false,
+                                             "authenticated_execute":  false,
+                                             "config":  [
+                                                            "search_path=\"\""
+                                                        ],
+                                             "definer":  false,
+                                             "name":  "negar_mutacao_auditoria",
+                                             "owner":  "postgres",
+                                             "schema":  "erp_private"
+                                         },
+                                         {
+                                             "anon_execute":  false,
+                                             "authenticated_execute":  false,
+                                             "config":  [
+                                                            "search_path=\"\""
+                                                        ],
+                                             "definer":  false,
+                                             "name":  "pode_editar_configuracao",
+                                             "owner":  "postgres",
+                                             "schema":  "erp_private"
+                                         },
+                                         {
+                                             "anon_execute":  false,
+                                             "authenticated_execute":  true,
+                                             "config":  [
+                                                            "search_path=\"\""
+                                                        ],
+                                             "definer":  false,
+                                             "name":  "pode_ler_configuracao",
+                                             "owner":  "postgres",
+                                             "schema":  "erp_private"
+                                         },
+                                         {
+                                             "anon_execute":  false,
+                                             "authenticated_execute":  false,
+                                             "config":  [
+                                                            "search_path=\"\""
+                                                        ],
+                                             "definer":  false,
+                                             "name":  "preparar_parametro",
+                                             "owner":  "postgres",
+                                             "schema":  "erp_private"
+                                         }
+                                     ],
+                       "tables":  [
+                                      {
+                                          "anon_select":  false,
+                                          "authenticated_write":  false,
+                                          "count":  0,
+                                          "name":  "auditoria_configuracao",
+                                          "rls":  true
+                                      },
+                                      {
+                                          "anon_select":  false,
+                                          "authenticated_write":  false,
+                                          "count":  0,
+                                          "name":  "parametro_unidade",
+                                          "rls":  true
+                                      },
+                                      {
+                                          "anon_select":  false,
+                                          "authenticated_write":  false,
+                                          "count":  0,
+                                          "name":  "perfil",
+                                          "rls":  true
+                                      },
+                                      {
+                                          "anon_select":  false,
+                                          "authenticated_write":  false,
+                                          "count":  0,
+                                          "name":  "perfil_permissao",
+                                          "rls":  true
+                                      },
+                                      {
+                                          "anon_select":  false,
+                                          "authenticated_write":  false,
+                                          "count":  0,
+                                          "name":  "unidade",
+                                          "rls":  true
+                                      },
+                                      {
+                                          "anon_select":  false,
+                                          "authenticated_write":  false,
+                                          "count":  0,
+                                          "name":  "usuario",
+                                          "rls":  true
+                                      },
+                                      {
+                                          "anon_select":  false,
+                                          "authenticated_write":  false,
+                                          "count":  0,
+                                          "name":  "usuario_unidade",
+                                          "rls":  true
+                                      }
+                                  ],
+                       "writer":  {
+                                      "authenticated_member":  false,
+                                      "bypass_rls":  false,
+                                      "create_database":  false,
+                                      "create_role":  false,
+                                      "login":  false,
+                                      "private_create":  false,
+                                      "superuser":  false
+                                  }
+                   },
+    "legacy":  {
+                   "anon_sequences_with_access":  0,
+                   "anon_tables_with_access":  0,
+                   "authenticated_sequences_with_access":  0,
+                   "authenticated_tables_with_access":  0,
+                   "captured_at":  "2026-11-09T13:55:26.555115+00:00",
+                   "erp_schema_exists":  true,
+                   "public_tables":  14,
+                   "rows_by_table":  [
+                                         {
+                                             "count":  0,
+                                             "table":  "auditoria"
+                                         },
+                                         {
+                                             "count":  0,
+                                             "table":  "categoria"
+                                         },
+                                         {
+                                             "count":  0,
+                                             "table":  "cotacao"
+                                         },
+                                         {
+                                             "count":  0,
+                                             "table":  "fornecedor"
+                                         },
+                                         {
+                                             "count":  0,
+                                             "table":  "lote"
+                                         },
+                                         {
+                                             "count":  0,
+                                             "table":  "movimento_estoque"
+                                         },
+                                         {
+                                             "count":  0,
+                                             "table":  "perfil"
+                                         },
+                                         {
+                                             "count":  0,
+                                             "table":  "prato"
+                                         },
+                                         {
+                                             "count":  0,
+                                             "table":  "produto"
+                                         },
+                                         {
+                                             "count":  0,
+                                             "table":  "refeicao_servida"
+                                         },
+                                         {
+                                             "count":  0,
+                                             "table":  "unidade_medida"
+                                         },
+                                         {
+                                             "count":  0,
+                                             "table":  "unidade_restaurante"
+                                         },
+                                         {
+                                             "count":  0,
+                                             "table":  "usuario"
+                                         },
+                                         {
+                                             "count":  0,
+                                             "table":  "usuario_unidade"
+                                         }
+                                     ],
+                   "service_role_select_tables":  14,
+                   "tables_with_rls":  14
+               },
+    "migrations":  [
+                       {
+                           "local":  "20261106201235",
+                           "remote":  "20261106201235",
+                           "time":  "2026-11-06 20:12:35"
+                       },
+                       {
+                           "local":  "20261106202428",
+                           "remote":  "20261106202428",
+                           "time":  "2026-11-06 20:24:28"
+                       }
+                   ],
+    "security_advisor_findings":  [
+
+                                  ],
+    "dry_run_after":  {
+                          "upToDate":  true,
+                          "migrations":  [
+
+                                         ],
+                          "seeds":  [
+
+                                    ],
+                          "roles":  [
+
+                                    ]
+                      }
+}

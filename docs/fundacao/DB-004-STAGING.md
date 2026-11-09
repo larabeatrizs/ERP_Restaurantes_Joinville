@@ -27,3 +27,17 @@ O gate desta entrega é persistência/segurança estrutural hospedada, não jorn
 ## Verificação local antes da aplicação
 
 `npm run check` passou: lint/tipos, 27 HTTP/adaptador, laboratório de configuração e 3 casos de contenção, builds/dry-run. Os dois novos casos de verificação/retorno passaram em PGlite; a suíte SQL passa a 31 casos (30 aprovados e 1 concorrente omitido localmente). O CI PostgreSQL 17 deve confirmar os 31, incluindo duas conexões reais. Retorno testa negação de SELECT/RPC e preservação das revisões; não é ensaio de desastre ou backup completo. Nenhum dado de fixture será inserido no staging por esses testes.
+
+## Execução hospedada e evidências
+
+Em 09/11/2026, após CI do commit `f42b807` [42629430123](https://github.com/larabeatrizs/ERP_Restaurantes_Joinville/actions/runs/42629430123) com success nos três jobs, as duas migrations foram aplicadas pela CLI no projeto confirmado, com `--skip-vault --yes`. O comando terminou com as duas versões esperadas, sem seeds/roles extras. A segunda migration criou seu papel executor como parte do SQL revisado; roles=[] na CLI significa que não houve arquivo de roles extra.
+
+[Evidência sanitizada posterior](../evidencias/db-004/staging-after.json), produzida por consultas readonly e listagem de histórico:
+
+- Sete tabelas erp vazias com RLS; anon sem USAGE/SELECT e sem EXECUTE nas funções do recorte; authenticated sem DML direto.
+- erp_config_writer sem LOGIN, SUPERUSER, BYPASSRLS, CREATEDB, CREATEROLE, CREATE no schema interno ou associação a authenticated. Uma função definer, em erp_private, owned por esse papel com search_path vazio; wrapper erp invoker.
+- As 14 tabelas public permaneceram vazias e contidas, com RLS e sem acesso de aplicação às tabelas/sequências. Nenhum acesso ao legado foi reaberto.
+- Histórico local/remoto coincide em 20261106201235 e 20261106202428. Os horários exibidos na listagem pertencem aos identificadores das migrations, não à data desta aplicação.
+- Advisor de segurança após a aplicação: zero achados. Novo dry-run retornou upToDate=true, migrations=[], seeds=[] e roles=[].
+
+O plano de desativação não precisou ser executado no staging. Não houve reset/drop, provisionamento de usuários/unidades/capacidades, alteração de dados Auth/Storage, deploy ou mudança de configuração de exposição da Data API. Não afirmar que os schemas foram testados via HTTP/JWT real: o próximo recorte verificará/configurará a exposição e as identidades sintéticas. Estas evidências não encerram FND_READY nem RNF-004. Documentação posterior exige seu próprio CI antes de merge.

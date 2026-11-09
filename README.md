@@ -4,6 +4,8 @@ Sistema web para gestão dos Restaurantes Populares de Joinville, com estoque po
 
 > **Estado atual:** fundação com API e primeiro painel de configurações por unidade, login Supabase Auth, revisão e controle de concorrência. Migrations, autorização e fluxos foram verificados em laboratórios e transporte simulado; integração no staging remoto, banco integral e demais módulos continuam pendentes. Os protótipos estão em `legacy/`. Não há liberação operacional comprovada.
 
+Atualização 09/11/2026: [SEC-003](docs/fundacao/SEC-003-CONTENCAO-LEGADO.md) conteve o legado e [DB-004](docs/fundacao/DB-004-STAGING.md) aplicou as duas migrations iniciais no staging existente. Estrutura/grants/RLS/histórico foram conferidos; exposição controlada, identidades e jornada real da aplicação ainda estão pendentes. Não executar bootstrap/fixtures dos testes contra o banco hospedado.
+
 Ambiente atual declarado como **staging compartilhado de desenvolvimento e testes**, conforme [ADR-002](docs/decisoes/ADR-002-STAGING-COMPARTILHADO.md). Recortes verificados são integrados à main; ambientes permanentes separados ficam para AMB-001 ao final. Não há reset imediato do banco.
 
 ## Fontes oficiais
