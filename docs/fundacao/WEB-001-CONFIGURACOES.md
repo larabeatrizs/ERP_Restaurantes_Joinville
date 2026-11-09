@@ -41,11 +41,18 @@ A restauração prepara valores de referência (5%, 7 dias, 72 h, inventário 7 
 - `npm run check`: lint, tipos, **27 testes HTTP/adaptador**, SQL em PGlite (**27 passaram, 1 concorrente omitido**) e builds passaram. O job PostgreSQL 17 do CI continua sendo a verificação de duas conexões reais. Dry-run do Worker não fez deploy.
 - `PLAYWRIGHT_CHANNEL=msedge npm run test:web`: **13 testes passaram** no Edge local. Auth/API têm respostas sintéticas; cobrem login, revisão, cancelamento, PATCH/ETag, 401/403/503, conflito/reaplicação, consulta, lista vazia, validação, descarte negado/confirmado, restauração e teclado/responsividade. O CI acrescenta Chromium descartável; resultado remoto deve ser conferido na PR.
 - Comparação visual manual das capturas com Login e Cadastro do Style Guide: cores/fontes/assets, lateral de 248 px, campos/botões de 44 px e raios preservados. O login segue o frame original; Configurações é composição nova. Sem teste automatizado de pixel diff, leitor de tela ou certificação WCAG completa; aceite visual institucional continua pendente.
+- Verificação adicional sem variáveis de Auth: mensagem de acesso não configurado, formulário desabilitado e nenhuma chamada remota observada. Servidor local de verificação encerrado após o teste.
 
 Capturas sem dados pessoais: [login implementado](../evidencias/web-001/login-1280.png), [login de referência](../evidencias/web-001/referencia-login.png), [cadastro de referência](../evidencias/web-001/referencia-cadastro.png), [painel desktop](../evidencias/web-001/painel-1280.png) e [painel móvel](../evidencias/web-001/painel-360.png). Referências renderizadas a partir dos templates locais, com scripts removidos e rede externa bloqueada; HTML mestre intacto. `node scripts/extract-styleguide-assets.mjs` reproduz a extração dos assets, preservando seus avisos de licença.
 
 ## Continuidade
 
+O rascunho vive na memória da tela: erros HTTP preservam a edição enquanto ela estiver aberta. Logout efetivo, encerramento global da sessão pelo SDK ou recarga não oferecem retomada automática. A confirmação de descarte cobre saída/troca iniciadas pela pessoa; não há promessa de recuperação após encerramento externo da sessão.
+
 Próximo gate: integrar e validar no staging compartilhado existente com inventário/plano de migrations, identidade/vínculos/capacidades e exposição somente de `erp`. Não executar limpeza, usar credencial administrativa no browser ou anunciar login real antes dessa verificação. AMB-001/issue #9 continua congelada. A FND-000 permanece dependente de evidências próprias, incluindo snapshot remoto; este avanço visual não basta para fechar a issue.
 
 Fontes técnicas: [Supabase signInWithPassword](https://supabase.com/docs/reference/javascript/auth-signinwithpassword), [getSession](https://supabase.com/docs/reference/javascript/auth-getsession) e [Playwright webServer](https://playwright.dev/docs/test-webserver). getSession fornece o token ao cliente e não substitui a validação getUser/RLS no servidor.
+
+## Publicação e CI observado
+
+PR [#10](https://github.com/larabeatrizs/ERP_Restaurantes_Joinville/pull/10), implementação `bf0cf13`: [execução 42610596725](https://github.com/larabeatrizs/ERP_Restaurantes_Joinville/actions/runs/42610596725) concluída com **success** nos jobs check, database-postgres e browser. Logs confirmam **27 testes HTTP/adaptador**, **28 SQL sem omissão no PostgreSQL 17**, incluindo concorrência, e **13 testes Chromium**. Auth do navegador e identidade do laboratório SQL são simuladas; não equivalem ao Supabase hospedado. Commit posterior de documentação exige conferir seu próprio CI antes do merge.
