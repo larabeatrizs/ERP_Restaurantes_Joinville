@@ -70,6 +70,35 @@ test('inventário de staging lê metadados em transação readonly sem alterar c
   assert.deepEqual((await audit()).rows, auditBefore);
 });
 
+test('verificador da fundação confere RLS, grants e escritor restrito no laboratório', async () => {
+  const sql = await readFile(new URL('../../scripts/staging/verificar-fundacao.sql', import.meta.url), 'utf8');
+  const report = (await db.query(sql)).rows[0].foundation;
+  assert.equal(report.tables.length, 7);
+  assert.ok(report.tables.every(table => table.rls && !table.anon_select && !table.authenticated_write));
+  assert.equal(report.anon_erp_usage, false);
+  assert.equal(report.anon_private_usage, false);
+  assert.equal(report.authenticated_erp_usage, true);
+  assert.ok(Object.values(report.writer).every(value => value === false));
+  assert.ok(report.functions.every(fn => !fn.anon_execute));
+  const privileged = report.functions.filter(fn => fn.definer);
+  assert.equal(privileged.length, 1);
+  assert.equal(privileged[0].schema, 'erp_private');
+  assert.equal(privileged[0].owner, 'erp_config_writer');
+});
+
+test('retorno por desativação nega leitura/RPC sem excluir dados', async () => {
+  const before = (await db.query('select unidade_id::text,revisao::text from erp.parametro_unidade order by unidade_id')).rows;
+  await db.exec('begin');
+  try {
+    await db.exec(await readFile(new URL('../../scripts/staging/desativar-fundacao.sql', import.meta.url), 'utf8'));
+    await db.exec('set local role authenticated');
+    await expectSqlError('select * from erp.parametro_unidade', '42501');
+    await expectSqlError("select * from erp.atualizar_configuracao(1,1,'{}'::jsonb,'teste')", '42501');
+    await db.exec('reset role');
+    assert.deepEqual((await db.query('select unidade_id::text,revisao::text from erp.parametro_unidade order by unidade_id')).rows,before);
+  } finally { await db.exec('rollback'); }
+});
+
 test('RLS nas tabelas e única função privilegiada com executor restrito', async () => {
   const tables = await db.query("select relname,relrowsecurity from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname='erp' and c.relkind='r'");
   assert.equal(tables.rows.length, 7);
