@@ -15,10 +15,11 @@
     "dev:api": "npm run dev --workspace @erp/api",
     "lint": "eslint apps packages",
     "typecheck": "npm run typecheck --workspaces",
-    "test": "npm run test:api && npm run test:db && npm run test:legacy",
+    "test": "npm run test:api && npm run test:db && npm run test:legacy && npm run test:provision",
     "test:api": "node --test apps/api/src/index.test.ts apps/api/src/settings.test.ts apps/api/src/supabase-settings.test.ts",
     "test:db": "node --test tests/database/configuracoes.test.mjs",
     "test:legacy": "node --test tests/database/legado.test.mjs",
+    "test:provision": "node --test tests/database/provisionamento.test.mjs",
     "test:web": "playwright test",
     "build": "npm run build --workspaces",
     "check": "npm run lint && npm run typecheck && npm test && npm run build"
