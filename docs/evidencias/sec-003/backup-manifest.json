@@ -1,4 +1,4 @@
-﻿[
+[
     {
         "file":  "contain-public.sql",
         "bytes":  4440,
@@ -6,13 +6,13 @@
     },
     {
         "file":  "restore-public.sql",
-        "bytes":  54172,
-        "sha256":  "2BD0487CB10E1B15994E44ACD0CF7684EF0722109235571FB97101A3069F2A2F"
+        "bytes":  54950,
+        "sha256":  "C98A7A11D70849E65B9353323E8C2C747F32E44F04E0368834FB8CBF81472AD0"
     },
     {
         "file":  "restore-result.json",
         "bytes":  158,
-        "sha256":  "70CF889A626E0293BDB74BFE47EE9F297C571FB6595989E988CD9888575977FF"
+        "sha256":  "ECE5132E02235C26781D8AB7E985FECB994D71CDF0EBC69312B27183B5F18DFA"
     },
     {
         "file":  "rollback-public.sql",
@@ -21,7 +21,7 @@
     },
     {
         "file":  "snapshot.json",
-        "bytes":  214153,
-        "sha256":  "23C0BE6991D50C4A2F7A7AF50ACEEC82871C225AB7F121190651E4D3FEA88949"
+        "bytes":  214681,
+        "sha256":  "05425076AFC3BAAA84475DFFC7220C530F8903E578DF76D37ABA0BE67A632DDB"
     }
 ]

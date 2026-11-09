@@ -25,7 +25,8 @@ select jsonb_build_object(
  'sequences', (select coalesce(jsonb_agg(jsonb_build_object('name', c.relname,'owner',pg_get_userbyid(c.relowner),
    'type',format_type(s.seqtypid,null),'start',s.seqstart::text,'increment',s.seqincrement::text,
    'min',s.seqmin::text,'max',s.seqmax::text,'cache',s.seqcache::text,'cycle',s.seqcycle,
-   'last',ps.last_value::text,
+   'last', (xpath('/row/value/text()', state.xml))[1]::text,
+   'called', ((xpath('/row/called/text()', state.xml))[1]::text)::boolean,
    'owned_table', ot.relname, 'owned_column', oa.attname,
    'acl',(select coalesce(jsonb_agg(jsonb_build_object('role',case when g.grantee=0 then 'PUBLIC' else pg_get_userbyid(g.grantee) end,
      'privilege',g.privilege_type,'grant_option',g.is_grantable) order by g.grantee,g.privilege_type),'[]'::jsonb)
@@ -33,6 +34,7 @@ select jsonb_build_object(
  ) order by c.relname),'[]'::jsonb)
  from pg_class c join pg_namespace n on n.oid=c.relnamespace join pg_sequence s on s.seqrelid=c.oid
  join pg_sequences ps on ps.schemaname=n.nspname and ps.sequencename=c.relname
+ cross join lateral (select query_to_xml(format('select last_value::text as value, is_called as called from public.%I',c.relname),false,true,'') as xml) state
  left join pg_depend dep on dep.objid=c.oid and dep.classid='pg_class'::regclass and dep.deptype in ('a','i')
  left join pg_class ot on ot.oid=dep.refobjid left join pg_attribute oa on oa.attrelid=dep.refobjid and oa.attnum=dep.refobjsubid
  where n.nspname='public' and c.relkind='S'),

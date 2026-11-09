@@ -14,6 +14,7 @@ export function validateSnapshot(snapshot) {
   if (snapshot.tables.some(table => Number(table.count) !== 0)) throw Error('Backup restrito exige tabelas vazias');
   if (snapshot.tables.some(table => table.columns.some(column => column.identity || column.generated))) throw Error('Coluna gerada/identity não suportada');
   if (new Set(snapshot.sequences.map(sequence => sequence.name)).size !== snapshot.sequences.length) throw Error('Sequências duplicadas');
+  for (const sequence of snapshot.sequences) { numeric(sequence.last); if (typeof sequence.called !== 'boolean') throw Error('Estado da sequência ausente'); }
 }
 function restoreAccess(snapshot) {
   const statements = [];
@@ -48,7 +49,7 @@ export function renderRestore(snapshot) {
   for (const sequence of snapshot.sequences) {
     if (sequence.owned_table) statements.push(`ALTER SEQUENCE ${qualified(sequence.name)} OWNED BY ${qualified(sequence.owned_table)}.${identifier(sequence.owned_column)};`);
     statements.push(`ALTER SEQUENCE ${qualified(sequence.name)} OWNER TO ${identifier(sequence.owner)};`);
-    if (sequence.last !== null) statements.push(`SELECT setval(${literal(qualified(sequence.name))}, ${numeric(sequence.last)}, true);`);
+    statements.push(`SELECT setval(${literal(qualified(sequence.name))}, ${numeric(sequence.last)}, ${sequence.called ? 'true' : 'false'});`);
   }
   return [...statements, ...restoreAccess(snapshot), 'COMMIT;'].join('\n') + '\n';
 }
