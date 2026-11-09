@@ -1,0 +1,273 @@
+{
+    "data":  "2026-11-09",
+    "projeto":  "rp-joinville-db",
+    "referencia":  "vpowsedoajpdbeckimuv",
+    "ambiente_operacional":  "staging compartilhado conforme ADR-002",
+    "rotulo_cli":  "production",
+    "capturado_em_utc":  "2026-11-09T12:51:03Z",
+    "somente_leitura":  "on",
+    "postgres":  "17.11",
+    "schemas":  [
+                    "public"
+                ],
+    "historico_migrations_existe":  false,
+    "relacoes":  [
+                     {
+                         "schema":  "public",
+                         "nome":  "auditoria",
+                         "tipo":  "r",
+                         "rls":  false,
+                         "force_rls":  false
+                     },
+                     {
+                         "schema":  "public",
+                         "nome":  "categoria",
+                         "tipo":  "r",
+                         "rls":  false,
+                         "force_rls":  false
+                     },
+                     {
+                         "schema":  "public",
+                         "nome":  "cotacao",
+                         "tipo":  "r",
+                         "rls":  false,
+                         "force_rls":  false
+                     },
+                     {
+                         "schema":  "public",
+                         "nome":  "fornecedor",
+                         "tipo":  "r",
+                         "rls":  false,
+                         "force_rls":  false
+                     },
+                     {
+                         "schema":  "public",
+                         "nome":  "lote",
+                         "tipo":  "r",
+                         "rls":  false,
+                         "force_rls":  false
+                     },
+                     {
+                         "schema":  "public",
+                         "nome":  "movimento_estoque",
+                         "tipo":  "r",
+                         "rls":  false,
+                         "force_rls":  false
+                     },
+                     {
+                         "schema":  "public",
+                         "nome":  "perfil",
+                         "tipo":  "r",
+                         "rls":  false,
+                         "force_rls":  false
+                     },
+                     {
+                         "schema":  "public",
+                         "nome":  "prato",
+                         "tipo":  "r",
+                         "rls":  false,
+                         "force_rls":  false
+                     },
+                     {
+                         "schema":  "public",
+                         "nome":  "produto",
+                         "tipo":  "r",
+                         "rls":  false,
+                         "force_rls":  false
+                     },
+                     {
+                         "schema":  "public",
+                         "nome":  "refeicao_servida",
+                         "tipo":  "r",
+                         "rls":  false,
+                         "force_rls":  false
+                     },
+                     {
+                         "schema":  "public",
+                         "nome":  "unidade_medida",
+                         "tipo":  "r",
+                         "rls":  false,
+                         "force_rls":  false
+                     },
+                     {
+                         "schema":  "public",
+                         "nome":  "unidade_restaurante",
+                         "tipo":  "r",
+                         "rls":  false,
+                         "force_rls":  false
+                     },
+                     {
+                         "schema":  "public",
+                         "nome":  "usuario",
+                         "tipo":  "r",
+                         "rls":  false,
+                         "force_rls":  false
+                     },
+                     {
+                         "schema":  "public",
+                         "nome":  "usuario_unidade",
+                         "tipo":  "r",
+                         "rls":  false,
+                         "force_rls":  false
+                     }
+                 ],
+    "contagens_public":  [
+                             {
+                                 "registros":  "0",
+                                 "tabela":  "auditoria"
+                             },
+                             {
+                                 "registros":  "0",
+                                 "tabela":  "categoria"
+                             },
+                             {
+                                 "registros":  "0",
+                                 "tabela":  "cotacao"
+                             },
+                             {
+                                 "registros":  "0",
+                                 "tabela":  "fornecedor"
+                             },
+                             {
+                                 "registros":  "0",
+                                 "tabela":  "lote"
+                             },
+                             {
+                                 "registros":  "0",
+                                 "tabela":  "movimento_estoque"
+                             },
+                             {
+                                 "registros":  "0",
+                                 "tabela":  "perfil"
+                             },
+                             {
+                                 "registros":  "0",
+                                 "tabela":  "prato"
+                             },
+                             {
+                                 "registros":  "0",
+                                 "tabela":  "produto"
+                             },
+                             {
+                                 "registros":  "0",
+                                 "tabela":  "refeicao_servida"
+                             },
+                             {
+                                 "registros":  "0",
+                                 "tabela":  "unidade_medida"
+                             },
+                             {
+                                 "registros":  "0",
+                                 "tabela":  "unidade_restaurante"
+                             },
+                             {
+                                 "registros":  "0",
+                                 "tabela":  "usuario"
+                             },
+                             {
+                                 "registros":  "0",
+                                 "tabela":  "usuario_unidade"
+                             }
+                         ],
+    "privilegios_efetivos_public":  [
+                                        {
+                                            "anon_select":  true,
+                                            "anon_write":  true,
+                                            "authenticated_select":  true,
+                                            "tabela":  "auditoria"
+                                        },
+                                        {
+                                            "anon_select":  true,
+                                            "anon_write":  true,
+                                            "authenticated_select":  true,
+                                            "tabela":  "categoria"
+                                        },
+                                        {
+                                            "anon_select":  true,
+                                            "anon_write":  true,
+                                            "authenticated_select":  true,
+                                            "tabela":  "cotacao"
+                                        },
+                                        {
+                                            "anon_select":  true,
+                                            "anon_write":  true,
+                                            "authenticated_select":  true,
+                                            "tabela":  "fornecedor"
+                                        },
+                                        {
+                                            "anon_select":  true,
+                                            "anon_write":  true,
+                                            "authenticated_select":  true,
+                                            "tabela":  "lote"
+                                        },
+                                        {
+                                            "anon_select":  true,
+                                            "anon_write":  true,
+                                            "authenticated_select":  true,
+                                            "tabela":  "movimento_estoque"
+                                        },
+                                        {
+                                            "anon_select":  true,
+                                            "anon_write":  true,
+                                            "authenticated_select":  true,
+                                            "tabela":  "perfil"
+                                        },
+                                        {
+                                            "anon_select":  true,
+                                            "anon_write":  true,
+                                            "authenticated_select":  true,
+                                            "tabela":  "prato"
+                                        },
+                                        {
+                                            "anon_select":  true,
+                                            "anon_write":  true,
+                                            "authenticated_select":  true,
+                                            "tabela":  "produto"
+                                        },
+                                        {
+                                            "anon_select":  true,
+                                            "anon_write":  true,
+                                            "authenticated_select":  true,
+                                            "tabela":  "refeicao_servida"
+                                        },
+                                        {
+                                            "anon_select":  true,
+                                            "anon_write":  true,
+                                            "authenticated_select":  true,
+                                            "tabela":  "unidade_medida"
+                                        },
+                                        {
+                                            "anon_select":  true,
+                                            "anon_write":  true,
+                                            "authenticated_select":  true,
+                                            "tabela":  "unidade_restaurante"
+                                        },
+                                        {
+                                            "anon_select":  true,
+                                            "anon_write":  true,
+                                            "authenticated_select":  true,
+                                            "tabela":  "usuario"
+                                        },
+                                        {
+                                            "anon_select":  true,
+                                            "anon_write":  true,
+                                            "authenticated_select":  true,
+                                            "tabela":  "usuario_unidade"
+                                        }
+                                    ],
+    "advisors":  [
+                     {
+                         "achado":  "rls_disabled_in_public",
+                         "nivel":  "ERROR",
+                         "quantidade":  14
+                     }
+                 ],
+    "backups_listados":  0,
+    "pitr_habilitado":  false,
+    "limites":  [
+                    "Consultas sequenciais; nao representam snapshot transacional unico.",
+                    "Contagens restritas a 14 tabelas public; nenhum conteudo de linha exportado.",
+                    "Nao inclui autenticacao funcional, exposicao HTTP testada, backup restauravel ou migracao hospedada."
+                ],
+    "alteracoes_hospedadas":  "nenhuma"
+}

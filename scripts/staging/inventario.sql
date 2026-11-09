@@ -1,8 +1,8 @@
 -- INT-001: executar no projeto confirmado, usando SQL Editor/MCP ou conexão administrativa.
 -- Somente metadados; não lê linhas de negócio, auth.users ou corpos de funções.
 -- Não contém DDL/DML. Estimativas não comprovam ausência de dados.
-begin transaction read only;
-set local statement_timeout = '15s';
+-- CLI v3: db query --remote=<ref> --read-only --file scripts/staging/inventario.sql
+-- No SQL Editor/MCP, envolver com BEGIN TRANSACTION READ ONLY e ROLLBACK.
 select jsonb_build_object(
   'capturado_em_utc', to_char(clock_timestamp() at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'),
   'postgres', current_setting('server_version'),
@@ -47,4 +47,3 @@ select jsonb_build_object(
     order by rolname), '[]'::jsonb)
     from pg_roles where rolname in ('anon','authenticated','service_role','erp_config_writer'))
 ) as inventario;
-rollback;
