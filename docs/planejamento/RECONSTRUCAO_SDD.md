@@ -36,6 +36,12 @@ Próxima dependência: publicação controlada de View/Worker na Cloudflare do *
 
 ## Momento da reconstrução do banco
 
+### Administração e usuário inicial — atualização de 10/11/2026
+
+[ADM-001](../fundacao/ADM-001-ADMINISTRACAO.md)/[issue #19](https://github.com/larabeatrizs/ERP_Restaurantes_Joinville/issues/19) formaliza a lacuna de RF-008: não há gestão administrativa de usuários nem ADMIN cadastrado. Especificar na B, implementar capacidades/RLS/bootstrap sintético na C2, APIs/painel na C3/C4 e provisionar ADMIN_INICIAL na integração D1, após validar acesso restrito e controles de primeiro acesso/sessão. O email indicado pela responsável fica em registro privado fora do checkout; a senha não será seed versionada e será definida novamente por entrada segura. Não aguardar o fim do projeto para construir essa administração; AMB-001 congela ambientes permanentes separados, sem congelar RF-008. Subdomínio é proposta sujeita a domínio e proteção de rede; nenhum serviço/conta real foi criado neste mapeamento.
+
+### Modelagem a partir dos requisitos
+
 Determinação reafirmada pela responsável em 06/11/2026: **a modelagem do banco deve ser refeita do zero, conforme os requisitos do sistema, na etapa determinada por este plano**. O SQL legado e o banco existente são fontes de comparação histórica, não o modelo a ser continuado ou uma base obrigatória para o novo desenho.
 
 - **Fase A / FND-000:** inventariar o existente, apontar lacunas e preparar as decisões e o backlog. Não exige entregar a nova modelagem nem executar sua implementação para encerrar a auditoria.

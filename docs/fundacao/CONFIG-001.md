@@ -6,6 +6,8 @@ Continuidade: [DB-001/C2.1](DB-001-CONFIGURACOES.md) inicia persistência e leit
 
 Atualização em 09/11/2026: CONFIG-002 e API-001 acrescentaram salvamento mediado e HTTP. [WEB-001](WEB-001-CONFIGURACOES.md) implementa o primeiro painel por unidade com revisão e conflito, testado com Auth/API simuladas. A integração real no staging e os controles de aprovação/global/histórico ainda estão pendentes; o catálogo completo abaixo permanece como desenho-alvo, sem prometer opções funcionais inexistentes.
 
+Atualização em 10/11/2026: [OPS-001](OPS-001-PUBLICACAO.md) verificou o painel por unidade no endereço hospedado com Auth/API reais, alteração/restauração e ETag forte. O retrato acima é histórico; parâmetros globais, gestão de usuários/perfis e políticas restantes continuam pendentes. [ADM-001](ADM-001-ADMINISTRACAO.md) especifica a ligação com a administração restrita e o primeiro administrador, sem duplicar este painel ou criar superpermissão operacional.
+
 ## O que já estava mapeado
 
 | Fonte | Cobertura existente | Lacuna encontrada |
