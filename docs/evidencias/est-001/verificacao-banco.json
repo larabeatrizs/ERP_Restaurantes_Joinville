@@ -1,0 +1,67 @@
+{
+  "environment": "Worker/View locais + Supabase staging real",
+  "deployment": false,
+  "database": {
+    "captured_at": "2026-11-10 11:54:37.230835+00",
+    "products": 2,
+    "confirmed_receipts": 2,
+    "drafts": 0,
+    "lots": 2,
+    "movements": 2,
+    "audit_events": 7,
+    "balances_not_twenty": 0,
+    "ledger_balance_mismatches": 0,
+    "erp_tables_with_rls": 20,
+    "writer_auth_usage": false,
+    "migrations": [
+      {
+        "name": "configuracoes_identidade_base",
+        "version": "20261106201235"
+      },
+      {
+        "name": "configuracoes_salvamento_mediado",
+        "version": "20261106202428"
+      },
+      {
+        "name": "ator_auth_sem_lookup_privilegiado",
+        "version": "20261109142946"
+      },
+      {
+        "name": "primeiro_fluxo_estoque",
+        "version": "20261110114252"
+      }
+    ]
+  },
+  "sqlBody": {
+    "generatedVersion": "20261109175928",
+    "registeredVersion": "20261110114252",
+    "unchanged": true,
+    "normalizedSha256": "d3de54bcd7b4439d832016644d46d7635eed77289d8d8099bae9aa688bbfeb8e"
+  },
+  "advisors": [
+    {
+      "name": "rls_enabled_no_policy",
+      "level": "INFO",
+      "count": 14,
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy"
+    },
+    {
+      "name": "auth_leaked_password_protection",
+      "level": "WARN",
+      "count": 1,
+      "remediation": "https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection"
+    }
+  ],
+  "ci": {
+    "commit": "4a6d2ccb907dd22363909b645592f5d7543614b6",
+    "run": 42672947023,
+    "attempt": 2,
+    "jobs": [
+      "check",
+      "database-postgres",
+      "stock-postgres",
+      "browser"
+    ],
+    "conclusion": "success"
+  }
+}

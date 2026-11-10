@@ -7,6 +7,8 @@ import type {
 import { isConfigurationPatch } from '@erp/contracts';
 import { SettingsApi, RequestError, errorMessage } from '../services/api.ts';
 import type { SettingsSnapshot } from '../services/api.ts';
+import { workspacePages } from './Workspace.tsx';
+import type { WorkspacePage } from './Workspace.tsx';
 
 const labels = {
   modo_saida: 'Modo de saída',
@@ -62,12 +64,18 @@ function display(value: unknown): string {
 export function SettingsPanel({
   api,
   onSignOut,
+  onNavigate,
+  initialUnit = '',
+  onUnitChange,
 }: {
   api: SettingsApi;
   onSignOut: () => Promise<void>;
+  onNavigate?: (page: WorkspacePage) => void;
+  initialUnit?: string;
+  onUnitChange?: (unit: string) => void;
 }) {
   const [units, setUnits] = useState<UnitSummary[]>([]);
-  const [unit, setUnit] = useState('');
+  const [unit, setUnit] = useState(initialUnit);
   const [snapshot, setSnapshot] = useState<SettingsSnapshot>();
   const [draft, setDraft] = useState<Draft>();
   const [loading, setLoading] = useState(true);
@@ -91,6 +99,7 @@ export function SettingsPanel({
       campos: { [key]: changed[key] },
       motivo: 'validar',
     });
+  useEffect(() => { if (unit) onUnitChange?.(unit); }, [unit, onUnitChange]);
   useEffect(() => {
     let active = true;
     setLoading(true);
@@ -223,9 +232,10 @@ export function SettingsPanel({
         <div className="brand">Restaurante Popular</div>
         <p className="unit-caption">Joinville · Gestão</p>
         <nav aria-label="Principal">
-          <a href="#conteudo" aria-current="page">
-            Configurações
-          </a>
+          {workspacePages.map(item => <a key={item.key} href={`#${item.key}`} aria-current={item.key === 'configuracoes' ? 'page' : undefined} aria-disabled={saving} onClick={event => {
+            event.preventDefault();
+            if (!saving && item.key !== 'configuracoes' && allowDiscard()) onNavigate?.(item.key);
+          }}>{item.label}</a>)}
         </nav>
         <button
           className="signout"

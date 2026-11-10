@@ -3,7 +3,8 @@ import type { FormEvent } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { auth } from '../services/auth.ts';
 import { SettingsApi } from '../services/api.ts';
-import { SettingsPanel } from './SettingsPanel.tsx';
+import { Workspace } from './Workspace.tsx';
+import { StockApi } from '../services/stock-api.ts';
 import './styles.css';
 export function App() {
   const [session, setSession] = useState<Session | null>(null);
@@ -17,6 +18,7 @@ export function App() {
       ),
     [],
   );
+  const stock = useMemo(() => new StockApi(async () => (await auth?.getSession())?.data.session?.access_token), []);
   useEffect(() => {
     if (!auth) return;
     const { data } = auth.onAuthStateChange((_event, next) => {
@@ -53,8 +55,9 @@ export function App() {
     );
   if (session)
     return (
-      <SettingsPanel
+      <Workspace
         api={api}
+        stock={stock}
         onSignOut={async () => {
           const result = await auth!.signOut();
           if (result.error) throw result.error;

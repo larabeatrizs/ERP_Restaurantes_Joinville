@@ -6,8 +6,10 @@ const file=process.env.ERP_STAGING_TEST_STATE;
 if(!file)throw Error('Defina ERP_STAGING_TEST_STATE fora do checkout.');
 const state=JSON.parse(await fs.readFile(file,'utf8'));
 if(state.projectRef!=='vpowsedoajpdbeckimuv')throw Error('Projeto inesperado');
-const origin=new URL(process.env.ERP_LOCAL_WEB_URL??'http://127.0.0.1:5173');
-if(origin.protocol!=='http:'||!['localhost','127.0.0.1'].includes(origin.hostname))throw Error('Somente View local');
+const origin=new URL(process.env.ERP_STAGING_URL??process.env.ERP_LOCAL_WEB_URL??'http://127.0.0.1:5173');
+const local=origin.protocol==='http:'&&['localhost','127.0.0.1'].includes(origin.hostname);
+const hosted=origin.protocol==='https:'&&/^erp-joinville-staging\.[a-z0-9-]+\.workers\.dev$/.test(origin.hostname);
+if((!local&&!hosted)||origin.username||origin.password||origin.search||origin.hash||origin.pathname!=='/')throw Error('Somente View local ou Worker confirmado do staging');
 const root=path.dirname(file);
 const browser=await chromium.launch({channel:process.env.PLAYWRIGHT_CHANNEL||undefined});
 const contexts=[];let completed=false;
@@ -49,5 +51,5 @@ try {
  console.error('FAIL: verificação visual live interrompida; nenhuma captura será publicada como aceite.');process.exitCode=1;
 }finally{
  for(const context of contexts)await context.close();await browser.close();
- await fs.writeFile(path.join(root,'browser-result.json'),JSON.stringify({executedAt:new Date().toISOString(),mocked:false,completed,scenarios:['login real','editor salva com revisão/motivo','retorno do valor via UI','leitor readonly','uma unidade por vínculo','layout desktop/mobile']},null,2));
+ await fs.writeFile(path.join(root,'browser-result.json'),JSON.stringify({executedAt:new Date().toISOString(),origin:origin.origin,mocked:false,completed,scenarios:['login real','editor salva com revisão/motivo','retorno do valor via UI','leitor readonly','uma unidade por vínculo','layout desktop/mobile']},null,2));
 }
