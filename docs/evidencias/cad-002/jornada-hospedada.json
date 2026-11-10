@@ -1,0 +1,39 @@
+{
+  "executedAt": "2026-11-10T17:58:45.221Z",
+  "origin": "https://erp-joinville-staging.erp-restaurantes-joinville.workers.dev",
+  "mocked": false,
+  "completed": true,
+  "sourceCommit": "b8edce570c2111a1bd05e158adcb5a8c174439f6",
+  "cloudflareVersion": "57520357-122d-4b67-a149-b901d706c36e",
+  "migration": {
+    "version": "20261110175800",
+    "file": "supabase/migrations/20261110175800_catalogo_vinculo_unidade.sql",
+    "sha256": "3faf7dfeecb7efc546bf86d46bb0b4d6ead65ff8e258d484e0b0506be79c8609",
+    "originalCliVersion": "20261110174242",
+    "bodyPreserved": true
+  },
+  "ci": {
+    "runId": 42870027881,
+    "jobs": 4,
+    "conclusion": "success",
+    "apiScenarios": 59,
+    "browserScenarios": 31,
+    "stockPostgresScenarios": 25
+  },
+  "scenarios": [
+    "cadastro global único e vínculo por API com parâmetros independentes",
+    "reenvio sem duplicação; conflito de parâmetros e revisão antiga recusados",
+    "sem sessão, readonly, outra unidade, DML direto e campos globais indevidos negados",
+    "busca/seleção/vínculo pela UI em 360px",
+    "nova sessão reabre parâmetros persistidos na unidade B",
+    "parâmetros da origem/revisão global e saldos das duas unidades preservados"
+  ],
+  "stockBalancesUnchanged": true,
+  "personalAccountUsed": false,
+  "credentialsPublished": false,
+  "limits": [
+    "RF-003/CRUD integral e cadastros auxiliares permanecem pendentes",
+    "Nenhuma transferência de estoque ou nova permissão administrativa",
+    "Falha induzida de auditoria e concorrência verificadas no laboratório/CI; não induzidas no hospedado"
+  ]
+}

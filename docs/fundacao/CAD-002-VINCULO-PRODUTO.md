@@ -1,6 +1,6 @@
 # CAD-002 — Produto compartilhado e vínculo por unidade
 
-Data: 10/11/2026. Continuidade D1 de [EST-001](EST-001-PRIMEIRO-FLUXO.md), [PROJETO](../PROJETO.md) e [plano](../planejamento/PLANO-ATE-10-11.md). [Issue #22](https://github.com/larabeatrizs/ERP_Restaurantes_Joinville/issues/22). Estado inicial: especificação para implementação; testes/publicação ainda pendentes.
+Data: 10/11/2026. Continuidade D1 de [EST-001](EST-001-PRIMEIRO-FLUXO.md), [PROJETO](../PROJETO.md) e [plano](../planejamento/PLANO-ATE-10-11.md). [Issue #22](https://github.com/larabeatrizs/ERP_Restaurantes_Joinville/issues/22). Estado atual: implementado, migration aplicada e jornada API/UI hospedada aprovada. Não encerra RF-003 ou D1 integrais. Especificação inicial e limites preservados abaixo.
 
 ## Fonte, problema e escopo
 
@@ -27,7 +27,7 @@ Cadeia: ProductPanel → ProductLinkPanel → StockApi → stockController → S
 
 ## Banco e fronteira de autorização
 
-Migration aditiva criada pela CLI: `20261110174242_catalogo_vinculo_unidade.sql`. Nenhuma migration anterior alterada, tabela/role nova ou seed. Reusar produto_unidade, auditoria_estoque e o executor erp_stock_writer sem login/bypass/USAGE auth. Nova função privada estreita com SECURITY DEFINER, search_path vazio e EXECUTE negado a PUBLIC/anon; wrapper exposto SECURITY INVOKER. Não liberar DML direto. Atualizar allowlist de funções privilegiadas e validar advisor.
+Migration aditiva criada pela CLI originalmente como `20261110174242_catalogo_vinculo_unidade.sql`; aplicação pelo conector registrada como `20261110175800`, alinhada no [arquivo atual](../../supabase/migrations/20261110175800_catalogo_vinculo_unidade.sql) somente por renomeação. Nenhuma migration anterior alterada, tabela/role nova ou seed. Reusar produto_unidade, auditoria_estoque e o executor erp_stock_writer sem login/bypass/USAGE auth. Nova função privada estreita com SECURITY DEFINER, search_path vazio e EXECUTE negado a PUBLIC/anon; wrapper exposto SECURITY INVOKER. Não liberar DML direto. Atualizar allowlist de funções privilegiadas e validar advisor.
 
 O helper recebe somente ações `disponiveis` e `vincular`, deriva ator da sessão e valida a capacidade da unidade. Não vira motor genérico de CRUD nem aceita ator, schema ou SQL do cliente. Link audita `produto_vincular`/`produto_unidade` com antes nulo e depois somente dados do destino. Validação JSON estrita também no banco protege chamadas RPC diretas.
 
@@ -54,3 +54,15 @@ Referências técnicas: [funções de banco e privilégios](https://supabase.com
 Camadas e contratos implementados, com ProductLinkPanel carregado sob demanda. A nova função privada usa o executor existente e passou na allowlist de funções privilegiadas, sem DML de cliente ou ampliação de capacidades. A notificação de reload do schema PostgREST é emitida na migration, sem recriar serviços.
 
 Verificações locais: lint/tipos/build e `npm run check` aprovados; 59 testes HTTP/adaptadores, 25 de estoque no PostgreSQL 17.11 (todos aprovados, incluindo duas conexões/revogação durante espera), 32 de configurações em PGlite (31 aprovados/uma concorrência omitida), contenção/provisionamento e 31 de navegador. As três jornadas novas de vínculo foram revalidadas após separar o chunk da tela. O laboratório PostgreSQL em loopback foi encerrado; nenhuma alteração no banco hospedado até este ponto. CI, aplicação da migration, deploy e jornada hospedada ainda pendentes.
+
+## Publicação e resultado hospedado
+
+Após a etapa local acima, o [CI 42870027881](https://github.com/larabeatrizs/ERP_Restaurantes_Joinville/actions/runs/42870027881) aprovou os quatro jobs, incluindo 25 casos de estoque no PostgreSQL e 31 de navegador. O inventário confirmou quatro migrations anteriores coincidentes, nova RPC ausente, 20 tabelas RLS, seis produtos/vínculos/movimentos e 21 eventos. Somente então foi aplicada a migration nova pelo conector. SHA-256 do arquivo antes/depois da renomeação: `3faf7dfeecb7efc546bf86d46bb0b4d6ead65ff8e258d484e0b0506be79c8609`; corpo SQL preservado.
+
+Runtime `b8edce570c2111a1bd05e158adcb5a8c174439f6`, versão Cloudflare `57520357-122d-4b67-a149-b901d706c36e`, na [mesma URL do staging](https://erp-joinville-staging.erp-restaurantes-joinville.workers.dev). Build refez o bundle após as alterações; somente URL/chave publicável no Worker, sem chave administrativa. Os registros locais anteriores são históricos, não evidência de hospedagem.
+
+`npm run test:staging:catalog` completou seis cenários reais, sem mocks/traces: dois produtos sintéticos criados em A, um vinculado por API e outro pela UI em B; consulta sem dados locais da origem; reenvio idêntico, 409/412; negações sem sessão/readonly/unidade alheia/DML/campos globais; nova sessão e saldos preservados. [Resultado](../evidencias/cad-002/jornada-hospedada.json), [catálogo móvel](../evidencias/cad-002/catalogo-360.png) e [parâmetros reabertos](../evidencias/cad-002/parametros-1280.png). Capturas inspecionadas, sem identidade Auth, email ou credencial. Conta pessoal da responsável não foi usada; sua confirmação de acesso permanece em ADM-001.
+
+[Pós-condições](../evidencias/cad-002/verificacao-banco.json): oito produtos, dez vínculos (dois em B), seis recebimentos/lotes/movimentos preservados, 25 eventos de estoque (21 anteriores + dois cadastros + dois vínculos), nenhuma divergência livro/saldo e nenhum saldo em B. Existem cinco migrations, 20 tabelas erp com RLS e três funções privadas privilegiadas conhecidas. Executor e grants novos verificados: sem USAGE auth/CREATE/membership do cliente, wrapper invoker, implementação owned por erp_stock_writer e anon sem EXECUTE. Advisor mantém 14 INFO do legado contido e WARN de senhas vazadas, sem achado adicional.
+
+Concorrência/revogação durante lock e falha induzida de auditoria foram exercitadas no PostgreSQL local/CI, não induzidas no banco hospedado. Evidência não significa CRUD integral, transferência de estoque, fim de D1, encerramento automático da issue ou produção. Próximas dependências continuam os cadastros auxiliares de medidas/categorias/fornecedores e os demais contratos D1, preservando o acompanhamento pessoal e AMB-001 congelada.
