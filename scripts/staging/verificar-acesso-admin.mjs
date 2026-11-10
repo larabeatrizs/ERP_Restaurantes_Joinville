@@ -50,10 +50,19 @@ try{
  await expect(ownerPage.getByLabel('Margem (%)',{exact:true})).toBeDisabled();
  await ownerPage.getByRole('button',{name:'Sair',exact:true}).click();
  proof.scenarios.push('ADMIN_INICIAL entra pela tela real e consulta configurações readonly');
+ proof.phase='synthetic-link';
  const link=await admin.auth.admin.generateLink({type:'recovery',email:reader.email});
  if(link.error||link.data.user?.id!==reader.id)throw Error('Synthetic link failed');
  const activation=origin+'/#definir-senha='+encodeURIComponent(link.data.properties.hashed_token);
  const context=await browser.newContext({viewport:{width:360,height:900}});const page=await context.newPage();
+ page.on('response',async response=>{
+  const endpoint=new URL(response.url());
+  if(endpoint.hostname==='vpowsedoajpdbeckimuv.supabase.co'&&endpoint.pathname.startsWith('/auth/v1/')&&response.status()>=400){
+   let code;try{code=(await response.json()).error_code;}catch{}
+   proof.authFailure={status:response.status(),code:typeof code==='string'&&/^[a-z_]+$/.test(code)?code:'unknown'};
+  }
+ });
+ proof.phase='synthetic-activation';
  await page.goto(activation);
  await expect(page.getByRole('heading',{name:'Definir senha',exact:true})).toBeVisible({timeout:30000});
  if(new URL(page.url()).hash)throw Error('Fragment retained');
@@ -63,15 +72,18 @@ try{
  await page.getByLabel('Nova senha',{exact:true}).fill(temporary);await page.getByLabel('Confirmar nova senha').fill(temporary);
  // Marcar antes do clique: uma falha de rede pode acontecer após a atualização do Auth.
  readerChanged=true;
+ proof.phase='synthetic-password-save';
  await page.getByRole('button',{name:'Salvar senha',exact:true}).click();
  await expect(page.getByRole('heading',{name:'Entrar',exact:true})).toBeVisible({timeout:30000});
+ proof.phase='synthetic-new-login';
  await page.getByLabel('E-mail',{exact:true}).fill(reader.email);await page.getByLabel('Senha',{exact:true}).fill(temporary);await page.getByRole('button',{name:'Entrar',exact:true}).click();
  await expect(page.getByRole('heading',{name:'Operação e custos'})).toBeVisible({timeout:30000});
  await page.getByRole('button',{name:'Sair',exact:true}).click();
+ proof.phase='synthetic-link-reuse';
  await page.goto(activation);await expect(page.getByRole('heading',{name:'Link indisponível'})).toBeVisible({timeout:30000});
  proof.scenarios.push('recovery real sintético define senha, encerra sessão e permite novo login','link consumido recusado; token retirado da URL; viewport 360px');
- proof.completed=true;
-}catch{console.error('FAIL: verificação interrompida; inspecione somente artefatos privados.');process.exitCode=1;}
+ proof.completed=true;proof.phase='completed';
+}catch(error){proof.failureKind=error instanceof Error?error.name:'unknown';console.error('FAIL: verificação interrompida; inspecione somente artefatos privados.');process.exitCode=1;}
 finally{
  if(readerChanged){const restore=await admin.auth.admin.updateUserById(reader.id,{password:reader.password});if(restore.error){proof.completed=false;proof.syntheticPasswordRestored=false;process.exitCode=1;}else proof.syntheticPasswordRestored=true;}
  if(browser)await browser.close();await client.auth.signOut({scope:'local'});

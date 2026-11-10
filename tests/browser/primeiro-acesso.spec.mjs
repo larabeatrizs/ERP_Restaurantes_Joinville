@@ -3,12 +3,13 @@ const token='a'.repeat(64);
 const user={id:'00000000-0000-4000-8000-000000000004',aud:'authenticated',role:'authenticated',email:'admin@example.invalid'};
 const session={access_token:'eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ0ZXN0ZSJ9.ficticio',refresh_token:'ficticio',expires_in:3600,token_type:'bearer',user};
 async function setup(page,{invalid=false,updateFails=false}={}){
- const writes=[];let apiCalls=0;
+ const writes=[];let apiCalls=0,verifications=0;
  await page.route('https://auth-ficticio.supabase.co/**',async route=>{
   const request=route.request(),url=request.url();
   if(url.endsWith('/verify')){
+   verifications++;
    expect(request.postDataJSON()).toMatchObject({token_hash:token,type:'recovery'});
-   return route.fulfill(invalid?{status:403,json:{error_code:'otp_expired',msg:'Expired'}}:{json:session});
+   return route.fulfill(invalid||verifications>1?{status:403,json:{error_code:'otp_expired',msg:'Expired'}}:{json:session});
   }
   if(url.endsWith('/user')&&request.method()==='PUT'){
    writes.push(request.postDataJSON());
@@ -66,4 +67,13 @@ test('recarregar durante primeiro acesso mantém a tela de senha',async({page})=
  await expect(page.getByRole('heading',{name:'Definir senha',exact:true})).toBeVisible();
  await page.reload();
  await expect(page.getByRole('heading',{name:'Definir senha',exact:true})).toBeVisible();expect(state.apiCalls()).toBe(0);
+});
+test('reabrir link na mesma aba processa o fragmento e recusa token consumido',async({page})=>{
+ const state=await setup(page);
+ await expect(page.getByRole('heading',{name:'Definir senha',exact:true})).toBeVisible();
+ await page.getByRole('button',{name:'Sair',exact:true}).click();
+ await expect(page.getByRole('heading',{name:'Entrar',exact:true})).toBeVisible();
+ await page.goto('/#definir-senha='+token);
+ await expect(page.getByRole('heading',{name:'Link indisponível'})).toBeVisible();
+ await expect(page).toHaveURL(/\/$/);expect(state.apiCalls()).toBe(0);
 });

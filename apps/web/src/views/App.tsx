@@ -25,6 +25,11 @@ export function App() {
   const stock = useMemo(() => new StockApi(async () => (await auth?.getSession())?.data.session?.access_token), []);
   useEffect(() => {
     if (!auth) return;
+    function passwordNavigation() {
+      // Abrir um link no mesmo tab pode mudar só o fragmento, sem remontar a View.
+      if (new URLSearchParams(window.location.hash.slice(1)).has('definir-senha')) window.location.reload();
+    }
+    window.addEventListener('hashchange', passwordNavigation);
     const { data } = auth.onAuthStateChange((event, next) => {
       setSession(next);
       setReady(true);
@@ -35,7 +40,7 @@ export function App() {
     if (initialPasswordToken !== null) void activatePasswordLink().then((ok) => {
       if (active) setLinkState(ok ? 'valid' : 'invalid');
     });
-    return () => { active = false; data.subscription.unsubscribe(); };
+    return () => { active = false; data.subscription.unsubscribe(); window.removeEventListener('hashchange', passwordNavigation); };
   }, []);
   async function endPasswordSession(saved = false) {
     const result = await auth?.signOut({ scope: 'local' });
