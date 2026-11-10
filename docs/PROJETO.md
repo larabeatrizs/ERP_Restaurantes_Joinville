@@ -1,6 +1,6 @@
 # PROJETO — ERP Restaurantes Populares de Joinville
 
-> **Estado em 09/11/2026:** [INT-003](fundacao/INT-003-JORNADA-REAL.md) demonstrou a jornada de configurações com Auth/API/RPC reais: três contas sintéticas, duas unidades e View/Worker locais conectados ao Supabase hospedado. Data API expõe somente erp; três migrations aplicadas, RLS/auditoria/concorrência verificadas e public legado contido. Advisor atual: um WARN de proteção contra senhas vazadas e 14 INFO do legado sem políticas. Publicação Cloudflare e módulos de negócio continuam pendentes; FND_READY não atingido. Staging compartilhado; AMB-001/issue #9 congelada até o encerramento. Não há liberação operacional.
+> **Estado em 10/11/2026:** [EST-001](fundacao/EST-001-PRIMEIRO-FLUXO.md) demonstrou produto → compra → lote/local → saldo de 20 kg com aplicação local e Supabase real, além das configurações INT-003. Quatro contas sintéticas, duas unidades, quatro migrations e 20 tabelas erp com RLS; Data API expõe somente erp e public segue contido. Advisor mantém um WARN de proteção contra senhas vazadas e 14 INFO do legado. Publicação Cloudflare aguarda escopo de scripts do Worker; ERP integral/FND_READY e liberação operacional pendentes. AMB-001/issue #9 congelada até o encerramento.
 
 ## 01 — Ponto de partida e fontes de autoridade
 
@@ -32,7 +32,7 @@ Riscos identificados no inventário inicial:
 | ID | Decisão | Alcance | Estado |
 | --- | --- | --- | --- |
 | ARQ-001 | **Monorepo** para frontend, backend, componentes compartilhados, migrações, testes e documentos | Organização do código | Bootstrap e CI verificados; integrado à main |
-| ARQ-002 | **MVC adaptado a web/API**, com separação adicional de serviços e repositórios | Arquitetura do software | Controller/Service de liveness implementados; camadas de negócio pendentes |
+| ARQ-002 | **MVC adaptado a web/API**, com separação adicional de serviços e repositórios | Arquitetura do software | Configurações e primeiro recebimento/saldo com camadas próprias; demais domínios pendentes |
 | INF-001 | **Cloudflare** para hospedar frontend e backend, em substituição à VPS/Docker como destino de produção | Infraestrutura | Definida; produto Cloudflare e implantação ainda sujeitos a verificação |
 | INF-002 | **Supabase PostgreSQL + Supabase Auth** para persistência e identidade | Dados e autenticação | Jornada real de configurações verificada em INT-003; demais módulos e controles pendentes |
 | UX-001 | Manter o Style Guide existente como contrato visual obrigatório, salvo exceções analisadas | Experiência | Reafirmada; estados faltantes pendentes |
@@ -54,8 +54,8 @@ A [especificação técnica da arquitetura](arquitetura/MVC_MONOREPO.md) governa
 | Responsabilidade | Tecnologia estabelecida ou proposta | Observação |
 | --- | --- | --- |
 | Interface | React + Vite (existente no repositório) | Preservar telas/estilo aprovados; versões e toolchain na fundação |
-| API/Controllers | Cloudflare Workers com Web APIs nativas no bootstrap novo | Express legado não foi reutilizado; rotas de negócio pendentes |
-| Modelos e regras | TypeScript no bootstrap novo e contratos tipados | Modelos e regras de negócio ainda não implementados |
+| API/Controllers | Cloudflare Workers com Web APIs nativas | Configurações e recorte inicial de produto/recebimento/saldo implementados; Express legado não reutilizado |
+| Modelos e regras | TypeScript, contratos e invariantes transacionais no PostgreSQL | Primeiras jornadas implementadas; demais módulos continuam nos seus recortes |
 | Persistência | Supabase PostgreSQL (Postgres 17 observado na conexão) | Migrations versionadas, transações e RLS |
 | Identidade | Supabase Auth | Vincular `auth.users.id` ao perfil e às unidades de negócio; abandonar senhas próprias no domínio |
 | Monorepo | npm workspaces implementado no bootstrap | Node 24.22.2, versões diretas fixadas e lockfile; execução local verificada |
@@ -139,4 +139,5 @@ Realizar a primeira implantação operacional no RP1, com duas semanas em parale
 - **Jornada real em 09/11:** [INT-003](fundacao/INT-003-JORNADA-REAL.md) configurou somente erp na Data API, provisionou três identidades reais sintéticas e duas unidades, aplicou a terceira migration corretiva e verificou 12 cenários HTTP mais a interface real desktop/móvel. Editor salva/audita; leitor não escreve; concorrência e revogação negam operações indevidas. Auditoria preservada e valores de demonstração restaurados. Aplicação executada localmente; sem deploy Cloudflare. Advisor CLI atual retornou um WARN de Auth; conector confirmou e acrescentou 14 INFO do legado contido. [Evidências](evidencias/int-003/jornada-real.json).
 - **Próximo passo:** preparar publicação controlada de View/Worker na Cloudflare do mesmo staging e validar o endereço hospedado; depois seguir as jornadas de cadastros/estoque da D1 e os recortes de políticas CONFIG-001 conforme contratos. FND-000 ainda exige revisão dos critérios para fechamento. Sem ambientes permanentes adicionais ou reset nesta fase.
 - **Estimativa de planejamento:** [09/11/2026](planejamento/ESTIMATIVA-2026-11-09.md): 8–12 semanas para D1 com piloto acompanhado e 16–24 semanas totais para as três entregas/preparação final, sob dedicação técnica próxima de integral e validações rápidas; recalibrar após duas jornadas de negócio. Não é prazo contratado ou liberação antecipada de produção.
+- **Aceleração solicitada:** [plano até 10/11](planejamento/PLANO-ATE-10-11.md), [EST-001](fundacao/EST-001-PRIMEIRO-FLUXO.md)/[OPS-001](fundacao/OPS-001-PUBLICACAO.md), issue #16 e PR #17. A responsável confirmou o primeiro fluxo de estoque e os contratos de catálogo/recebimento/NF. Implementação em paralelo com 56 testes API, 19 estoque no PostgreSQL e 23 navegador; CI do commit 4a6d2cc passou nos quatro jobs após reexecução de incidente externo. Conector Supabase aplicou o SQL revisado, registrando versão 20261110114252; arquivo local alinhado por renomeação sem alterar o corpo. Duas compras locais reais de 20 kg produziram dois lotes/movimentos, sem divergência livro/saldo; perfil leitor e DML direto negados. A captura móvel revelou tabela comprimida, corrigida com rolagem real e regressão de legibilidade. [Evidências locais](evidencias/est-001/jornada-local.json). Deploy aguarda autorização workers_scripts:write; não declarar URL hospedada validada antes do smoke.
 - **Critério de governança:** registrar mudanças futuras na seção afetada e na issue/PR correspondente; nenhuma decisão documental prova implantação real.

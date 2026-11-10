@@ -161,9 +161,21 @@ try {
   await navigate(reader, 'Saldo');
   await expect(reader.getByRole('row').filter({ hasText: lot })).toContainText(/20\s+KG/i);
   await expect(reader.locator('html')).toHaveJSProperty('scrollWidth', 360);
+  const balanceScroller = reader.locator('.table-wrap[aria-label="Saldos por lote e local"]');
+  const geometry = await balanceScroller.evaluate(element => ({
+    viewport: element.clientWidth, content: element.scrollWidth,
+    productWidth: element.querySelector('tbody th').getBoundingClientRect().width,
+    headerHeights: [...element.querySelectorAll('thead th')].map(cell => cell.getBoundingClientRect().height),
+  }));
+  if (geometry.content <= geometry.viewport || geometry.productWidth < 220 || geometry.headerHeights.some(height => height >= 60)) throw Error('Tabela móvel sem largura legível ou rolagem efetiva.');
+  await expect(balanceScroller).toHaveAttribute('tabindex', '0');
+  await balanceScroller.focus();
+  await balanceScroller.press('ArrowRight');
+  await expect.poll(() => balanceScroller.evaluate(element => element.scrollLeft)).toBeGreaterThan(0);
+  await balanceScroller.evaluate(element => { element.scrollLeft = 0; });
   await capture(reader, 'estoque-saldo-360.png');
   await reader.getByRole('button', { name: 'Sair', exact: true }).click();
-  record('Leitor consulta sem escrita e saldo em 360 px sem overflow da página');
+  record('Leitor consulta sem escrita e saldo em 360 px com colunas legíveis e rolagem horizontal por teclado');
   completed = true;
 } catch {
   console.error('FAIL: verificação real da interface interrompida; revisar o estado privado antes de repetir.');

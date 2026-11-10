@@ -77,3 +77,9 @@ Registrar resultados efetivos por critério, com commit, data e ambiente:
 6. Evidência identifica o que passou, o que não foi executado e as limitações. Se P3 não atingir seus critérios até o limite, reportar o incremento efetivamente verificado e a pendência; não declarar primeiro fluxo de estoque concluído apenas porque P1/P2 passaram.
 
 Esses critérios são a condição de uma demonstração técnica com dados sintéticos. Não encerram a Entrega 1, RF-008 integral, RNF-004, o piloto real de duas semanas do DRS 15.4 ou o aceite institucional. O conteúdo das três entregas da seção 15.2 permanece preservado.
+
+## Continuidade em 10/11
+
+EST-001 implementado e verificado com Worker/View locais e Supabase real: produto cadastrado/buscado/editado, compra de 20 kg confirmada, saldo por lote/local, nova sessão e leitor readonly. API real também negou duplicidade/reenvio/NF, outra unidade e DML direto. PostgreSQL validou atomicidade/auditoria, concorrência e revogação; 23 cenários de navegador passaram após correção de legibilidade móvel. [Resultados](../fundacao/EST-001-PRIMEIRO-FLUXO.md) e [evidências locais](../evidencias/est-001/jornada-local.json). Não tratar esse resultado local como deploy.
+
+P1/publicação depende da autorização Cloudflare workers_scripts:write: login inicial foi confirmado, mas o endpoint de deployments retornou 403 e a autorização adicional ainda não foi recebida pelo terminal. [OPS-001](../fundacao/OPS-001-PUBLICACAO.md) registra o diagnóstico. Nenhum Worker de conta temporária ou ambiente adicional foi criado para contornar esse acesso. Concluir URL/smoke hospedado assim que o escopo for confirmado; enquanto isso, o fluxo é utilizável localmente em 8787 com os dados sintéticos privados preparados.

@@ -24,7 +24,7 @@ function receipt(extra = {}) {
   };
 }
 async function setup(page, options = {}) {
-  const state = { products: options.products ?? [{ ...product }], receipts: options.receipts ?? [], balances: [], writes: [], confirmKeys: [], confirmFailures: options.confirmFailures ?? [], productFailure: 0 };
+  const state = { products: options.products ?? [{ ...product }], receipts: options.receipts ?? [], balances: options.balances ?? [], writes: [], confirmKeys: [], confirmFailures: options.confirmFailures ?? [], productFailure: 0 };
   await page.route('https://auth-ficticio.supabase.co/**', route => {
     if (route.request().url().includes('/token')) return route.fulfill({ json: {
       access_token: 'eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ0ZXN0ZSJ9.ficticio', refresh_token: 'ficticio', token_type: 'bearer', expires_in: 3600,
@@ -79,6 +79,29 @@ async function setup(page, options = {}) {
   return state;
 }
 async function navigate(page, name) { await page.getByRole('navigation', { name: 'Principal' }).getByRole('link', { name, exact: true }).click(); }
+async function expectReadableScroller(page, label, minimumWidth = 840) {
+  const wrapper = page.locator(`.table-wrap[aria-label="${label}"]`);
+  await expect(wrapper).toBeVisible();
+  await expect(wrapper).toHaveAttribute('tabindex', '0');
+  const size = await wrapper.evaluate(element => {
+    const table = element.querySelector('table');
+    return {
+      viewport: element.clientWidth, content: element.scrollWidth, table: table.getBoundingClientRect().width,
+      product: table.querySelector('tbody th').getBoundingClientRect().width,
+      rowHeight: table.querySelector('tbody tr').getBoundingClientRect().height,
+      headers: [...table.querySelectorAll('thead th')].map(cell => cell.getBoundingClientRect().height),
+    };
+  });
+  expect(size.content).toBeGreaterThan(size.viewport);
+  expect(size.table).toBeGreaterThanOrEqual(minimumWidth);
+  expect(size.product).toBeGreaterThanOrEqual(220);
+  expect(size.rowHeight).toBeLessThan(180);
+  expect(size.headers.every(height => height < 60)).toBe(true);
+  await wrapper.focus();
+  await wrapper.press('ArrowRight');
+  await expect.poll(() => wrapper.evaluate(element => element.scrollLeft)).toBeGreaterThan(0);
+  await wrapper.evaluate(element => { element.scrollLeft = 0; });
+}
 async function fillReceipt(page) {
   await page.getByRole('button', { name: 'Novo recebimento', exact: true }).click();
   await page.getByLabel('Fornecedor *', { exact: true }).selectOption('13');
@@ -237,6 +260,7 @@ test('produto e recebimento cabem em 360px com tabelas roláveis', async ({ page
   await setup(page);
   await navigate(page, 'Produtos');
   await expect(page.getByRole('table')).toBeVisible();
+  await expectReadableScroller(page, 'Lista de produtos');
   await expect(page.locator('html')).toHaveJSProperty('scrollWidth', 360);
   await page.getByRole('button', { name: 'Novo produto', exact: true }).click();
   await expect(page.locator('html')).toHaveJSProperty('scrollWidth', 360);
@@ -245,4 +269,26 @@ test('produto e recebimento cabem em 360px com tabelas roláveis', async ({ page
   await expect(page.getByRole('heading', { name: 'Dados da nota', exact: true })).toBeVisible();
   await expect(page.locator('html')).toHaveJSProperty('scrollWidth', 360);
   await page.screenshot({ path: 'test-results/estoque-360.png', fullPage: true });
+});
+
+test('saldo em 360px mantém produto e lote legíveis com rolagem real e 20 kg', async ({ page }) => {
+  const name = 'Arroz branco parboilizado integral para refeições de demonstração do Restaurante Popular';
+  const lot = 'DEMONSTRACAO-EST001-RECEBIMENTO-20KG-2026';
+  await page.setViewportSize({ width: 360, height: 900 });
+  await setup(page, {
+    products: [{ ...product, descricao: name }],
+    balances: [{ produto_id: productId, produto: name, unidade_medida: 'kg', lote_id: '50', lote: lot, validade: '2030-12-31', camara_id: '14', local: 'Almoxarifado seco de alimentos da unidade de demonstração', quantidade: '20', valor_unitario: '4' }],
+  });
+  await navigate(page, 'Produtos');
+  await expectReadableScroller(page, 'Lista de produtos');
+  await page.screenshot({ path: 'test-results/produtos-longos-360.png', fullPage: true });
+  await navigate(page, 'Saldo');
+  await expect(page.getByRole('table')).toContainText(name);
+  await expect(page.getByRole('table')).toContainText('20 kg');
+  await expectReadableScroller(page, 'Saldos por lote e local', 960);
+  await expect(page.locator('html')).toHaveJSProperty('scrollWidth', 360);
+  const wrapper = page.locator('.table-wrap[aria-label="Saldos por lote e local"]');
+  await page.screenshot({ path: 'test-results/saldo-longo-360.png', fullPage: true });
+  await wrapper.evaluate(element => { element.scrollLeft = element.scrollWidth; });
+  await page.screenshot({ path: 'test-results/saldo-quantidade-360.png', fullPage: true });
 });

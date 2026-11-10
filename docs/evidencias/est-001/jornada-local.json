@@ -1,0 +1,59 @@
+{
+  "environment": "Worker/View locais + Supabase staging real",
+  "deployment": false,
+  "http": {
+    "executedAt": "2026-11-10T11:45:41.996Z",
+    "origin": "http://127.0.0.1:8787",
+    "mocked": false,
+    "completed": true,
+    "results": [
+      {
+        "scenario": "Worker real responde health, mantém 404 JSON e nega acesso sem sessão",
+        "passed": true
+      },
+      {
+        "scenario": "Quatro identidades sintéticas autenticadas e verificadas no Auth real",
+        "passed": true
+      },
+      {
+        "scenario": "Capacidades distinguem cadastro, recebimento, aprovação e consulta",
+        "passed": true
+      },
+      {
+        "scenario": "Produto persiste, busca/edição funcionam e duplicidade/leitor/outra unidade são negados",
+        "passed": true
+      },
+      {
+        "scenario": "Compra de 20 kg confirma atomicamente: lote/local corretos, corrida e reenvio sem duplicar saldo/NF",
+        "passed": true
+      },
+      {
+        "scenario": "Leitor, outra unidade e escrita direta não alteram o estoque",
+        "passed": true
+      }
+    ]
+  },
+  "browser": {
+    "executedAt": "2026-11-10T11:46:50.757Z",
+    "origin": "http://127.0.0.1:8787",
+    "mocked": false,
+    "completed": true,
+    "scenarios": [
+      "Login real do estoquista e contexto da unidade autorizada",
+      "Produto criado, pesquisado e reaberto com decimal em português",
+      "Compra de 20 kg confirmada pela UI e saldo real por lote/local consultado",
+      "Nova sessão recupera o produto e a entrada confirmada",
+      "Leitor consulta sem escrita e saldo em 360 px sem overflow da página"
+    ]
+  },
+  "mobileAfterCorrection": {
+    "completed": true,
+    "mocked": false,
+    "origin": "http://127.0.0.1:8787",
+    "sizes": {
+      "scroll": 960,
+      "width": 278,
+      "html": 360
+    }
+  }
+}

@@ -13,6 +13,7 @@
   "scripts": {
     "dev:web": "npm run dev --workspace @erp/web",
     "dev:api": "npm run dev --workspace @erp/api",
+    "dev:staging": "wrangler dev --config wrangler.staging.jsonc --local --port 8787",
     "lint": "eslint apps packages",
     "typecheck": "npm run typecheck --workspaces",
     "test": "npm run test:api && npm run test:db && npm run test:stock && npm run test:legacy && npm run test:provision",

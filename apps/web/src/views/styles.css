@@ -196,10 +196,19 @@ a:focus-visible {
 .badge-success { background: #eaf5e9; color: #1d4d25; }
 .warning form { display: grid; gap: 16px; margin-top: 20px; }
 .warning form button { justify-self: start; }
-.stock-main .table-wrap { max-width: 100%; }
-.stock-main table { font-size: 15px; }
-.stock-main thead th { background: #faf7f5; font-size: 13px; font-weight: 700; padding: 10px 14px; }
+.stock-main .table-wrap { position: relative; width: 100%; min-width: 0; max-width: 100%; overflow-x: auto; overscroll-behavior-x: contain; }
+.stock-main .table-wrap:focus-visible { outline: 3px solid #5b0f1a; outline-offset: 3px; }
+.stock-main table { min-width: 840px; table-layout: auto; font-size: 15px; }
+.stock-main th, .stock-main td { min-width: 100px; overflow-wrap: normal; word-break: normal; vertical-align: top; }
+.stock-main thead th { background: #faf7f5; font-size: 13px; font-weight: 700; padding: 10px 14px; white-space: nowrap; }
 .stock-main tbody td, .stock-main tbody th { padding: 10px 14px; }
+.stock-main th:first-child { min-width: 220px; }
+.stock-main .numeric { white-space: nowrap; }
+.stock-main .table-wrap[aria-label='Saldos por lote e local'] table { min-width: 960px; }
+.stock-main .table-wrap[aria-label='Saldos por lote e local'] th:first-child { min-width: 240px; }
+.stock-main .table-wrap[aria-label='Saldos por lote e local'] td:nth-child(2) { min-width: 190px; }
+.stock-main .table-wrap[aria-label='Saldos por lote e local'] td:nth-child(3) { min-width: 112px; white-space: nowrap; }
+.stock-main .table-wrap[aria-label='Saldos por lote e local'] td:nth-child(4) { min-width: 180px; }
 button.confirm-receipt { background: #2f7d3a; border-color: #2f7d3a; }
 button.confirm-receipt:hover { background: #256530; border-color: #256530; }
 .side a:focus-visible,

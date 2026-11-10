@@ -24,4 +24,6 @@ Fontes oficiais consultadas: [Workers Static Assets](https://developers.cloudfla
 
 ## Resultado
 
-Em execução. Publicação e smoke hospedado ainda não demonstrados neste registro inicial; atualizar somente após confirmação pelas ferramentas.
+10/11: CI 4a6d2cc aprovado nos quatro jobs; migration/seed de EST-001 aplicados pelo conector e jornada real local de produto/compra/lote/saldo passou. Primeira tentativa de deployment parou antes de upload: `/workers/scripts/erp-joinville-staging/deployments` retornou 403 “No access to the specified resource”. Consulta da conta confirmou zero Workers; o nome não existe (404/10007) e o login contém workers:write, mas não workers_scripts:write. Nova autorização específica foi solicitada pelo fluxo de dispositivo; não presumir concessão pelo relato de conclusão sem confirmação no terminal. Nenhuma URL hospedada comprovada até aqui.
+
+Worker local com os mesmos assets/API está em `http://127.0.0.1:8787`, usando o Supabase hospedado. EST-001 registra duas compras reais sintéticas de 20 kg e evidências locais. Após confirmar o escopo, publicar build do commit aprovado, verificar HTTPS/Auth/API/UI e registrar URL/versão; não criar conta temporária ou outro ambiente para contornar a permissão.
