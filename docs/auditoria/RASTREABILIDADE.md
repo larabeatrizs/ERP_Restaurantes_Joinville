@@ -17,6 +17,8 @@ Fonte: [DRS v1.3 e adendo](../requisitos/Requisitos_Software_Restaurantes_Popula
 
 ## G02 — Identidade e autorização
 
+Continuidade em 10/11/2026: [ADM-001](../fundacao/ADM-001-ADMINISTRACAO.md)/[issue #19](https://github.com/larabeatrizs/ERP_Restaurantes_Joinville/issues/19) detalha a administração RF-008, seu acesso restrito e o provisionamento inicial pendente. Login/configurações reais estão demonstrados em INT-003/OPS-001; a matriz histórica abaixo não representa implantação da gestão de usuários.
+
 - UI/estados: Login; gestão de usuários sem frame nomeado. Estados não comprovados detalhados no mapa de UI.
 - Camadas propostas: AuthController → AcessoService → Perfil/VinculoUnidade → AcessoRepository.
 - Schema e autorização a especificar: identidade e vínculos; isolamento por unidade, permissões e estado ativo.
