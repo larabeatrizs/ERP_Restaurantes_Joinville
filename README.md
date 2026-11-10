@@ -2,7 +2,7 @@
 
 Sistema web para gestão dos Restaurantes Populares de Joinville, com estoque por lote e unidade, entradas, saídas, cardápios, relatórios e rastreabilidade.
 
-> **Estado em 10/11/2026:** configurações e primeiro fluxo de estoque verificados com aplicação local e Supabase real: produto → compra confirmada → lote/local → saldo de 20 kg. Banco com quatro migrations e 20 tabelas erp com RLS. [Evidências EST-001](docs/fundacao/EST-001-PRIMEIRO-FLUXO.md). Publicação Cloudflare aguarda autorização de scripts do Worker; ERP integral e liberação operacional continuam pendentes. Os protótipos estão em `legacy/`.
+> **Estado em 10/11/2026:** [staging online](https://erp-joinville-staging.erp-restaurantes-joinville.workers.dev), com configurações e primeiro fluxo de estoque verificados em Cloudflare/Supabase reais: produto → compra confirmada → lote/local → saldo de 20 kg. Quatro migrations e 20 tabelas erp com RLS. [Evidências hospedadas](docs/evidencias/ops-001/jornada-hospedada.json). A meta de demonstração foi atendida; ERP integral e liberação operacional continuam pendentes. Os protótipos estão em `legacy/`.
 
 Atualização 09/11/2026: após [SEC-003](docs/fundacao/SEC-003-CONTENCAO-LEGADO.md) e [DB-004](docs/fundacao/DB-004-STAGING.md), [INT-003](docs/fundacao/INT-003-JORNADA-REAL.md) expôs somente erp, criou três identidades/duas unidades sintéticas e aplicou uma migration corretiva aditiva. Jornada real demonstrada; legado permanece contido. Advisor atual: WARN de proteção contra senhas vazadas e 14 INFO do legado sem políticas, registrados para hardening. Não executar bootstrap/fixtures dos testes de laboratório contra o banco hospedado.
 
@@ -26,7 +26,7 @@ A responsável definiu uma [meta até 10/11](docs/planejamento/PLANO-ATE-10-11.m
 - **View:** React + Vite, hospedado na Cloudflare.
 - **API/Controllers:** Cloudflare Workers.
 - **Banco e autenticação:** Supabase PostgreSQL e Supabase Auth.
-- **Gestão e integração:** GitHub, PRs, Issues e CI com checks, PostgreSQL descartável e navegador. Deploy ainda pendente.
+- **Gestão e integração:** GitHub, PRs, Issues e CI com checks, PostgreSQL descartável e navegador. Staging publicado em Cloudflare Workers Static Assets, com API na mesma origem.
 
 O código novo usa `apps/web`, `apps/api` e `packages/contracts`. `supabase/migrations` contém os recortes de configurações/identidade da fase C2, derivados da modelagem nova. Consulte a documentação arquitetural antes de mover arquivos.
 
@@ -61,7 +61,7 @@ Estoque real opt-in: `ERP_STOCK_TEST_STATE` aponta ao `stock-identidades.json` p
 
 O recorte [DB-001/C2.1](docs/fundacao/DB-001-CONFIGURACOES.md) acrescenta testes SQL: `npm run test:db` usa PGlite em memória, e `npm test` executa HTTP e banco. O CI também roda a suíte SQL em PostgreSQL 17 descartável. Não apontar DATABASE_TEST_URL para ambientes existentes: a suíte requer banco de teste vazio e valida o destino local. Não aplicar os arquivos de bootstrap/fixtures no Supabase.
 
-A [API de configurações](docs/fundacao/API-001-CONFIGURACOES.md) implementa GET/PATCH em `/api/unidades/{id}/configuracoes`, com Bearer e revisão por ETag/If-Match. Runtime exige SUPABASE_URL e SUPABASE_PUBLISHABLE_KEY; o exemplo sem valores reais está em `apps/api/.dev.vars.example`. Sem configuração, as rotas protegidas retornam 503. Nenhuma chave administrativa deve ser usada. INT-003 validou a integração real com execução local; o endereço hospedado ainda precisa ser publicado/verificado.
+A [API de configurações](docs/fundacao/API-001-CONFIGURACOES.md) implementa GET/PATCH em `/api/unidades/{id}/configuracoes`, com Bearer e revisão por ETag/If-Match. Runtime exige SUPABASE_URL e SUPABASE_PUBLISHABLE_KEY; o exemplo sem valores reais está em `apps/api/.dev.vars.example`. Sem configuração, as rotas protegidas retornam 503. Nenhuma chave administrativa deve ser usada. [OPS-001](docs/fundacao/OPS-001-PUBLICACAO.md) verificou login, salvamento/retorno e negações na URL hospedada; respostas versionadas usam `no-transform` para preservar ETags fortes na Cloudflare.
 
 Se a rede usa certificados corporativos já confiáveis no Windows e o npm retornar `SELF_SIGNED_CERT_IN_CHAIN`, execute `$env:NODE_USE_SYSTEM_CA = '1'` no PowerShell antes do npm. Não desative a validação TLS. Nesta máquina, o Node portátil foi instalado em `%LOCALAPPDATA%/CodexTools/node-v24.22.2-win-x64`; adicione esse diretório ao PATH da sessão se `node` não for encontrado. Isso não altera o PATH global.
 
@@ -73,4 +73,4 @@ Adota-se **desenvolvimento orientado por especificações (Spec-Driven Developme
 
 ## Próximos trabalhos
 
-Concluir publicação/verificação na Cloudflare do mesmo staging e continuar a **Entrega 1 — Fundação e Estoque** da seção 15.2 do DRS. EST-001 demonstra compras em unidade-base e saldo por lote/local; doações, saídas, perdas, inventário, CRUD/exportação integral e vinculação de catálogo global preexistente em outra unidade seguem nos próximos recortes. Manter o design aprovado e AMB-001 congelada até o encerramento. A [estimativa inicial](docs/planejamento/ESTIMATIVA-2026-11-09.md) deve ser recalibrada com o esforço/validação das primeiras jornadas, sem declarar o ERP completo pelo fluxo de demonstração.
+Continuar a **Entrega 1 — Fundação e Estoque** da seção 15.2 do DRS: completar cadastros auxiliares e seus critérios, vinculação de catálogo global em outra unidade e os próximos contratos de movimentação. EST-001/OPS-001 demonstram compras em unidade-base e saldo por lote/local no staging online; doações, saídas, perdas, inventário e CRUD/exportação integral seguem nos seus recortes. Manter o design aprovado e AMB-001 congelada até o encerramento. A [estimativa inicial](docs/planejamento/ESTIMATIVA-2026-11-09.md) deve ser recalibrada com o esforço/validação das primeiras jornadas, sem declarar o ERP completo pelo fluxo de demonstração.

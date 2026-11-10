@@ -1,0 +1,184 @@
+{
+  "origin": "https://erp-joinville-staging.erp-restaurantes-joinville.workers.dev",
+  "applicationCommit": "31bfcf626b655fa3a9f91bd1f4cda3be5285d8a4",
+  "deploymentVersion": "66a6571d-a228-41cf-9c6b-88125818e0af",
+  "smoke": {
+    "executedAt": "2026-11-10T13:08:41.185Z",
+    "origin": "https://erp-joinville-staging.erp-restaurantes-joinville.workers.dev",
+    "commit": "31bfcf626b655fa3a9f91bd1f4cda3be5285d8a4",
+    "version": "66a6571d-a228-41cf-9c6b-88125818e0af",
+    "completed": true,
+    "outcomes": [
+      {
+        "route": "/",
+        "status": 200,
+        "headers": {
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY",
+          "referrer-policy": "no-referrer",
+          "x-robots-tag": "noindex, nofollow",
+          "content-type": "text/html",
+          "cache-control": "public, max-age=0, must-revalidate"
+        }
+      },
+      {
+        "route": "/api/health",
+        "status": 200,
+        "headers": {
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY",
+          "referrer-policy": "no-referrer",
+          "x-robots-tag": "noindex, nofollow",
+          "content-type": "application/json; charset=utf-8",
+          "cache-control": "no-store"
+        }
+      },
+      {
+        "route": "/api/inexistente",
+        "status": 404,
+        "headers": {
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY",
+          "referrer-policy": "no-referrer",
+          "x-robots-tag": "noindex, nofollow",
+          "content-type": "application/json",
+          "cache-control": "no-store"
+        }
+      },
+      {
+        "route": "/api/unidades",
+        "status": 401,
+        "headers": {
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY",
+          "referrer-policy": "no-referrer",
+          "x-robots-tag": "noindex, nofollow",
+          "content-type": "application/json",
+          "cache-control": "no-store"
+        }
+      }
+    ],
+    "assets": [
+      {
+        "path": "/assets/index-BAIxC5_7.js",
+        "status": 200,
+        "contentType": "text/javascript"
+      },
+      {
+        "path": "/assets/index-Ci8YFTHT.css",
+        "status": 200,
+        "contentType": "text/css"
+      }
+    ]
+  },
+  "etag": {
+    "executedAt": "2026-11-10T13:06:27.582Z",
+    "origin": "https://erp-joinville-staging.erp-restaurantes-joinville.workers.dev",
+    "commit": "31bfcf626b655fa3a9f91bd1f4cda3be5285d8a4",
+    "version": "66a6571d-a228-41cf-9c6b-88125818e0af",
+    "acceptEncoding": "gzip, br",
+    "status": 200,
+    "etag": "\"cfg-1-8\"",
+    "contentEncoding": null,
+    "cacheControl": "no-store, no-transform",
+    "completed": true
+  },
+  "stockHttp": {
+    "executedAt": "2026-11-10T13:06:54.090Z",
+    "completed": true,
+    "mocked": false,
+    "results": [
+      {
+        "scenario": "Worker real responde health, mantém 404 JSON e nega acesso sem sessão",
+        "passed": true
+      },
+      {
+        "scenario": "Quatro identidades sintéticas autenticadas e verificadas no Auth real",
+        "passed": true
+      },
+      {
+        "scenario": "Capacidades distinguem cadastro, recebimento, aprovação e consulta",
+        "passed": true
+      },
+      {
+        "scenario": "Produto persiste, busca/edição funcionam e duplicidade/leitor/outra unidade são negados",
+        "passed": true
+      },
+      {
+        "scenario": "Compra de 20 kg confirma atomicamente: lote/local corretos, corrida e reenvio sem duplicar saldo/NF",
+        "passed": true
+      },
+      {
+        "scenario": "Leitor, outra unidade e escrita direta não alteram o estoque",
+        "passed": true
+      }
+    ]
+  },
+  "stockBrowser": {
+    "executedAt": "2026-11-10T13:07:18.246Z",
+    "completed": true,
+    "mocked": false,
+    "scenarios": [
+      "Login real do estoquista e contexto da unidade autorizada",
+      "Produto criado, pesquisado e reaberto com decimal em português",
+      "Compra de 20 kg confirmada pela UI e saldo real por lote/local consultado",
+      "Nova sessão recupera o produto e a entrada confirmada",
+      "Leitor consulta sem escrita e saldo em 360 px com colunas legíveis e rolagem horizontal por teclado"
+    ]
+  },
+  "configurationBrowser": {
+    "executedAt": "2026-11-10T13:06:39.477Z",
+    "completed": true,
+    "mocked": false,
+    "scenarios": [
+      "login real",
+      "editor salva com revisão/motivo",
+      "retorno do valor via UI",
+      "leitor readonly",
+      "uma unidade por vínculo",
+      "layout desktop/mobile"
+    ]
+  },
+  "configurationNegatives": {
+    "executedAt": "2026-11-10T13:11:40.482Z",
+    "origin": "https://erp-joinville-staging.erp-restaurantes-joinville.workers.dev",
+    "mocked": false,
+    "completed": true,
+    "outcomes": [
+      {
+        "scenario": "reader has real read-only capability and strong ETag",
+        "status": 200,
+        "passed": true
+      },
+      {
+        "scenario": "reader PATCH denied by hosted API",
+        "status": 403,
+        "passed": true
+      },
+      {
+        "scenario": "unlinked configuration GET denied",
+        "status": 404,
+        "passed": true
+      },
+      {
+        "scenario": "unlinked configuration PATCH denied",
+        "status": 403,
+        "passed": true
+      },
+      {
+        "scenario": "configuration without bearer denied",
+        "status": 401,
+        "passed": true
+      }
+    ]
+  },
+  "productCapture": {
+    "executedAt": "2026-11-10T13:19:09.246Z",
+    "origin": "https://erp-joinville-staging.erp-restaurantes-joinville.workers.dev",
+    "completed": true,
+    "mocked": false,
+    "readOnly": true,
+    "searchResponseAwaited": true,
+    "visibleProductRows": 1
+  }
+}
