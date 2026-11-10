@@ -34,7 +34,7 @@ function reply(value: unknown, status = 200, headers: Record<string, string> = {
   return Response.json(value, { status, headers: { 'Cache-Control': 'no-store', ...headers } });
 }
 function productReply(value: ProductResult, status = 200): Response {
-  return reply(value, status, { ETag: `"prod-${value.produto.id}-${value.produto.revisao}"` });
+  return reply(value, status, { ETag: `"prod-${value.produto.id}-${value.produto.revisao}"`, 'Cache-Control': 'no-store, no-transform' });
 }
 function methodDenied(allow: string, head: boolean): Response {
   const response = reply({ error: { code: 'METHOD_NOT_ALLOWED', message: 'Método não permitido.' } }, 405, { Allow: allow });

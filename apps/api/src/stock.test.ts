@@ -98,8 +98,10 @@ test('produto criado retorna 201 e revisão ETag; edição encaminha revisão te
   const created = await app.fetch(request('/produtos', 'POST', input));
   assert.equal(created.status, 201);
   assert.equal(created.headers.get('ETag'), '"prod-9007199254740993-2"');
+  assert.equal(created.headers.get('Cache-Control'), 'no-store, no-transform');
   const updated = await app.fetch(request('/produtos/' + product.id, 'PATCH', { ...input, revisao: '1' }));
   assert.equal(updated.status, 200);
+  assert.equal(updated.headers.get('Cache-Control'), 'no-store, no-transform');
   assert.deepEqual(calls[1]?.args, ['1', input, product.id, '1']);
 });
 test('produto recusa ator/saldo injetados, decimais numéricos, expoentes e máximo menor que mínimo', async () => {
