@@ -1,9 +1,11 @@
-import type { EntradaInput, ProductList, ProductQuery, ProductResult, ProdutoInput, ReceiptList, ReceiptResult, StockBalances, StockContext } from '@erp/contracts';
+import type { AvailableProductList, ProductLinkInput, EntradaInput, ProductList, ProductQuery, ProductResult, ProdutoInput, ReceiptList, ReceiptResult, StockBalances, StockContext } from '@erp/contracts';
 
 export interface StockRuntimeEnv { SUPABASE_URL?: string; SUPABASE_PUBLISHABLE_KEY?: string }
 export interface StockRepository {
   context(unit: string): Promise<StockContext>;
   products(unit: string, query: ProductQuery): Promise<ProductList>;
+  availableProducts(unit: string, query: Pick<ProductQuery, 'q' | 'offset'>): Promise<AvailableProductList>;
+  linkProduct(unit: string, id: string, input: ProductLinkInput): Promise<ProductResult>;
   saveProduct(unit: string, input: ProdutoInput, id?: string, revision?: string): Promise<ProductResult>;
   receipts(unit: string): Promise<ReceiptList>;
   createReceipt(unit: string, input: EntradaInput): Promise<ReceiptResult>;

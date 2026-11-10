@@ -24,7 +24,7 @@ function receipt(extra = {}) {
   };
 }
 async function setup(page, options = {}) {
-  const state = { products: options.products ?? [{ ...product }], receipts: options.receipts ?? [], balances: options.balances ?? [], writes: [], confirmKeys: [], confirmFailures: options.confirmFailures ?? [], productFailure: 0 };
+  const state = { products: options.products ?? [{ ...product }], available: [{ ...product }], receipts: options.receipts ?? [], balances: options.balances ?? [], writes: [], confirmKeys: [], confirmFailures: options.confirmFailures ?? [], productFailure: 0 };
   await page.route('https://auth-ficticio.supabase.co/**', route => {
     if (route.request().url().includes('/token')) return route.fulfill({ json: {
       access_token: 'eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ0ZXN0ZSJ9.ficticio', refresh_token: 'ficticio', token_type: 'bearer', expires_in: 3600,
@@ -41,6 +41,15 @@ async function setup(page, options = {}) {
     if (url.pathname.endsWith('/configuracoes')) return route.fulfill({ headers: { ETag: `"cfg-${activeUnit}-1"` }, json: { pode_editar: true, configuracao: { unidade_id: activeUnit, revisao: '1', modo_saida: 'POSTERIOR', margem_percentual: '5', dias_alerta_validade: 7, prazo_amostra_horas: 72, periodicidade_inventario_dias: 7, referencia_preco: 'MENOR_COTACAO', alerta_email_habilitado: false } } });
     if (url.pathname.endsWith('/estoque/contexto')) return respond({ ...context, capacidades: { ...context.capacidades, ...options.capabilities } });
     if (url.pathname.endsWith('/estoque/saldos')) return respond({ saldos: activeUnit === unit ? state.balances : [] });
+    if (url.pathname.endsWith('/produtos/disponiveis')) {
+      const filtered=state.available.filter(p=>p.descricao.toLowerCase().includes((url.searchParams.get('q')??'').toLowerCase()));
+      const offset=Number(url.searchParams.get('offset')??0);return respond({produtos:filtered.slice(offset,offset+50),total:filtered.length});
+    }
+    if (url.pathname.endsWith('/vinculo')) {
+      const body=request.postDataJSON();state.writes.push({path:url.pathname,method:request.method(),body});
+      if(state.productFailure){const status=state.productFailure;state.productFailure=0;return route.fulfill({status,json:{error:{code:'TEST'}}});}
+      const saved={...product,...body};state.products=[saved];state.available=[];return respond({produto:saved});
+    }
     if (url.pathname.endsWith('/produtos') && request.method() === 'GET') {
       const filtered = state.products.filter(item => item.status === url.searchParams.get('status') && item.descricao.toLowerCase().includes((url.searchParams.get('q') ?? '').toLowerCase()));
       const offset = Number(url.searchParams.get('offset') ?? 0);
@@ -291,4 +300,33 @@ test('saldo em 360px mantém produto e lote legíveis com rolagem real e 20 kg',
   await page.screenshot({ path: 'test-results/saldo-longo-360.png', fullPage: true });
   await wrapper.evaluate(element => { element.scrollLeft = element.scrollWidth; });
   await page.screenshot({ path: 'test-results/saldo-quantidade-360.png', fullPage: true });
+});
+
+test('vínculo busca cadastro global e salva apenas parâmetros locais, com precisão e reabertura em 360px',async({page})=>{
+ await page.setViewportSize({width:360,height:900});const state=await setup(page,{products:[]});await navigate(page,'Produtos');
+ await page.getByRole('button',{name:'Vincular produto existente',exact:true}).click();
+ await page.getByLabel('Buscar no catálogo',{exact:true}).fill('Arroz');await page.getByRole('button',{name:'Buscar',exact:true}).click();
+ await expect(page.getByRole('button',{name:'Selecionar Arroz branco',exact:true})).toBeVisible();
+ await expectReadableScroller(page,'Produtos disponíveis para vínculo');
+ await page.getByRole('button',{name:'Selecionar Arroz branco',exact:true}).click();
+ await page.getByLabel('Estoque mínimo *',{exact:true}).fill('7,000001');await page.getByLabel('Estoque máximo',{exact:true}).fill('1');
+ await page.getByRole('button',{name:'Vincular à unidade',exact:true}).click();await expect(page.getByRole('alert')).toContainText('máximo');expect(state.writes).toHaveLength(0);
+ await page.getByLabel('Estoque máximo',{exact:true}).fill('20,5');await page.getByRole('button',{name:'Vincular à unidade',exact:true}).click();
+ await expect(page.getByRole('status')).toHaveText('Produto vinculado à unidade com sucesso.');
+ expect(state.writes).toEqual([{path:`/api/unidades/${unit}/produtos/${productId}/vinculo`,method:'POST',body:{revisao:product.revisao,estoque_minimo:'7.000001',estoque_maximo:'20.5',ponto_reposicao:null}}]);
+ await page.getByRole('button',{name:'Editar Arroz branco',exact:true}).click();await expect(page.getByLabel('Estoque mínimo *',{exact:true})).toHaveValue('7,000001');
+ await expect(page.locator('html')).toHaveJSProperty('scrollWidth',360);
+});
+
+test('vínculo preserva parâmetros após revisão antiga e permite cancelar descarte',async({page})=>{
+ const state=await setup(page,{products:[]});await navigate(page,'Produtos');await page.getByRole('button',{name:'Vincular produto existente',exact:true}).click();
+ await page.getByRole('button',{name:'Selecionar Arroz branco',exact:true}).click();await page.getByLabel('Estoque mínimo *',{exact:true}).fill('9,5');state.productFailure=412;
+ await page.getByRole('button',{name:'Vincular à unidade',exact:true}).click();await expect(page.getByRole('alert')).toContainText('cadastro do produto mudou');
+ await expect(page.getByLabel('Estoque mínimo *',{exact:true})).toHaveValue('9,5');
+ page.once('dialog',dialog=>dialog.dismiss());await page.getByRole('button',{name:'Voltar ao catálogo',exact:true}).click();await expect(page.getByLabel('Estoque mínimo *',{exact:true})).toHaveValue('9,5');
+ page.once('dialog',dialog=>dialog.accept());await page.getByRole('button',{name:'Voltar ao catálogo',exact:true}).click();await expect(page.getByLabel('Buscar no catálogo',{exact:true})).toBeVisible();expect(state.writes).toHaveLength(1);
+});
+
+test('consulta desabilita vínculo ao catálogo compartilhado',async({page})=>{
+ await setup(page,{capabilities:{produto_escrever:false}});await navigate(page,'Produtos');await expect(page.getByRole('button',{name:'Vincular produto existente',exact:true})).toBeDisabled();
 });

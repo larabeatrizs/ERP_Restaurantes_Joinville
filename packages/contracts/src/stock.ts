@@ -11,6 +11,14 @@ export interface ProdutoInput {
 export interface Product extends ProdutoInput {
   id: string; revisao: string; unidade_sigla: string; categoria_descricao: string;
 }
+export interface CatalogProduct {
+  id: string; revisao: string; descricao: string; complemento: string; unidade_sigla: string;
+  categoria_descricao: string; apresentacao_compra: string; armazenamento: StorageType;
+}
+export interface ProductLinkInput {
+  revisao: string; estoque_minimo: string; estoque_maximo: string | null; ponto_reposicao: string | null;
+}
+export interface AvailableProductList { produtos: CatalogProduct[]; total: number }
 export interface EntradaItemInput {
   produto_id: string; quantidade: string; valor_unitario: string; numero_lote: string | null;
   validade: string | null; camara_id: string; temperatura: string | null;
@@ -74,6 +82,12 @@ export function isIsoDate(value: unknown): value is string {
 function scaled(value: string): bigint {
   const [whole = '0', fraction = ''] = value.split('.');
   return BigInt(whole) * 1000000n + BigInt(fraction.padEnd(6, '0'));
+}
+export function isProductLinkInput(value: unknown): value is ProductLinkInput {
+  return isRecord(value) && hasExactFields(value, ['revisao', 'estoque_minimo', 'estoque_maximo', 'ponto_reposicao'])
+    && isStockId(value.revisao) && isStockDecimal(value.estoque_minimo)
+    && (value.estoque_maximo === null || (isStockDecimal(value.estoque_maximo) && scaled(value.estoque_maximo) >= scaled(value.estoque_minimo)))
+    && (value.ponto_reposicao === null || isStockDecimal(value.ponto_reposicao));
 }
 export function isProdutoInput(value: unknown): value is ProdutoInput {
   if (!isRecord(value) || !hasExactFields(value, productInputFields)) return false;

@@ -1,4 +1,4 @@
-import type { EntradaInput, ProductQuery, ProdutoInput } from '@erp/contracts';
+import type { EntradaInput, ProductLinkInput, ProductQuery, ProdutoInput } from '@erp/contracts';
 import type { StockRepository } from '../repositories/stock-repository.ts';
 
 /** Casos de uso de estoque independentes das capacidades de configurações. */
@@ -7,6 +7,8 @@ export class StockService {
   constructor(repository: StockRepository) { this.repository = repository; }
   context(unit: string) { return this.repository.context(unit); }
   products(unit: string, query: ProductQuery) { return this.repository.products(unit, query); }
+  availableProducts(unit: string, query: Pick<ProductQuery, 'q' | 'offset'>) { return this.repository.availableProducts(unit, query); }
+  linkProduct(unit: string, id: string, input: ProductLinkInput) { return this.repository.linkProduct(unit, id, input); }
   saveProduct(unit: string, input: ProdutoInput, id?: string, revision?: string) {
     return this.repository.saveProduct(unit, input, id, revision);
   }

@@ -1,5 +1,5 @@
 import { isRecord, isPositiveBigint } from '@erp/contracts';
-import type { ProdutoInput, Product, EntradaInput, Receipt, StockContext, ProductList, ReceiptList, StockBalances } from '@erp/contracts';
+import type { AvailableProductList, ProductLinkInput, ProdutoInput, Product, EntradaInput, Receipt, StockContext, ProductList, ReceiptList, StockBalances } from '@erp/contracts';
 import { RequestError } from './api.ts';
 
 export class StockApi {
@@ -40,6 +40,17 @@ export class StockApi {
     const data = await this.request(unit, product ? `/produtos/${product.id}` : '/produtos',
       product ? { ...input, revisao: product.revisao } : input, product ? 'PATCH' : 'POST');
     if (!isRecord(data.produto) || typeof data.produto.id !== 'string' || typeof data.produto.revisao !== 'string') throw new RequestError(503);
+    return data.produto as unknown as Product;
+  }
+  async availableProducts(unit: string, query = '', offset = 0): Promise<AvailableProductList> {
+    const data = await this.request(unit, `/produtos/disponiveis?${new URLSearchParams({ q: query, offset: String(offset) })}`);
+    if (!Array.isArray(data.produtos) || !Number.isSafeInteger(data.total)) throw new RequestError(503);
+    return data as unknown as AvailableProductList;
+  }
+  async linkProduct(unit: string, id: string, input: ProductLinkInput): Promise<Product> {
+    if (!isPositiveBigint(id)) throw new RequestError(404);
+    const data = await this.request(unit, `/produtos/${id}/vinculo`, input);
+    if (!isRecord(data.produto) || data.produto.id !== id || typeof data.produto.revisao !== 'string') throw new RequestError(503);
     return data.produto as unknown as Product;
   }
 

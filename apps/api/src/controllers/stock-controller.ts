@@ -1,4 +1,4 @@
-import { hasExactFields, isEntradaInput, isProdutoInput, isRecord, isStockId, isText } from '@erp/contracts';
+import { hasExactFields, isEntradaInput, isProductLinkInput, isProdutoInput, isRecord, isStockId, isText } from '@erp/contracts';
 import type { ProductQuery, ProductResult } from '@erp/contracts';
 import { ApiError } from '../errors.ts';
 import { StockService } from '../services/stock-service.ts';
@@ -52,21 +52,32 @@ function productQuery(url: URL): ProductQuery {
 }
 
 export async function stockController(request: Request, env: StockRuntimeEnv, unit: string, route: string, factory: StockSessionFactory): Promise<Response> {
-  const productEdit = /^produtos\/([^/]+)$/.exec(route);
+  const productEdit = route === 'produtos/disponiveis' ? null : /^produtos\/([^/]+)$/.exec(route);
+  const productLink = /^produtos\/([^/]+)\/vinculo$/.exec(route);
   const confirmation = /^entradas\/([^/]+)\/(confirmar|aprovar-divergencia)$/.exec(route);
-  const allow = productEdit ? 'PATCH' : confirmation ? 'POST' : route === 'produtos' || route === 'entradas' ? 'GET, POST' : 'GET';
+  const allow = productEdit ? 'PATCH' : confirmation || productLink ? 'POST' : route === 'produtos' || route === 'entradas' ? 'GET, POST' : 'GET';
   if (!allow.split(', ').includes(request.method)) return methodDenied(allow, request.method === 'HEAD');
   const token = /^Bearer\s+(\S+)$/i.exec(request.headers.get('Authorization') ?? '')?.[1];
   if (!token) throw new ApiError(401, 'UNAUTHORIZED', 'Informe uma sessão válida.');
-  if (!isStockId(unit) || (productEdit && !isStockId(productEdit[1])) || (confirmation && !isStockId(confirmation[1]))) throw new ApiError(400, 'INVALID_ID', 'Identificador inválido.');
+  if (!isStockId(unit) || (productEdit && !isStockId(productEdit[1])) || (productLink && !isStockId(productLink[1])) || (confirmation && !isStockId(confirmation[1]))) throw new ApiError(400, 'INVALID_ID', 'Identificador inválido.');
   const session = factory(env, token);
   await session.authenticate();
   const service = new StockService(session.repository);
+  if (route === 'produtos/disponiveis') {
+    const url = new URL(request.url);
+    if (url.searchParams.has('status')) throw new ApiError(400, 'INVALID_QUERY', 'Filtros inválidos.');
+    const { q, offset } = productQuery(url);
+    return reply(await service.availableProducts(unit, { q, offset }));
+  }
   if (route === 'estoque/contexto') return reply(await service.context(unit));
   if (route === 'estoque/saldos') return reply(await service.balances(unit));
   if (route === 'produtos' && request.method === 'GET') return reply(await service.products(unit, productQuery(new URL(request.url))));
   if (route === 'entradas' && request.method === 'GET') return reply(await service.receipts(unit));
   const data = await readJson(request);
+  if (productLink?.[1]) {
+    if (!isProductLinkInput(data)) invalid();
+    return productReply(await service.linkProduct(unit, productLink[1], data));
+  }
   if (route === 'produtos') {
     if (!isProdutoInput(data)) invalid();
     return productReply(await service.saveProduct(unit, data), 201);

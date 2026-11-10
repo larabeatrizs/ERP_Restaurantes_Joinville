@@ -41,6 +41,8 @@ function fixture(options: { authError?: Error; repositoryError?: Error } = {}) {
   const repository: StockRepository = {
     async context(unit) { collect('context', unit); return context; },
     async products(unit, query) { collect('products', unit, query); return { produtos: [product], total: 1 }; },
+    async availableProducts(unit, query) { collect('availableProducts', unit, query); return { produtos: [product], total: 1 }; },
+    async linkProduct(unit, id, value) { collect('linkProduct', unit, id, value); return { produto: product }; },
     async saveProduct(unit, value, id, revision) { collect('saveProduct', unit, value, id, revision); return { produto: product }; },
     async receipts(unit) { collect('receipts', unit); return { entradas: [receipt] }; },
     async createReceipt(unit, value) { collect('createReceipt', unit, value); return { entrada: receipt }; },
@@ -60,6 +62,32 @@ test('estoque exige Bearer e não consulta dados sem identidade', async () => {
   assert.equal(response.status, 401);
   assert.equal(response.headers.get('WWW-Authenticate'), 'Bearer');
   assert.equal(calls.length, 0);
+});
+
+test('catálogo disponível e vínculo preservam IDs/decimais e não aceitam campos globais',async()=>{
+ const {app,calls}=fixture();
+ const available=await app.fetch(request('/produtos/disponiveis?q=arroz&offset=50'));
+ assert.equal(available.status,200);assert.deepEqual(calls[0],{name:'availableProducts',args:['1',{q:'arroz',offset:50}]});
+ const body={revisao:'2',estoque_minimo:'0.000001',estoque_maximo:null,ponto_reposicao:null};
+ const saved=await app.fetch(request(`/produtos/${product.id}/vinculo`,'POST',body));
+ assert.equal(saved.status,200);assert.equal(saved.headers.get('ETag'),`"prod-${product.id}-2"`);assert.equal(saved.headers.get('Cache-Control'),'no-store, no-transform');
+ assert.deepEqual(calls[1],{name:'linkProduct',args:['1',product.id,body]});
+ for(const invalid of [{...body,descricao:'Não alterar'},{...body,estoque_minimo:0},{...body,estoque_maximo:'0'},{...body,ator_id:'x'},{...body,revisao:'0'}]){
+  assert.equal((await app.fetch(request(`/produtos/${product.id}/vinculo`,'POST',invalid))).status,422);
+ }
+ assert.equal(calls.length,2);
+ for(const query of ['?status=INATIVO','?q=a&q=b','?offset=-1','?unidade_id=2'])assert.equal((await app.fetch(request('/produtos/disponiveis'+query))).status,400);
+ assert.equal((await app.fetch(request('/produtos/x/vinculo','POST',body))).status,400);
+ assert.equal((await app.fetch(request(`/produtos/${product.id}/vinculo`))).status,405);
+ assert.equal((await app.fetch(new Request(base+'/produtos/disponiveis'))).status,401);
+});
+
+test('vínculo mantém negações e conflito de revisão sem expor mensagens SQL',async()=>{
+ const body={revisao:'2',estoque_minimo:'0',estoque_maximo:null,ponto_reposicao:null};
+ for(const status of [403,404,409,412]){
+  const {app}=fixture({repositoryError:new ApiError(status,'TEST','Mensagem segura')});
+  const result=await app.fetch(request(`/produtos/${product.id}/vinculo`,'POST',body));assert.equal(result.status,status);
+ }
 });
 test('contexto e listagens usam sessão própria e preservam IDs bigint textuais', async () => {
   const { app, calls } = fixture();
