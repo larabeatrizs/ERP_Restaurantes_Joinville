@@ -70,7 +70,7 @@ test('GET retorna configuração, capacidade e ETag sem cache', async () => {
   const response = await app.fetch(new Request(route, { headers: { Authorization: 'Bearer token-ficticio' } }));
   assert.equal(response.status, 200);
   assert.equal(response.headers.get('ETag'), '"cfg-1-2"');
-  assert.equal(response.headers.get('Cache-Control'), 'no-store');
+  assert.equal(response.headers.get('Cache-Control'), 'no-store, no-transform');
   assert.equal(received.token, 'token-ficticio');
   assert.deepEqual(await response.json(), { configuracao: config, pode_editar: true });
 });
@@ -79,6 +79,7 @@ test('PATCH encaminha revisão como string e preserva zero/falso', async () => {
   const response = await app.fetch(patchRequest());
   assert.equal(response.status, 200);
   assert.equal(response.headers.get('ETag'), '"cfg-1-3"');
+  assert.equal(response.headers.get('Cache-Control'), 'no-store, no-transform');
   assert.equal(received.revision, '2');
   assert.deepEqual(received.patch, validPatch);
   assert.equal((await response.json()).configuracao.alerta_email_habilitado, false);

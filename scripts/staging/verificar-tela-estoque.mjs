@@ -54,7 +54,13 @@ async function enter(label, width) {
 }
 async function search(page) {
   await page.getByLabel('Buscar produto', { exact: true }).fill(nonce);
+  const loaded = page.waitForResponse(response => {
+    const target = new URL(response.url());
+    return response.request().method() === 'GET' && target.pathname === `/api/unidades/${state.units.A}/produtos` && target.searchParams.get('q') === nonce;
+  });
   await page.getByRole('button', { name: 'Buscar', exact: true }).click();
+  if (!(await loaded).ok()) throw Error('Busca real de produto indisponível.');
+  await expect(page.getByText('Carregando produtos…', { exact: true })).toHaveCount(0);
   await expect(page.getByRole('table')).toContainText(name);
 }
 async function capture(page, filename) {

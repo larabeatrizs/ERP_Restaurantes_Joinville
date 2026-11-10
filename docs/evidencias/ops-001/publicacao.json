@@ -1,0 +1,86 @@
+{
+  "environment": "Cloudflare Workers Static Assets + API + Supabase staging real",
+  "origin": "https://erp-joinville-staging.erp-restaurantes-joinville.workers.dev",
+  "applicationCommit": "31bfcf626b655fa3a9f91bd1f4cda3be5285d8a4",
+  "deploymentVersion": "66a6571d-a228-41cf-9c6b-88125818e0af",
+  "initialDeployment": {
+    "commit": "34bdd98fcc48de7081272525fbc435bee54e011a",
+    "version": "85036627-8410-4de5-9ed9-c63708507eea",
+    "createdAt": "2026-11-10T12:48:34.248Z",
+    "configurationCompleted": false,
+    "observedProblem": "Brotli changed strong configuration ETag to weak ETag; identity encoding preserved it"
+  },
+  "database": {
+    "captured_at": "2026-11-10 13:09:16.791333+00",
+    "domain_users": 4,
+    "products": 6,
+    "confirmed_receipts": 6,
+    "drafts": 0,
+    "lots": 6,
+    "movements": 6,
+    "stock_audit_events": 21,
+    "reader_stock_audit_events": 0,
+    "balances_not_twenty": 0,
+    "ledger_balance_mismatches": 0,
+    "unit_b_balances": 0,
+    "configuration_audit_events": 11,
+    "configuration_baseline_restored": true,
+    "configurations": [
+      {
+        "unit": "STG-INT003-A",
+        "margin": "5.00",
+        "revision": "10"
+      },
+      {
+        "unit": "STG-INT003-B",
+        "margin": "5.00",
+        "revision": "1"
+      }
+    ],
+    "erp_tables_with_rls": 20,
+    "stock_writer_auth_usage": false,
+    "migrations": [
+      {
+        "name": "configuracoes_identidade_base",
+        "version": "20261106201235"
+      },
+      {
+        "name": "configuracoes_salvamento_mediado",
+        "version": "20261106202428"
+      },
+      {
+        "name": "ator_auth_sem_lookup_privilegiado",
+        "version": "20261109142946"
+      },
+      {
+        "name": "primeiro_fluxo_estoque",
+        "version": "20261110114252"
+      }
+    ]
+  },
+  "advisors": [
+    {
+      "name": "rls_enabled_no_policy",
+      "level": "INFO",
+      "count": 14,
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy"
+    },
+    {
+      "name": "auth_leaked_password_protection",
+      "level": "WARN",
+      "count": 1,
+      "remediation": "https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection"
+    }
+  ],
+  "ci": {
+    "commit": "31bfcf626b655fa3a9f91bd1f4cda3be5285d8a4",
+    "run": 42821040613,
+    "conclusion": "success",
+    "jobs": [
+      "check",
+      "database-postgres",
+      "stock-postgres",
+      "browser"
+    ]
+  }
+}

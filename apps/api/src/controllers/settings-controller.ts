@@ -41,7 +41,7 @@ export async function settingsController(request: Request, env: RuntimeEnv, unit
   const service = new SettingsService(session.repository);
   if (request.method === 'GET') {
     const result = await service.read(unit);
-    return Response.json(result, { headers: { ETag: etag(unit, result.configuracao.revisao), 'Cache-Control': 'no-store' } });
+    return Response.json(result, { headers: { ETag: etag(unit, result.configuracao.revisao), 'Cache-Control': 'no-store, no-transform' } });
   }
   const match = request.headers.get('If-Match');
   if (match === null) throw new ApiError(428, 'PRECONDITION_REQUIRED', 'Informe If-Match com a revisão lida.');
@@ -54,7 +54,7 @@ export async function settingsController(request: Request, env: RuntimeEnv, unit
   if (!isConfigurationPatch(patch)) throw new ApiError(422, 'INVALID_CONFIGURATION', 'Campos ou motivo inválidos.');
   const configuration = await service.update(unit, revision[2], patch);
   return Response.json({ configuracao: configuration }, {
-    headers: { ETag: etag(unit, configuration.revisao), 'Cache-Control': 'no-store' },
+    headers: { ETag: etag(unit, configuration.revisao), 'Cache-Control': 'no-store, no-transform' },
   });
 }
 
