@@ -2,6 +2,16 @@
 
 Data: 10/11/2026. Solicitação expressa da responsável: mapear painel administrativo separado, gestão de usuários/perfis, parâmetros e cadastro futuro do primeiro administrador. **Estado: levantamento e plano; painel e administrador não provisionados.** Backlog e critérios de implementação: [issue #19](https://github.com/larabeatrizs/ERP_Restaurantes_Joinville/issues/19).
 
+## Continuidade autorizada — acesso de acompanhamento
+
+Após o levantamento, a responsável pediu acesso efetivo para acompanhar o staging. Recorte ADM-001/A: provisionar sua identidade com perfil ADMIN, mas somente CONFIGURACAO_LER, PRODUTO_LER e ESTOQUE_LER nas duas unidades sintéticas existentes. Isso antecipa a visualização da aplicação; não antecipa a gestão administrativa privilegiada, suas rotas, VPN/subdomínio, parâmetros globais ou aceite de RF-008 integral. O histórico abaixo descreve a situação anterior ao recorte.
+
+Primeiro acesso proposto neste incremento: criar via Auth Admin com credencial aleatória não entregue, gerar link recovery sem envio de email e entregar por arquivo local privado. A View troca token_hash por sessão com verifyOtp, retira o token da URL, exibe definição/confirmação de senha, chama updateUser e encerra a sessão para exigir login normal. Link expirado/usado falha sem abrir o workspace. Uma marca de sessão mantém a tela de senha após recarga. Não afirmar que esse estado de interface é uma barreira de autorização server-side de senha temporária: a conta possui somente consulta a demonstrações; RF-008 completo continua pendente.
+
+Auth Admin permanece em ferramenta local opt-in, nunca no Worker. O bootstrap de domínio será restrito às unidades STG-INT003-A/B, sem tocar perfis/usuários existentes, sem elevar permissões em reexecução e com registro privado de retomada. Ensaiar concessões/negações/idempotência em banco isolado antes de executar. Evidências públicas somente com alias, contagens e resultados; email, IDs Auth, credencial inicial e link ficam fora do Git. Testes e implantação deste recorte ainda pendentes neste ponto do registro.
+
+Pré-publicação de ADM-001/A: lint, tipos, testes e build de `npm run check` passaram; PGlite mantém duas omissões concorrentes que são exercitadas no PostgreSQL do CI. Os quatro testes novos de navegador passaram no Edge instalado, após ajustar a execução local porque o Chromium gerenciado não estava disponível. Login/configurações/estoque anteriores também passaram no navegador; a suíte completa será conferida novamente no CI. Bootstrap testado antes da execução; identidade Auth e usuário de domínio ADMIN de consulta foram criados no staging, sem migration nova. Publicação da View, jornada hospedada e entrega do link ainda pendentes.
+
 ## Fontes e situação observada
 
 Fontes: [DRS](../requisitos/Requisitos_Software_Restaurantes_Populares_Joinville.md), seção 4.1/4.2, RF-008 (M), RF-007, RN-012/RN-022 e RNF-002/003/007/008/011; [SEC-001](../seguranca/SEC-001.md), [CONFIG-001](CONFIG-001.md) e [plano SDD](../planejamento/RECONSTRUCAO_SDD.md). RF-008 integra D1; a área administrativa não é um requisito novo descoberto após o login.

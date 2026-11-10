@@ -1,16 +1,20 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
 import type { Session } from '@supabase/supabase-js';
-import { auth } from '../services/auth.ts';
+import { auth, initialPasswordToken, passwordPending, markPasswordPending, activatePasswordLink } from '../services/auth.ts';
 import { SettingsApi } from '../services/api.ts';
 import { Workspace } from './Workspace.tsx';
 import { StockApi } from '../services/stock-api.ts';
+import { PasswordPanel } from './PasswordPanel.tsx';
 import './styles.css';
 export function App() {
   const [session, setSession] = useState<Session | null>(null);
   const [ready, setReady] = useState(!auth);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const [passwordMode, setPasswordMode] = useState(passwordPending);
+  const [linkState, setLinkState] = useState(initialPasswordToken !== null ? 'verifying' : 'none');
+  const [notice, setNotice] = useState('');
   const api = useMemo(
     () =>
       new SettingsApi(
@@ -21,12 +25,24 @@ export function App() {
   const stock = useMemo(() => new StockApi(async () => (await auth?.getSession())?.data.session?.access_token), []);
   useEffect(() => {
     if (!auth) return;
-    const { data } = auth.onAuthStateChange((_event, next) => {
+    const { data } = auth.onAuthStateChange((event, next) => {
       setSession(next);
       setReady(true);
+      if (event === 'PASSWORD_RECOVERY') { markPasswordPending(true); setPasswordMode(true); }
+      if (event === 'SIGNED_OUT') { markPasswordPending(false); setPasswordMode(false); }
     });
-    return () => data.subscription.unsubscribe();
+    let active = true;
+    if (initialPasswordToken !== null) void activatePasswordLink().then((ok) => {
+      if (active) setLinkState(ok ? 'valid' : 'invalid');
+    });
+    return () => { active = false; data.subscription.unsubscribe(); };
   }, []);
+  async function endPasswordSession(saved = false) {
+    const result = await auth?.signOut({ scope: 'local' });
+    if (result?.error) throw result.error;
+    markPasswordPending(false); setPasswordMode(false); setLinkState('none'); setSession(null);
+    setNotice(saved ? 'Senha definida. Entre com seu e-mail e a nova senha.' : '');
+  }
   async function login(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const fields = new FormData(event.currentTarget);
@@ -47,12 +63,14 @@ export function App() {
       setBusy(false);
     }
   }
-  if (!ready)
+  if (!ready || linkState === 'verifying')
     return (
       <main className="login-form" role="status">
         Carregando sessão…
       </main>
     );
+  if (linkState === 'invalid') return <main className="login-form"><h1>Link indisponível</h1><p role="alert">Este link expirou, já foi utilizado ou é inválido. Solicite um novo link à administração.</p><button onClick={() => { void endPasswordSession().catch(() => setError('Não foi possível sair. Tente novamente.')); }}>Voltar ao login</button>{error && <p role="alert">{error}</p>}</main>;
+  if (session && passwordMode) return <PasswordPanel onDone={() => endPasswordSession(true)} onCancel={() => endPasswordSession()} />;
   if (session)
     return (
       <Workspace
@@ -83,6 +101,7 @@ export function App() {
             <h1>Entrar</h1>
             <p className="muted">Use seu e-mail e senha para acessar.</p>
           </header>
+          {notice && <p role="status" className="notice">{notice}</p>}
           {!auth && (
             <p role="status" className="notice">
               O acesso ainda não foi configurado. Entre em contato com a

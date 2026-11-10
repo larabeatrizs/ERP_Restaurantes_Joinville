@@ -18,7 +18,35 @@ function publicUrl(value: unknown): string | null {
   }
 }
 const endpoint = publicUrl(url);
+// O fragmento não é enviado ao servidor; removê-lo antes de renderizar a tela.
+const link = new URLSearchParams(window.location.hash.slice(1));
+export const initialPasswordToken = link.get('definir-senha');
+export function passwordPending(): boolean {
+  try { return sessionStorage.getItem('erp-password-pending') === '1'; } catch { return false; }
+}
+export function markPasswordPending(pending: boolean): void {
+  try {
+    if (pending) sessionStorage.setItem('erp-password-pending', '1');
+    else sessionStorage.removeItem('erp-password-pending');
+  } catch { /* Navegadores sem armazenamento ainda podem concluir nesta página. */ }
+}
+if (initialPasswordToken !== null) {
+  history.replaceState(null, '', window.location.pathname + window.location.search);
+  markPasswordPending(true);
+}
 export const auth =
   endpoint && typeof key === 'string' && key.startsWith('sb_publishable_')
     ? createClient(endpoint, key).auth
     : null;
+
+let activation: Promise<boolean> | undefined;
+export function activatePasswordLink(): Promise<boolean> {
+  // Reutilizar a promessa evita consumir o mesmo link duas vezes no ciclo da View.
+  return activation ??= (async () => {
+    if (!auth || !initialPasswordToken || !/^[a-zA-Z0-9_-]{20,512}$/.test(initialPasswordToken)) return false;
+    try {
+      const { data, error } = await auth.verifyOtp({ token_hash: initialPasswordToken, type: 'recovery' });
+      return !error && !!data.session;
+    } catch { return false; }
+  })();
+}
