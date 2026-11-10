@@ -1,0 +1,49 @@
+{
+  "executedAt": "2026-11-10T17:27:55.205Z",
+  "origin": "https://erp-joinville-staging.erp-restaurantes-joinville.workers.dev",
+  "mocked": false,
+  "completed": true,
+  "sourceCommit": "db576ee9dd519cd353f553b13766eae1a797a714",
+  "cloudflareVersion": "be929f32-f3b0-4e71-92f7-11359a86a31d",
+  "ci": {
+    "runId": 42864989276,
+    "jobs": 4,
+    "conclusion": "success",
+    "browserScenarios": 28
+  },
+  "account": {
+    "alias": "ADMIN_INICIAL",
+    "profile": "ADMIN",
+    "capabilities": [
+      "CONFIGURACAO_LER",
+      "ESTOQUE_LER",
+      "PRODUTO_LER"
+    ],
+    "syntheticUnits": 2,
+    "firstPasswordChosenByOwner": "pending",
+    "activationDelivery": "private local file; token omitted"
+  },
+  "domainSnapshot": {
+    "users": 5,
+    "syntheticUsers": 4,
+    "adminUsers": 1,
+    "rlsTables": 20,
+    "migrations": 4
+  },
+  "scenarios": [
+    "login real do ADMIN_INICIAL",
+    "duas unidades sintéticas e quatro telas por API",
+    "consulta sem capacidades de escrita; PATCH negado em ambas unidades",
+    "ADMIN_INICIAL entra pela tela real e consulta configurações readonly",
+    "recovery real sintético define senha, encerra sessão e permite novo login",
+    "link consumido recusado; token retirado da URL; viewport 360px"
+  ],
+  "syntheticPasswordRestored": true,
+  "credentialsPublished": false,
+  "limits": [
+    "Read-only preview; no privileged user administration",
+    "No administrative subdomain or VPN provisioned",
+    "RF-008 full session and security controls pending",
+    "First-password UI state is not a server authorization gate"
+  ]
+}

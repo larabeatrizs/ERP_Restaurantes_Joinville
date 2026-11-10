@@ -2,6 +2,8 @@
 
 Especificação iniciada em 06/11/2026; implementação/verificação em 09/11/2026. Recorte C4 sobre API-001/CONFIG-001. Branch `feat/web-001-configuracoes`. Staging compartilhado e integração à main conforme ADR-002; nenhum ambiente permanente novo.
 
+Continuidade em 10/11: [ADM-001/A](ADM-001-ADMINISTRACAO.md) acrescenta definição de senha por link privado recovery, verificação/consumo, remoção do fragmento, recarga/navegação na mesma aba e encerramento de sessão após salvar. São cinco cenários novos de navegador e jornada real no hospedado; a responsável possui perfil ADMIN somente de consulta às demonstrações. Gestão de usuários e demais controles RF-008 continuam pendentes.
+
 ## Especificação antes da implementação
 
 - Login por email/senha com Supabase Auth, usando somente URL/chave publicável no frontend. O token é obtido pelo SDK e enviado à API; sessão local é UX, enquanto getUser/RLS no backend continuam a autoridade. Sem colagem de token, credencial administrativa ou login fictício de fallback.
