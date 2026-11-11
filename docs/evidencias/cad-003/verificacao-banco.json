@@ -1,0 +1,87 @@
+{
+  "postflight": {
+    "lots": 6,
+    "links": 10,
+    "products": 8,
+    "receipts": 6,
+    "movements": 6,
+    "categories": 4,
+    "migrations": 6,
+    "rls_tables": 20,
+    "captured_at": "2026-11-11T20:16:30.777128+00:00",
+    "ledger_mismatches": 0,
+    "stock_audit_events": 34,
+    "category_audit_events": 9,
+    "category_delete_audits": 1
+  },
+  "comparison": {
+    "products_preserved": true,
+    "balances_preserved": true,
+    "admin_permissions_preserved": true
+  },
+  "authorization": {
+    "functions": [
+      {
+        "anon": false,
+        "name": "categoria_json",
+        "owner": "postgres",
+        "config": [
+          "search_path=\"\""
+        ],
+        "schema": "erp_private",
+        "definer": false
+      },
+      {
+        "anon": false,
+        "name": "categoria_operacao",
+        "owner": "postgres",
+        "config": [
+          "search_path=\"\""
+        ],
+        "schema": "erp",
+        "definer": false
+      },
+      {
+        "anon": false,
+        "name": "categoria_operacao",
+        "owner": "erp_stock_writer",
+        "config": [
+          "search_path=\"\""
+        ],
+        "schema": "erp_private",
+        "definer": true
+      }
+    ],
+    "migration": "20261111163425",
+    "capabilities": {
+      "ESTOQUISTA": [
+        "CATEGORIA_EDITAR"
+      ],
+      "GESTOR_UNIDADE": [
+        "CATEGORIA_CICLO_VIDA",
+        "CATEGORIA_EDITAR"
+      ]
+    },
+    "writer_create": false,
+    "writer_auth_usage": false,
+    "client_writer_member": false,
+    "client_category_update": false,
+    "personal_new_capabilities": 0
+  },
+  "advisors": [
+    {
+      "name": "rls_enabled_no_policy",
+      "level": "INFO",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy"
+    },
+    {
+      "name": "auth_leaked_password_protection",
+      "level": "WARN",
+      "remediation": "https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection"
+    }
+  ],
+  "limits": [
+    "Concurrency, revocation during lock and induced audit failure were tested in local PostgreSQL/CI, not induced in hosted staging.",
+    "The single eligible deletion belongs to a newly created disposable category in the functional journey; all existing categories, products and stock were preserved."
+  ]
+}

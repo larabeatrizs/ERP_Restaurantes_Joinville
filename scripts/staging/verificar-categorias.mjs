@@ -19,7 +19,7 @@ async function response(label,route,method='GET',body,status=200){const r=await 
 async function api(...args){return (await response(...args)).json();}
 try{
  for(const label of ['editorA','editorB','readerA','stockkeeperA']){
-  const account=state.users.find(u=>u.label===label);if(!/^int003-.*@example\.invalid$/.test(account?.email))throw Error('Only synthetic identities');accounts[label]=account;
+  const account=state.users.find(u=>u.label===label);if(!/^(int003|est001)-[^@]+@example\.invalid$/.test(account?.email))throw Error('Only synthetic identities');accounts[label]=account;
   const client=createClient(state.url,state.publishableKey,{auth:{persistSession:false,autoRefreshToken:false,storageKey:'cad003-'+label},global:{fetch:(input,init)=>fetch(input,{...init,signal:AbortSignal.timeout(15000)})}});clients[label]=client;
   const login=await client.auth.signInWithPassword({email:account.email,password:account.password});if(login.error||login.data.user?.id!==account.id||!login.data.session)throw Error('Synthetic Auth failed');tokens[label]=login.data.session.access_token;
  }
