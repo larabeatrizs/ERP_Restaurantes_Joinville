@@ -1,0 +1,30 @@
+{
+  "executedAt": "2026-11-11T16:34:33.704Z",
+  "origin": "https://erp-joinville-staging.erp-restaurantes-joinville.workers.dev",
+  "mocked": false,
+  "completed": true,
+  "scenarios": [
+    "cadastro global compartilhado, zero/null, unicidade, revisao e ciclo de vida por API",
+    "exclusao com vinculo negada; categoria isolada de ensaio excluida com trilha preservada",
+    "sem sessao/leitor/outra unidade/DML negados; estoquista edita mas nao executa X; corpo indevido recusado",
+    "UI real cria/edita em 360/768/1280 sem overflow global; nova sessao visualiza dados persistidos",
+    "CSV real filtrado e leitura sem escrita; valores preservados em nova sessao",
+    "saldos anteriores preservados"
+  ],
+  "runtimeCommit": "586c9ad2152b9e0115d16540adf6a4e746e82ef2",
+  "cloudflareVersion": "5d32ef2f-5429-4fc9-9b54-366159a938af",
+  "migration": "20261111163425",
+  "migrationFileSha256": "a4d698c1341e3f4aa77628edfe3c80c74fd0f6da0fd2b51b88d3af2dfe1ba52d",
+  "ciRun": 43059272790,
+  "tests": {
+    "api": 67,
+    "stockPostgres": 32,
+    "configurationPostgres": 32,
+    "browser": 35
+  },
+  "limits": [
+    "Only synthetic accounts used; personal account/password/link untouched.",
+    "Engine for validity alerts and other master data remain separate increments.",
+    "Hosted smoke is not institutional acceptance or production release."
+  ]
+}

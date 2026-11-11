@@ -1,5 +1,7 @@
 # OPS-001 — Publicação do staging compartilhado
 
+Continuidade atual em 11/11/2026: [CAD-003](CAD-003-CATEGORIAS.md)/[PR #28](https://github.com/larabeatrizs/ERP_Restaurantes_Joinville/pull/28), runtime `586c9ad`, versão Cloudflare `5d32ef2f-5429-4fc9-9b54-366159a938af`, mesma URL. CI dos quatro jobs aprovado antes da sexta migration e deploy. [Jornada real](../evidencias/cad-003/jornada-hospedada.json): categorias globais pela API/UI, revisão/ciclo de vida/negações, CSV, nova sessão e responsividade. [Pós-condições](../evidencias/cad-003/verificacao-banco.json): quatro categorias, oito produtos, dez vínculos, seis movimentos mantidos, 34 eventos e zero divergência livro/saldo. Produtos/saldos e permissões ADMIN idênticos ao preflight. Sem chave administrativa no runtime, reset, novo ambiente ou uso da conta pessoal nos ensaios. Os registros datados abaixo permanecem históricos.
+
 09/11/2026. Próximo recorte após INT-003, autorizado pelo prosseguimento da responsável. RNF-002/003/008/011/015; View/Controller/Service/Repository já verificados são preservados. Meta de [10/11](../planejamento/PLANO-ATE-10-11.md) prioriza publicação e [primeiro fluxo de estoque](EST-001-PRIMEIRO-FLUXO.md), não o ERP integral.
 
 ## Desenho

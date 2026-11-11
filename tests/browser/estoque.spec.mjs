@@ -9,6 +9,7 @@ const product = {
   perecivel: true, armazenamento: 'SECO', fator_correcao: '1', apresentacao_compra: 'Pacote de 5 kg', quantidade_apresentacao: '5',
   estoque_minimo: '2.5', estoque_maximo: null, ponto_reposicao: null, status: 'ATIVO', unidade_sigla: 'kg', categoria_descricao: 'Grãos e secos',
 };
+const categoryRow = {id:'12',revisao:'1',descricao:'Categoria teste',tipo_item:'ALIMENTO',armazenamento_padrao:'SECO',dias_alerta_validade:null,status:'ATIVO',pode_excluir:true};
 const context = {
   medidas: [{ id: '11', sigla: 'kg', descricao: 'Quilograma' }],
   categorias: [{ id: '12', descricao: 'Grãos e secos', armazenamento_padrao: 'SECO' }],
@@ -24,7 +25,7 @@ function receipt(extra = {}) {
   };
 }
 async function setup(page, options = {}) {
-  const state = { products: options.products ?? [{ ...product }], available: [{ ...product }], receipts: options.receipts ?? [], balances: options.balances ?? [], writes: [], confirmKeys: [], confirmFailures: options.confirmFailures ?? [], productFailure: 0 };
+  const state = { categories: options.categories ?? [{...categoryRow}], categoryFailure: 0, categoryCsv: [], products: options.products ?? [{ ...product }], available: [{ ...product }], receipts: options.receipts ?? [], balances: options.balances ?? [], writes: [], confirmKeys: [], confirmFailures: options.confirmFailures ?? [], productFailure: 0 };
   await page.route('https://auth-ficticio.supabase.co/**', route => {
     if (route.request().url().includes('/token')) return route.fulfill({ json: {
       access_token: 'eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ0ZXN0ZSJ9.ficticio', refresh_token: 'ficticio', token_type: 'bearer', expires_in: 3600,
@@ -40,6 +41,20 @@ async function setup(page, options = {}) {
     const activeUnit = url.pathname.split('/')[3];
     if (url.pathname.endsWith('/configuracoes')) return route.fulfill({ headers: { ETag: `"cfg-${activeUnit}-1"` }, json: { pode_editar: true, configuracao: { unidade_id: activeUnit, revisao: '1', modo_saida: 'POSTERIOR', margem_percentual: '5', dias_alerta_validade: 7, prazo_amostra_horas: 72, periodicidade_inventario_dias: 7, referencia_preco: 'MENOR_COTACAO', alerta_email_habilitado: false } } });
     if (url.pathname.endsWith('/estoque/contexto')) return respond({ ...context, capacidades: { ...context.capacidades, ...options.capabilities } });
+    if (url.pathname.includes('/categorias')) {
+      const caps=options.categoryCaps??{editar:true,ciclo_vida:true};
+      const filtered=state.categories.filter(c=>c.status===(url.searchParams.get('status')??'ATIVO')&&c.descricao.toLowerCase().includes((url.searchParams.get('q')??'').toLowerCase())).sort((a,b)=>a.descricao.localeCompare(b.descricao));
+      if(url.searchParams.get('ordem')==='desc')filtered.reverse();
+      if(url.pathname.endsWith('/exportar')){state.categoryCsv.push(url.search);return route.fulfill({contentType:'text/csv; charset=utf-8',body:'"Descricao";"Dias"\r\n"Categoria teste";"0"\r\n'});}
+      if(request.method()==='GET'){const offset=Number(url.searchParams.get('offset')??0);return respond({categorias:filtered.slice(offset,offset+50),total:filtered.length,capacidades:caps});}
+      const body=request.postDataJSON();state.writes.push({path:url.pathname,method:request.method(),body});
+      if(state.categoryFailure){const status=state.categoryFailure;state.categoryFailure=0;return route.fulfill({status,json:{error:{code:'TEST',message:'Outra pessoa alterou esta categoria. Sua edicao foi preservada.'}}});}
+      const id=url.pathname.split('/')[5];
+      if(request.method()==='DELETE'){state.categories=state.categories.filter(c=>c.id!==id);return respond({excluida:true});}
+      if(url.pathname.endsWith('/status')){const c=state.categories.find(c=>c.id===id);Object.assign(c,{status:body.status,revisao:String(BigInt(c.revisao)+1n)});return respond({categoria:c});}
+      const saved={...(state.categories.find(c=>c.id===id)??categoryRow),...body,id:id??'33',revisao:id?String(BigInt(body.revisao)+1n):'1'};
+      state.categories=state.categories.filter(c=>c.id!==saved.id);state.categories.push(saved);return respond({categoria:saved});
+    }
     if (url.pathname.endsWith('/estoque/saldos')) return respond({ saldos: activeUnit === unit ? state.balances : [] });
     if (url.pathname.endsWith('/produtos/disponiveis')) {
       const filtered=state.available.filter(p=>p.descricao.toLowerCase().includes((url.searchParams.get('q')??'').toLowerCase()));
@@ -88,6 +103,36 @@ async function setup(page, options = {}) {
   return state;
 }
 async function navigate(page, name) { await page.getByRole('navigation', { name: 'Principal' }).getByRole('link', { name, exact: true }).click(); }
+test('categorias cadastra zero, edita null e reabre consulta sem escrita implícita', async ({page}) => {
+ const state=await setup(page);await navigate(page,'Categorias');await page.getByRole('button',{name:'Incluir categoria',exact:true}).click();
+ await page.getByLabel('Descrição *',{exact:true}).fill('Categoria nova');await page.getByLabel('Dias de alerta de validade',{exact:true}).fill('0');await page.getByRole('button',{name:'Salvar categoria',exact:true}).click();
+ await expect(page.getByRole('status')).toContainText('Categoria salva');expect(state.writes.at(-1).body.dias_alerta_validade).toBe(0);expect(state.writes.at(-1).body).not.toHaveProperty('status');
+ await page.getByRole('button',{name:'Editar Categoria nova',exact:true}).click();await page.getByLabel('Dias de alerta de validade',{exact:true}).fill('');await page.getByRole('button',{name:'Salvar categoria',exact:true}).click();
+ await page.getByRole('button',{name:'Visualizar Categoria nova',exact:true}).click();await expect(page.getByLabel('Descrição *',{exact:true})).toBeDisabled();await expect(page.getByLabel('Dias de alerta de validade',{exact:true})).toHaveValue('');expect(state.writes.at(-1).body.dias_alerta_validade).toBeNull();
+});
+test('categorias ciclo de vida confirma e exclusão com vínculos é explicada', async ({page}) => {
+ const state=await setup(page);await navigate(page,'Categorias');page.once('dialog',d=>d.dismiss());await page.getByRole('button',{name:'Inativar Categoria teste',exact:true}).click();expect(state.writes).toHaveLength(0);
+ page.once('dialog',d=>d.accept());await page.getByRole('button',{name:'Inativar Categoria teste',exact:true}).click();await expect(page.getByText('Nenhuma categoria encontrada.',{exact:true})).toBeVisible();
+ await page.getByRole('combobox',{name:'Status',exact:true}).selectOption('INATIVO');await expect(page.getByRole('button',{name:'Ativar Categoria teste',exact:true})).toBeVisible();page.once('dialog',d=>d.accept());await page.getByRole('button',{name:'Ativar Categoria teste',exact:true}).click();await expect(page.getByText('Nenhuma categoria encontrada.',{exact:true})).toBeVisible();
+ await page.getByRole('combobox',{name:'Status',exact:true}).selectOption('ATIVO');page.once('dialog',d=>d.accept());await page.getByRole('button',{name:'Excluir Categoria teste',exact:true}).click();await expect(page.getByText('Nenhuma categoria encontrada.',{exact:true})).toBeVisible();expect(state.writes.at(-1).method).toBe('DELETE');
+});
+test('categorias erro preserva entrada e descarte pode ser cancelado', async ({page}) => {
+ const state=await setup(page);await navigate(page,'Categorias');await page.getByRole('button',{name:'Editar Categoria teste',exact:true}).click();
+ await page.getByLabel('Dias de alerta de validade',{exact:true}).fill('-1');await page.getByRole('button',{name:'Salvar categoria',exact:true}).click();await expect(page.getByLabel('Dias de alerta de validade',{exact:true})).toHaveAttribute('aria-invalid','true');expect(state.writes).toHaveLength(0);
+ await page.getByLabel('Dias de alerta de validade',{exact:true}).fill('3');await page.getByLabel('Descrição *',{exact:true}).fill('Edição preservada');state.categoryFailure=412;await page.getByRole('button',{name:'Salvar categoria',exact:true}).click();await expect(page.getByRole('alert')).toContainText('Outra pessoa');await expect(page.getByLabel('Descrição *',{exact:true})).toHaveValue('Edição preservada');
+ page.once('dialog',d=>d.dismiss());await page.getByRole('navigation',{name:'Principal'}).getByRole('link',{name:'Produtos',exact:true}).click();await expect(page.getByLabel('Descrição *',{exact:true})).toHaveValue('Edição preservada');
+ page.once('dialog',d=>d.accept());await page.getByRole('button',{name:'Voltar à lista',exact:true}).click();await expect(page.getByRole('heading',{name:'Categorias de produtos',exact:true}).last()).toBeVisible();
+});
+test('categorias pagina/ordena/exporta filtros e respeita somente consulta em 360/768/1280', async ({page}) => {
+ const categories=Array.from({length:51},(_,i)=>({...categoryRow,id:String(i+100),descricao:'Categoria '+String(i).padStart(2,'0'),pode_excluir:false}));
+ const state=await setup(page,{categories,categoryCaps:{editar:false,ciclo_vida:false}});await navigate(page,'Categorias');
+ await expect(page.getByRole('button',{name:'Incluir categoria',exact:true})).toBeDisabled();await expect(page.getByRole('button',{name:'Excluir Categoria 00',exact:true})).toBeDisabled();await expect(page.getByRole('button',{name:'Excluir Categoria 00',exact:true})).toHaveAttribute('title',/vínculos/);
+ for(const width of [360,768,1280]){await page.setViewportSize({width,height:900});expect(await page.locator('html').evaluate(el=>el.scrollWidth)).toBe(width);await expect(page.getByRole('region',{name:'Categorias de produtos',exact:true})).toBeVisible();}
+ await page.getByRole('button',{name:'Próxima',exact:true}).click();await expect(page.getByRole('button',{name:'Visualizar Categoria 50',exact:true})).toBeVisible();
+ await page.getByRole('combobox',{name:'Ordenação',exact:true}).selectOption('desc');await expect(page.getByRole('button',{name:'Visualizar Categoria 50',exact:true})).toBeVisible();
+ await page.getByLabel('Buscar categoria',{exact:true}).fill('Categoria 50');await page.getByRole('button',{name:'Buscar',exact:true}).click();await expect(page.getByText('1 categorias · página 1',{exact:true})).toBeVisible();
+ const download=page.waitForEvent('download');await page.getByRole('button',{name:'Exportar CSV',exact:true}).click();expect((await download).suggestedFilename()).toBe('categorias.csv');expect(state.categoryCsv.at(-1)).toContain('q=Categoria+50');expect(state.categoryCsv.at(-1)).toContain('offset=0');expect(state.writes).toHaveLength(0);
+});
 async function expectReadableScroller(page, label, minimumWidth = 840) {
   const wrapper = page.locator(`.table-wrap[aria-label="${label}"]`);
   await expect(wrapper).toBeVisible();
@@ -312,7 +357,7 @@ test('vínculo busca cadastro global e salva apenas parâmetros locais, com prec
  await page.getByLabel('Estoque mínimo *',{exact:true}).fill('7,000001');await page.getByLabel('Estoque máximo',{exact:true}).fill('1');
  await page.getByRole('button',{name:'Vincular à unidade',exact:true}).click();await expect(page.getByRole('alert')).toContainText('máximo');expect(state.writes).toHaveLength(0);
  await page.getByLabel('Estoque máximo',{exact:true}).fill('20,5');await page.getByRole('button',{name:'Vincular à unidade',exact:true}).click();
- await expect(page.getByRole('status')).toHaveText('Produto vinculado à unidade com sucesso.');
+ await expect(page.getByRole('status').filter({hasText:'Produto vinculado à unidade com sucesso.'})).toHaveText('Produto vinculado à unidade com sucesso.');
  expect(state.writes).toEqual([{path:`/api/unidades/${unit}/produtos/${productId}/vinculo`,method:'POST',body:{revisao:product.revisao,estoque_minimo:'7.000001',estoque_maximo:'20.5',ponto_reposicao:null}}]);
  await page.getByRole('button',{name:'Editar Arroz branco',exact:true}).click();await expect(page.getByLabel('Estoque mínimo *',{exact:true})).toHaveValue('7,000001');
  await expect(page.locator('html')).toHaveJSProperty('scrollWidth',360);

@@ -6,12 +6,17 @@ import { ApiError } from './errors.ts';
 import { stockController } from './controllers/stock-controller.ts';
 import { createSupabaseStockSession } from './repositories/supabase-stock.ts';
 import type { StockSessionFactory } from './repositories/stock-repository.ts';
+import { categoryController } from './controllers/category-controller.ts';
+import { createSupabaseCategorySession } from './repositories/supabase-categories.ts';
+import type { CategorySessionFactory } from './repositories/category-repository.ts';
 
-export function createApp(factory: SessionFactory = createSupabaseSession, stockFactory: StockSessionFactory = createSupabaseStockSession) {
+export function createApp(factory: SessionFactory = createSupabaseSession, stockFactory: StockSessionFactory = createSupabaseStockSession, categoryFactory: CategorySessionFactory = createSupabaseCategorySession) {
   return {
     async fetch(request: Request, env: RuntimeEnv = {}): Promise<Response> {
       try {
         const path = new URL(request.url).pathname;
+        const category = /^\/api\/unidades\/([^/]+)\/categorias(?:\/(exportar|[^/]+(?:\/status)?))?$/.exec(path);
+        if (category?.[1]) return await categoryController(request, env, category[1], category[2] ?? '', categoryFactory);
         if (path === '/api/unidades') {
           if (request.method !== 'GET') return methodNotAllowed('GET', request.method === 'HEAD');
           return await unitsController(request, env, factory);
@@ -32,7 +37,7 @@ export function createApp(factory: SessionFactory = createSupabaseSession, stock
         const problem = error instanceof ApiError ? error : new ApiError(503, 'SERVICE_UNAVAILABLE', 'Serviço temporariamente indisponível.');
         const headers: Record<string, string> = { 'Cache-Control': 'no-store' };
         if (problem.status === 401) headers['WWW-Authenticate'] = 'Bearer';
-        const response = Response.json({ error: { code: problem.code, message: problem.message } }, { status: problem.status, headers });
+        const response = Response.json({ error: { code: problem.code, message: problem.message, ...(problem.fields ? { fields: problem.fields } : {}) } }, { status: problem.status, headers });
         return request.method === 'HEAD' ? new Response(null, response) : response;
       }
     },
