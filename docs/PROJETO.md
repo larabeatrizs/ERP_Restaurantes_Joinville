@@ -117,6 +117,7 @@ Realizar a primeira implantação operacional no RP1, com duas semanas em parale
 | Staging, backup, região e orçamento | Afeta custos, recuperação e LGPD | Staging compartilhado definido; separação congelada em AMB-001; backup/região/orçamento ainda exigem planejamento |
 | Deploy frontend Cloudflare e API Worker | Afeta toolchain sem mudar a decisão de plataforma | Staging online e smoke Auth/API/UI verificados em OPS-001; ambientes de produção continuam congelados em AMB-001 |
 | Estados e jornadas não cobertos pelo Style Guide | Evita extrapolar UI aprovada | Pendente de inventário |
+| Skeleton e feedback de carregamento | Melhorar a espera por dados, preservando acessibilidade e estados de erro/vazio | [UX-002](planejamento/UX-002-SKELETON.md)/[issue #24](https://github.com/larabeatrizs/ERP_Restaurantes_Joinville/issues/24), solicitada em 11/11/2026; detalhada para aperfeiçoamento futuro, sem implementação agora |
 | Validação externa e assinaturas da seção 17.3 do DRS | Condição para liberação institucional | Não comprovada |
 | AMB-001 — separar ambientes permanentes e preparar limpeza/reconstrução | Decisão da responsável: usar staging compartilhado agora | Congelada até o encerramento funcional; sem reset imediato |
 
