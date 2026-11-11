@@ -17,3 +17,5 @@ Container descartável do GitHub Actions, permitido por ADR-002; nenhum ambiente
 ## Verificação
 
 Revisão do diff e da correspondência de versões/digest. A verificação efetiva do container e dos 31 testes de navegador depende do CI desta PR; não foi executado Docker local nesta máquina. Registrar resultado da PR e da main após a execução, distinguindo aprovação de CI de publicação/aceite operacional.
+
+Continuidade: [CI 43055080672](https://github.com/larabeatrizs/ERP_Restaurantes_Joinville/actions/runs/43055080672), commit `548f4ef08c422d9840d7420e7bc22bfbb4cf1edc`, aprovou os quatro jobs em 11/11/2026. O container iniciou, checkout/setup-node/npm ci passaram e os 31 testes UI foram executados e aprovados (33 segundos de testes). Os dois jobs PostgreSQL e check também passaram. Esse resultado comprova a correção no Actions; não houve deploy nem alteração do banco hospedado. Documentação posterior apenas registra o resultado e prepara [CAD-003](CAD-003-CATEGORIAS.md); verificar a rodada final e a main na PR/issue vinculadas.
