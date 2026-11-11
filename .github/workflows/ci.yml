@@ -8,6 +8,11 @@ permissions:
 jobs:
   browser:
     runs-on: ubuntu-latest
+    # Keep this image aligned with @playwright/test in package.json.
+    # Browsers/system libraries are preinstalled, avoiding apt mirrors per run.
+    container:
+      image: mcr.microsoft.com/playwright:v1.65.0-noble@sha256:6e3fb709361521eb27161606e6da6d2674e5e89fa16516cb37d6fdd91372273d
+      options: --ipc=host
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
@@ -16,7 +21,6 @@ jobs:
           node-version-file: .node-version
           cache: npm
       - run: npm ci
-      - run: npx playwright install --with-deps chromium
       - run: npm run test:web
   check:
     runs-on: ubuntu-latest
