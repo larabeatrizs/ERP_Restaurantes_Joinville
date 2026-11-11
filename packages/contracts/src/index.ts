@@ -49,3 +49,4 @@ export function isConfigurationPatch(value: unknown): value is ConfigurationPatc
     }
   });
 }
+export * from './categories.ts';

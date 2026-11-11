@@ -84,6 +84,7 @@ test('verificador da fundação confere RLS, grants e escritor restrito no labor
   assert.deepEqual(privileged.map(fn => [fn.schema, fn.name, fn.owner]).sort(), [
     ['erp_private', 'atualizar_configuracao', 'erp_config_writer'],
     ['erp_private', 'catalogo_unidade', 'erp_stock_writer'],
+    ['erp_private', 'categoria_operacao', 'erp_stock_writer'],
     ['erp_private', 'estoque_operacao', 'erp_stock_writer'],
   ]);
 });
@@ -111,7 +112,7 @@ test('RLS nas tabelas e somente funções privilegiadas conhecidas com executore
   assert.ok(tables.rows.every((row) => row.relrowsecurity));
   const functions = await db.query("select proname,pg_get_userbyid(proowner) as owner,proconfig from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname in ('erp','erp_private') and prosecdef");
   assert.deepEqual(functions.rows.map(row => [row.proname, row.owner]).sort(), [
-    ['atualizar_configuracao', 'erp_config_writer'], ['catalogo_unidade', 'erp_stock_writer'], ['estoque_operacao', 'erp_stock_writer'],
+    ['atualizar_configuracao', 'erp_config_writer'], ['catalogo_unidade', 'erp_stock_writer'], ['categoria_operacao', 'erp_stock_writer'], ['estoque_operacao', 'erp_stock_writer'],
   ]);
   assert.ok(functions.rows.every(row => row.proconfig.includes('search_path=""')));
   const role = (await db.query("select rolcanlogin,rolsuper,rolbypassrls,rolcreaterole,rolcreatedb from pg_roles where rolname='erp_config_writer'")).rows[0];

@@ -28,7 +28,7 @@ before(async () => {
     insert into erp.perfil_permissao(perfil_id,permissao) values
       (1,'PRODUTO_LER'),(1,'PRODUTO_GERIR'),(1,'ESTOQUE_LER'),(1,'RECEBIMENTO_GERIR'),
       (2,'PRODUTO_LER'),(2,'PRODUTO_GERIR'),(2,'ESTOQUE_LER'),(2,'RECEBIMENTO_APROVAR_DIVERGENCIA'),
-      (3,'PRODUTO_LER'),(3,'ESTOQUE_LER'),(4,'CONFIGURACAO_EDITAR');
+      (1,'CATEGORIA_EDITAR'),(2,'CATEGORIA_EDITAR'),(2,'CATEGORIA_CICLO_VIDA'),(3,'PRODUTO_LER'),(3,'ESTOQUE_LER'),(4,'CONFIGURACAO_EDITAR');
     insert into erp.usuario(id,perfil_id,nome,status) values
       ('${uid(1)}',1,'Estoquista sintético A','ATIVO'),('${uid(2)}',1,'Estoquista sintético B','ATIVO'),
       ('${uid(3)}',3,'Leitor sintético A','ATIVO'),('${uid(4)}',2,'Gestor sintético A','ATIVO'),
@@ -43,7 +43,75 @@ before(async () => {
 });
 after(async () => { if (close) await close(); });
 
+const categoryInput = (extra = {}) => ({ descricao: 'Categoria CAD-003', tipo_item: 'ALIMENTO', armazenamento_padrao: 'SECO', dias_alerta_validade: null, ...extra });
+const categoryQuery = (extra = {}) => ({ q: '', status: 'ATIVO', ordem: 'asc', offset: 0, ...extra });
+async function category(action, data = {}, unit = 1, client = db) { return (await client.query('select erp.categoria_operacao($1,$2,$3::jsonb) as result', [unit, action, JSON.stringify(data)])).rows[0].result; }
+async function categoryRejects(action, data, code = 'PT422', unit = 1) { await db.exec('savepoint category_error'); await assert.rejects(() => category(action, data, unit), { code }); await db.exec('rollback to savepoint category_error'); }
+
+test('categorias: criar/editar global preserva zero/null e usa revisão sem afetar produtos', async () => actor(1, async () => {
+  let c = (await category('criar', categoryInput({ dias_alerta_validade: 0 }))).categoria;
+  assert.equal(c.revisao, '1'); assert.equal(c.dias_alerta_validade, 0); assert.equal(c.status, 'ATIVO');
+  const p = await create({ categoria_id: c.id });
+  c = (await category('editar', { ...categoryInput({ descricao: 'Categoria alterada', armazenamento_padrao: 'CONGELADO' }), id: c.id, revisao: c.revisao })).categoria;
+  assert.equal(c.revisao, '2'); assert.equal(c.dias_alerta_validade, null); assert.equal(c.pode_excluir, false);
+  assert.equal((await rpc('produtos')).produtos[0].armazenamento, p.armazenamento);
+  await categoryRejects('editar', { ...categoryInput(), id: c.id, revisao: '1' }, 'PT412');
+  await become(2); assert.equal((await category('listar', categoryQuery({ q: 'ALTERADA' }), 2)).categorias[0].id, c.id);
+}));
+test('categorias: unicidade normalizada inclusive inativas e campos estritos', async () => actor(4, async () => {
+  const c = (await category('criar', categoryInput({ descricao: ' Café   Novo ' }))).categoria;
+  await category('status', { id: c.id, revisao: c.revisao, status: 'INATIVO' });
+  await categoryRejects('criar', categoryInput({ descricao: 'cafe\u0301 novo' }), 'PT409');
+  for (const extra of [{ descricao: '\t\n' }, { dias_alerta_validade: '0' }, { dias_alerta_validade: -1 }, { dias_alerta_validade: 1.5 }, { dias_alerta_validade: 2147483648 }, { tipo_item: 'OUTRO' }, { armazenamento_padrao: 'FRIO' }, { status: 'INATIVO' }, { ator_id: uid(1) }]) await categoryRejects('criar', categoryInput(extra));
+  await categoryRejects('listar', categoryQuery({ ordem: 'sql' })); await categoryRejects('listar', categoryQuery({ offset: -1 }));
+}));
+test('categorias: leitura/edição/ciclo de vida separados, unidade/inativo/sem sessão negados', async () => actor(1, async () => {
+  const c = (await category('criar', categoryInput())).categoria;
+  await categoryRejects('status', { id: c.id, revisao: c.revisao, status: 'INATIVO' }, 'PT403');
+  await categoryRejects('excluir', { id: c.id, revisao: c.revisao }, 'PT403');
+  await become(3); assert.deepEqual((await category('listar', categoryQuery())).capacidades, { editar: false, ciclo_vida: false });
+  await categoryRejects('criar', categoryInput(), 'PT403'); await categoryRejects('listar', categoryQuery(), 'PT404', 2);
+  await become(5); await categoryRejects('listar', categoryQuery(), 'PT404');
+  await db.exec('reset role'); await db.query("select set_config('request.jwt.claim.sub','',true)"); await db.exec('set local role authenticated');
+  await categoryRejects('listar', categoryQuery(), 'PT404');
+}));
+test('categorias: inativação retira de seleção, vínculo global bloqueia exclusão e auditoria persiste', async () => actor(4, async () => {
+  let c = (await category('criar', categoryInput())).categoria;
+  await become(2); await rpc('produto_salvar', product({ descricao: 'Produto B categoria global', categoria_id: c.id }), 2);
+  await become(4); await categoryRejects('excluir', { id: c.id, revisao: c.revisao }, 'PT409');
+  c = (await category('status', { id: c.id, revisao: c.revisao, status: 'INATIVO' })).categoria;
+  assert.ok(!(await rpc('contexto')).categorias.some(row => row.id === c.id));
+  assert.equal((await category('listar', categoryQuery({ status: 'INATIVO' }))).categorias[0].id, c.id);
+  assert.equal((await category('status', { id: c.id, revisao: c.revisao, status: 'INATIVO' })).categoria.revisao, c.revisao);
+  c = (await category('status', { id: c.id, revisao: c.revisao, status: 'ATIVO' })).categoria;
+  assert.ok((await rpc('contexto')).categorias.some(row => row.id === c.id));
+  const unused = (await category('criar', categoryInput({ descricao: 'Sem vínculo' }))).categoria;
+  assert.deepEqual(await category('excluir', { id: unused.id, revisao: unused.revisao }), { excluida: true });
+  await db.exec('reset role'); const audit = (await db.query("select antes,depois from erp.auditoria_estoque where acao='categoria_excluir'")).rows[0];
+  assert.equal(audit.antes.id, unused.id); assert.equal(audit.depois, null);
+}));
+test('categorias: paginação/ordenação/busca e exportação completa sem truncamento', async () => actor(4, async () => {
+  for (let i = 0; i < 51; i++) await category('criar', categoryInput({ descricao: 'Página ' + String(i).padStart(2, '0') }));
+  const first = await category('listar', categoryQuery({ q: 'PAGINA' })); assert.equal(first.total, 51); assert.equal(first.categorias.length, 50);
+  assert.equal((await category('listar', categoryQuery({ q: 'pagina', offset: 50 }))).categorias.length, 1);
+  assert.equal((await category('listar', categoryQuery({ q: 'pagina', ordem: 'desc' }))).categorias[0].descricao, 'Página 50');
+  assert.equal((await category('exportar', categoryQuery({ q: 'pagina' }))).categorias.length, 51);
+  await categoryRejects('exportar', categoryQuery({ offset: 1 }));
+  await db.exec('reset role'); await db.exec("insert into erp.categoria(descricao) select 'Limite export '||n from generate_series(1,10001) n"); await become(4);
+  await categoryRejects('exportar', categoryQuery({ q: 'Limite export' }), 'PT413');
+}));
+test('categorias: falha de auditoria desfaz edição/exclusão e DML direto é negado', async () => actor(4, async () => {
+  const c = (await category('criar', categoryInput())).categoria;
+  await db.exec('reset role'); await db.exec("create function erp_private.falha_categoria() returns trigger language plpgsql as $$ begin if new.acao in ('categoria_editar','categoria_excluir') then raise exception 'Falha induzida'; end if; return new; end $$; create trigger falha_categoria before insert on erp.auditoria_estoque for each row execute function erp_private.falha_categoria()"); await become(4);
+  await categoryRejects('editar', { ...categoryInput({ descricao: 'Não persistir' }), id: c.id, revisao: c.revisao }, 'P0001');
+  await categoryRejects('excluir', { id: c.id, revisao: c.revisao }, 'P0001');
+  assert.equal((await category('listar', categoryQuery({ q: c.descricao }))).categorias[0].revisao, c.revisao);
+  await sqlRejects("update erp.categoria set descricao='Indevido'"); await sqlRejects('delete from erp.categoria');
+  await sqlRejects('select erp_private.categoria_json(1)');
+}));
+
 const linkInput = (p, extra = {}) => ({ id: p.id, revisao: p.revisao, estoque_minimo: '5.000001', estoque_maximo: '20', ponto_reposicao: null, ...extra });
+
 async function become(n) { await db.exec('reset role'); await db.query("select set_config('request.jwt.claim.sub',$1,true)",[uid(n)]); await db.exec('set local role authenticated'); }
 async function catalogRejects(action, data, code, unit = 2) {
  await db.exec('savepoint catalog_error');await assert.rejects(()=>catalog(action,data,unit),{code});await db.exec('rollback to savepoint catalog_error');
@@ -344,4 +412,33 @@ test('vínculo concorrente audita uma vez e revogação durante lock bloqueia es
   await db.exec("delete from erp.perfil_permissao where perfil_id=1 and permissao='PRODUTO_GERIR'");await a.query('commit');assert.equal((await pending).error?.code,'PT403');await b.query('rollback');
   await db.exec("insert into erp.perfil_permissao values(1,'PRODUTO_GERIR')");assert.equal((await db.query('select count(*)::int as n from erp.produto_unidade where produto_id=$1 and unidade_id=2',[revoked.id])).rows[0].n,0);
  }finally{await a.query('rollback').catch(()=>{});if(pending)await pending;await b.query('rollback').catch(()=>{});await db.exec('reset role');await Promise.all([a.end(),b.end()]);}
+});
+
+test('categorias: duas conexões revalidam revogação e vínculo concorrente impede exclusão', { skip: !process.env.DATABASE_STOCK_TEST_URL, timeout: 20000 }, async () => {
+ const a = new pg.Client({ connectionString: process.env.DATABASE_STOCK_TEST_URL }), b = new pg.Client({ connectionString: process.env.DATABASE_STOCK_TEST_URL });
+ await Promise.all([a.connect(), b.connect()]); let pending; let categoryId;
+ const pid = (await b.query('select pg_backend_pid() as pid')).rows[0].pid;
+ async function waitLock() { for(let i=0;i<200;i++){if((await db.query("select wait_event_type from pg_stat_activity where pid=$1",[pid])).rows[0]?.wait_event_type==='Lock')return;await new Promise(resolve=>setTimeout(resolve,25));}throw Error('Expected blocked category operation'); }
+ try {
+  categoryId = (await db.query("insert into erp.categoria(descricao) values ('Categoria concorrente') returning id::text")).rows[0].id;
+  await a.query('begin'); await a.query('select id from erp.categoria where id=$1 for update',[categoryId]);
+  await b.query('begin'); await b.query("select set_config('request.jwt.claim.sub',$1,true)",[uid(1)]); await b.query('set local role authenticated');
+  pending=category('editar',{...categoryInput(),id:categoryId,revisao:'1'},1,b).then(value=>({value}),error=>({error})); await waitLock();
+  await db.exec("delete from erp.perfil_permissao where perfil_id=1 and permissao='CATEGORIA_EDITAR'"); await a.query('commit'); assert.equal((await pending).error?.code,'PT403'); await b.query('rollback');
+  await db.exec("insert into erp.perfil_permissao values(1,'CATEGORIA_EDITAR')");
+  await a.query('begin'); await a.query('select id from erp.categoria where id=$1 for share',[categoryId]);
+  await b.query('begin'); await b.query("select set_config('request.jwt.claim.sub',$1,true)",[uid(4)]); await b.query('set local role authenticated');
+  pending=category('excluir',{id:categoryId,revisao:'1'},1,b).then(value=>({value}),error=>({error})); await waitLock();
+  await a.query("select set_config('request.jwt.claim.sub',$1,true)",[uid(2)]); await a.query('set local role authenticated');
+  await rpc('produto_salvar',product({descricao:'CAD003 produto disputa exclusiva',categoria_id:categoryId}),2,a); await a.query('commit'); assert.equal((await pending).error?.code,'PT409'); await b.query('rollback');
+  // Two writers cannot create duplicate normalized descriptions.
+  await a.query('begin'); await a.query("select set_config('request.jwt.claim.sub',$1,true)",[uid(1)]); await a.query('set local role authenticated');
+  await category('criar',categoryInput({descricao:'Unicidade concorrente'}),1,a);
+  await b.query('begin'); await b.query("select set_config('request.jwt.claim.sub',$1,true)",[uid(4)]); await b.query('set local role authenticated');
+  pending=category('criar',categoryInput({descricao:'UNICIDADE CONCORRENTE'}),1,b).then(value=>({value}),error=>({error})); await waitLock();
+  await a.query('commit'); assert.equal((await pending).error?.code,'PT409'); await b.query('rollback');
+ } finally {
+  await a.query('rollback').catch(()=>{}); if(pending)await pending; await b.query('rollback').catch(()=>{});
+  await db.exec('reset role'); await db.exec("insert into erp.perfil_permissao values(1,'CATEGORIA_EDITAR') on conflict do nothing"); await Promise.all([a.end(),b.end()]);
+ }
 });
