@@ -43,6 +43,12 @@ before(async () => {
 });
 after(async () => { if (close) await close(); });
 
+const linkInput = (p, extra = {}) => ({ id: p.id, revisao: p.revisao, estoque_minimo: '5.000001', estoque_maximo: '20', ponto_reposicao: null, ...extra });
+async function become(n) { await db.exec('reset role'); await db.query("select set_config('request.jwt.claim.sub',$1,true)",[uid(n)]); await db.exec('set local role authenticated'); }
+async function catalogRejects(action, data, code, unit = 2) {
+ await db.exec('savepoint catalog_error');await assert.rejects(()=>catalog(action,data,unit),{code});await db.exec('rollback to savepoint catalog_error');
+}
+
 async function actor(n, callback, role = 'authenticated') {
   await db.exec('begin');
   try {
@@ -63,6 +69,9 @@ async function sqlRejects(sql, code = '42501') {
   await db.exec('savepoint denied'); await assert.rejects(() => db.exec(sql), { code }); await db.exec('rollback to savepoint denied');
 }
 async function create(extra) { return (await rpc('produto_salvar', product(extra))).produto; }
+async function catalog(action, data, unit = 1, client = db) {
+  return (await client.query('select erp.catalogo_unidade($1,$2,$3::jsonb) as result', [unit, action, JSON.stringify(data)])).rows[0].result;
+}
 async function receive(id, extra) { return (await rpc('entrada_criar', receipt(id, extra))).entrada; }
 async function confirm(id, n = 1) { return (await rpc('entrada_confirmar', { id, chave: key(n) })).entrada; }
 
@@ -264,4 +273,75 @@ test('duas conexões confirmam uma única vez e NF concorrente entre unidades é
   } finally {
     await a.query('rollback').catch(() => {}); if (pending) await pending; await b.query('rollback').catch(() => {}); await db.exec('reset role'); await Promise.all([a.end(), b.end()]);
   }
+});
+
+test('catálogo disponível não expõe dados da origem; vínculo mantém produto único e estoque separado',async()=>actor(1,async()=>{
+ const p=await create({descricao:'CAD-002 catálogo compartilhado'});const body=linkInput(p);
+ await db.exec('reset role');const movements=(await db.query('select count(*)::int as n from erp.movimento_estoque')).rows[0].n;await become(2);
+ const available=await catalog('disponiveis',{q:'CAD-002 CATALOGO',offset:0},2);
+ assert.equal(available.total,1);assert.equal(available.produtos[0].id,p.id);
+ assert.deepEqual(Object.keys(available.produtos[0]).sort(),['id','revisao','descricao','complemento','unidade_sigla','categoria_descricao','apresentacao_compra','armazenamento'].sort());
+ const saved=(await catalog('vincular',body,2)).produto;
+ assert.equal(saved.id,p.id);assert.equal(saved.revisao,p.revisao);assert.equal(saved.estoque_minimo,'5.000001');
+ assert.equal((await catalog('disponiveis',{q:'CAD-002 CATALOGO',offset:0},2)).total,0);
+ assert.equal((await catalog('vincular',body,2)).produto.id,p.id);
+ await catalogRejects('vincular',{...body,estoque_minimo:'9'},'PT409');
+ await db.exec('reset role');
+ assert.equal((await db.query('select count(*)::int as n from erp.produto where id=$1',[p.id])).rows[0].n,1);
+ assert.deepEqual((await db.query('select unidade_id::text,estoque_minimo::text from erp.produto_unidade where produto_id=$1 order by unidade_id',[p.id])).rows,[{unidade_id:'1',estoque_minimo:'10.000000'},{unidade_id:'2',estoque_minimo:'5.000001'}]);
+ const audits=(await db.query("select unidade_id::text,antes,depois->>'estoque_minimo' as minimo from erp.auditoria_estoque where entidade_id=$1 and acao='produto_vincular'",[p.id])).rows;
+ assert.deepEqual(audits,[{unidade_id:'2',antes:null,minimo:'5.000001'}]);
+ assert.equal((await db.query('select count(*)::int as n from erp.movimento_estoque')).rows[0].n,movements);
+}));
+
+test('vínculo exige revisão atual e JSON estrito, preserva parâmetros após conflitos',async()=>actor(1,async()=>{
+ const p=await create({descricao:'CAD-002 revisão'});await rpc('produto_salvar',{...product({descricao:p.descricao}),id:p.id,revisao:p.revisao});await become(2);
+ await catalogRejects('vincular',linkInput(p),'PT412');
+ for(const change of [{estoque_minimo:0},{estoque_maximo:'1'},{estoque_minimo:'-1'},{ponto_reposicao:'-1'},{ator_id:uid(1)},{unidade_id:'1'},{revisao:'0'}])await catalogRejects('vincular',linkInput({...p,revisao:'2'},change),'PT422');
+ await catalogRejects('disponiveis',{q:'',offset:-1},'PT422');await catalogRejects('disponiveis',{q:'',offset:0,status:'ATIVO'},'PT422');
+ await db.exec('reset role');assert.equal((await db.query('select count(*)::int as n from erp.produto_unidade where produto_id=$1 and unidade_id=2',[p.id])).rows[0].n,0);
+}));
+
+test('leitor, unidade alheia e DML direto não vinculam produto; helpers não são públicos',async()=>actor(1,async()=>{
+ const p=await create({descricao:'CAD-002 permissões'});
+ await become(3);assert.ok(Array.isArray((await catalog('disponiveis',{q:'',offset:0},1)).produtos));await catalogRejects('vincular',linkInput(p),'PT403',1);
+ await become(1);await catalogRejects('disponiveis',{q:'',offset:0},'PT404');
+ await become(2);await sqlRejects(`insert into erp.produto_unidade(unidade_id,produto_id,estoque_minimo) values(2,${p.id},0)`);
+ await db.exec('reset role');await db.query("select set_config('request.jwt.claim.sub','',true)");await db.exec('set local role authenticated');await catalogRejects('disponiveis',{q:'',offset:0},'PT403');
+ await db.exec('reset role');await db.exec('set local role anon');await catalogRejects('disponiveis',{q:'',offset:0},'42501');
+}));
+
+test('produto, medida ou categoria inativa não aparecem nem aceitam vínculo',async()=>actor(1,async()=>{
+ const p=await create({descricao:'CAD-002 inativos'});
+ for(const table of ['unidade_medida','categoria','produto']){
+  await db.exec('reset role');await db.query(`update erp.${table} set status='INATIVO' where id=$1`,[table==='produto'?p.id:'1']);await become(2);
+  assert.equal((await catalog('disponiveis',{q:p.descricao,offset:0},2)).total,0);await catalogRejects('vincular',linkInput(p),'PT422');
+  await db.exec('reset role');await db.query(`update erp.${table} set status='ATIVO' where id=$1`,[table==='produto'?p.id:'1']);
+ }
+}));
+
+test('falha de auditoria desfaz o vínculo e não altera produto ou saldo',async()=>actor(1,async()=>{
+ const p=await create({descricao:'CAD-002 rollback'});await db.exec('reset role');
+ await db.exec("create function erp_private.falha_vinculo() returns trigger language plpgsql as $$ begin if new.acao='produto_vincular' then raise exception 'Falha induzida'; end if; return new; end $$; create trigger falha_vinculo before insert on erp.auditoria_estoque for each row execute function erp_private.falha_vinculo()");
+ await become(2);await catalogRejects('vincular',linkInput(p),'P0001');await db.exec('reset role');
+ assert.equal((await db.query('select count(*)::int as n from erp.produto_unidade where produto_id=$1',[p.id])).rows[0].n,1);
+ assert.equal((await db.query('select revisao::text from erp.produto where id=$1',[p.id])).rows[0].revisao,p.revisao);
+}));
+
+test('vínculo concorrente audita uma vez e revogação durante lock bloqueia escrita',{skip:!process.env.DATABASE_STOCK_TEST_URL,timeout:20000},async()=>{
+ const a=new pg.Client({connectionString:process.env.DATABASE_STOCK_TEST_URL});const b=new pg.Client({connectionString:process.env.DATABASE_STOCK_TEST_URL});let pending;
+ const wait=async pid=>{const limit=Date.now()+3000;while(Date.now()<limit){if((await db.query('select cardinality(pg_blocking_pids($1))>0 as blocked',[pid])).rows[0].blocked)return;await new Promise(r=>setTimeout(r,20));}assert.fail('Lock não observado');};
+ try{
+  await a.connect();await b.connect();await db.query("select set_config('request.jwt.claim.sub',$1,false)",[uid(1)]);await db.exec('set role authenticated');
+  const p=await create({descricao:'CAD-002 concorrente'});const revoked=await create({descricao:'CAD-002 revogado'});await db.exec('reset role');
+  for(const client of[a,b]){await client.query('begin');await client.query("set local statement_timeout='5s'");await client.query("select set_config('request.jwt.claim.sub',$1,true)",[uid(2)]);await client.query('set local role authenticated');}
+  await catalog('vincular',linkInput(p),2,a);const pid=(await b.query('select pg_backend_pid() as pid')).rows[0].pid;
+  pending=catalog('vincular',linkInput(p),2,b).then(value=>({value}),error=>({error}));await wait(pid);await a.query('commit');assert.ifError((await pending).error);await b.query('commit');
+  assert.equal((await db.query("select count(*)::int as n from erp.auditoria_estoque where acao='produto_vincular' and entidade_id=$1",[p.id])).rows[0].n,1);
+  await a.query('begin');await a.query('select id from erp.produto where id=$1 for update',[revoked.id]);
+  await b.query('begin');await b.query("select set_config('request.jwt.claim.sub',$1,true)",[uid(2)]);await b.query('set local role authenticated');
+  pending=catalog('vincular',linkInput(revoked),2,b).then(value=>({value}),error=>({error}));await wait(pid);
+  await db.exec("delete from erp.perfil_permissao where perfil_id=1 and permissao='PRODUTO_GERIR'");await a.query('commit');assert.equal((await pending).error?.code,'PT403');await b.query('rollback');
+  await db.exec("insert into erp.perfil_permissao values(1,'PRODUTO_GERIR')");assert.equal((await db.query('select count(*)::int as n from erp.produto_unidade where produto_id=$1 and unidade_id=2',[revoked.id])).rows[0].n,0);
+ }finally{await a.query('rollback').catch(()=>{});if(pending)await pending;await b.query('rollback').catch(()=>{});await db.exec('reset role');await Promise.all([a.end(),b.end()]);}
 });

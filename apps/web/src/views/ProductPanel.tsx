@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import type { Product, ProdutoInput } from '@erp/contracts';
 import { isProdutoInput, productInputFields } from '@erp/contracts';
 import { decimalInput, decimalLabel, stockError } from '../services/stock-api.ts';
 import type { StockPageProps } from './StockPanel.tsx';
+const ProductLinkPanel = lazy(() => import('./ProductLinkPanel.tsx').then(module => ({ default: module.ProductLinkPanel })));
 
 const storage = { SECO: 'Seco', RESFRIADO: 'Resfriado', CONGELADO: 'Congelado' };
 function localDraft(product: ProdutoInput): ProdutoInput {
@@ -34,6 +35,7 @@ export function ProductPanel({ api, unit, context, onDirty, onBusy }: StockPageP
   const [dirty, setDirty] = useState(false);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
+  const [linking, setLinking] = useState(false);
   const editable = context.capacidades.produto_escrever;
   useEffect(() => { onDirty(dirty); return () => onDirty(false); }, [dirty, onDirty]);
   useEffect(() => { onBusy(saving); return () => onBusy(false); }, [saving, onBusy]);
@@ -68,6 +70,8 @@ export function ProductPanel({ api, unit, context, onDirty, onBusy }: StockPageP
       setSelected(product); setDraft(localDraft(product)); setDirty(false); setMessage('Produto salvo com sucesso.'); setReload(value => value + 1);
     } catch (err) { setError(stockError(err)); } finally { setSaving(false); }
   }
+  if (linking) return <Suspense fallback={<p role="status">Carregando catálogo…</p>}><ProductLinkPanel key={unit} api={api} unit={unit} context={context} onDirty={onDirty} onBusy={onBusy}
+    onCancel={() => setLinking(false)} onDone={product => { setLinking(false); setQuery(product.descricao); setSearch(product.descricao); setStatus('ATIVO'); setOffset(0); setReload(v => v + 1); setMessage('Produto vinculado à unidade com sucesso.'); }} /></Suspense>;
   return <>
     {message && <p role="status" className="success">{message}</p>}
     {error && <p role="alert" className="notice error">{error}</p>}
@@ -97,7 +101,7 @@ export function ProductPanel({ api, unit, context, onDirty, onBusy }: StockPageP
       <div className="actions footer-actions"><button type="button" disabled={saving} onClick={() => { if (discard()) { setDraft(undefined); setSelected(undefined); setDirty(false); setError(''); setReload(value => value + 1); } }}>Voltar aos produtos</button>
         <button className="primary" disabled={saving || !editable || !dirty}>{saving ? 'Salvando…' : 'Salvar produto'}</button></div>
     </form> : <>
-      <div className="section-heading"><p className="hint">{editable ? 'Produtos compartilhados; parâmetros de estoque definidos por unidade.' : 'Acesso somente para consulta.'}</p><button className="primary" disabled={!editable || saving || !context.medidas.length || !context.categorias.length} onClick={() => open()}>Novo produto</button></div>
+      <div className="section-heading"><p className="hint">{editable ? 'Produtos compartilhados; parâmetros de estoque definidos por unidade.' : 'Acesso somente para consulta.'}</p><div className="actions"><button disabled={!editable || saving} onClick={() => { setError(''); setMessage(''); setLinking(true); }}>Vincular produto existente</button><button className="primary" disabled={!editable || saving || !context.medidas.length || !context.categorias.length} onClick={() => open()}>Novo produto</button></div></div>
       <section className="card">
         <form className="stock-filters" aria-label="Filtros de produtos" onSubmit={e => { e.preventDefault(); setQuery(search.trim()); setOffset(0); setReload(value => value + 1); }}>
           <label className="field">Buscar produto<input type="search" maxLength={200} value={search} onChange={e => setSearch(e.target.value)} /></label>

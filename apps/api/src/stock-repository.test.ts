@@ -30,6 +30,8 @@ function transport(options: { authStatus?: number; anonymous?: boolean; code?: s
       case 'contexto': return Response.json(context);
       case 'produtos': return Response.json({ produtos: [product], total: 1 });
       case 'produto_salvar': return Response.json({ produto: product });
+      case 'disponiveis': return Response.json({produtos:[{...product,estoque_de_outra_unidade:'Não retornar'}],total:1});
+      case 'vincular': return Response.json({produto:product});
       case 'entradas': return Response.json({ entradas: [receipt] });
       case 'entrada_criar':
       case 'entrada_confirmar':
@@ -54,6 +56,17 @@ test('SDK de estoque valida Auth real antes da RPC e usa apenas Bearer/publicáv
   }
   assert.equal(requests[1]?.headers.get('Content-Profile'), 'erp');
   assert.deepEqual(requests[1]?.body, { p_unidade: '1', p_acao: 'contexto', p_dados: {} });
+});
+
+test('catálogo usa RPC própria e elimina campos locais da resposta disponível',async()=>{
+ const {requests,fetcher}=transport();const {repository}=createSupabaseStockSession(env,'usuario-a',fetcher);
+ const available=await repository.availableProducts('1',{q:'arroz',offset:0});
+ assert.deepEqual(Object.keys(available.produtos[0]!).sort(),['id','revisao','descricao','complemento','unidade_sigla','categoria_descricao','apresentacao_compra','armazenamento'].sort());
+ assert.equal(available.produtos[0]?.id,product.id);
+ const body={revisao:'2',estoque_minimo:'0.000001',estoque_maximo:null,ponto_reposicao:null};
+ assert.equal((await repository.linkProduct('1',product.id,body)).produto.id,product.id);
+ assert.ok(requests.every(r=>r.path==='/rest/v1/rpc/catalogo_unidade'));
+ assert.deepEqual(requests[1]?.body,{p_unidade:'1',p_acao:'vincular',p_dados:{...body,id:product.id}});
 });
 test('oito ações usam somente RPC e mantêm IDs/revisão/decimais como strings', async () => {
   const { requests, fetcher } = transport();

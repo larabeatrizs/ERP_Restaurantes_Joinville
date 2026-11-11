@@ -1,10 +1,18 @@
 import { createClient } from '@supabase/supabase-js';
 import { isEntradaInput, isEntradaItemInput, isIsoDate, isProdutoInput, isRecord, isStockDecimal, isStockId, isStorageType, isText, productInputFields } from '@erp/contracts';
-import type { Product, Receipt, ReceiptItem, StockBalance, StockContext } from '@erp/contracts';
+import type { CatalogProduct, Product, Receipt, ReceiptItem, StockBalance, StockContext } from '@erp/contracts';
 import type { StockRuntimeEnv, StockSession } from './stock-repository.ts';
 import { ApiError } from '../errors.ts';
 
 function unavailable(): never { throw new ApiError(503, 'SERVICE_UNAVAILABLE', 'Serviço de estoque indisponível.'); }
+function catalogProduct(value: unknown): CatalogProduct {
+  if (!isRecord(value) || !isStockId(value.id) || !isStockId(value.revisao) || !isText(value.descricao, 200)
+    || !isText(value.complemento, 200, true) || !isText(value.unidade_sigla, 100) || !isText(value.categoria_descricao, 200)
+    || !isText(value.apresentacao_compra, 100) || !isStorageType(value.armazenamento)) unavailable();
+  return { id: value.id, revisao: value.revisao, descricao: value.descricao, complemento: value.complemento,
+    unidade_sigla: value.unidade_sigla, categoria_descricao: value.categoria_descricao,
+    apresentacao_compra: value.apresentacao_compra, armazenamento: value.armazenamento };
+}
 function translate(error: { code?: string } | null, status: number): void {
   if (!error) return;
   if (status === 401) throw new ApiError(401, 'UNAUTHORIZED', 'Sessão inválida ou expirada.');
@@ -108,8 +116,8 @@ export function createSupabaseStockSession(env: StockRuntimeEnv, token: string, 
       fetch: (input, init) => fetcher(input, { ...init, signal: init?.signal ? AbortSignal.any([init.signal, AbortSignal.timeout(5000)]) : AbortSignal.timeout(5000) }),
     },
   });
-  async function operation(unit: string, action: string, data: object): Promise<Record<string, unknown>> {
-    const result = await client.schema('erp').rpc('estoque_operacao', { p_unidade: unit, p_acao: action, p_dados: data });
+  async function operation(unit: string, action: string, data: object, rpc = 'estoque_operacao'): Promise<Record<string, unknown>> {
+    const result = await client.schema('erp').rpc(rpc, { p_unidade: unit, p_acao: action, p_dados: data });
     translate(result.error, result.status);
     if (!isRecord(result.data)) unavailable();
     return result.data;
@@ -122,6 +130,17 @@ export function createSupabaseStockSession(env: StockRuntimeEnv, token: string, 
     },
     repository: {
       async context(unit) { return context(await operation(unit, 'contexto', {})); },
+      async availableProducts(unit, query) {
+        const result = await operation(unit, 'disponiveis', query, 'catalogo_unidade');
+        if (!Array.isArray(result.produtos) || result.produtos.length > 50 || !Number.isSafeInteger(result.total) || (result.total as number) < 0) unavailable();
+        return { produtos: result.produtos.map(catalogProduct), total: result.total as number };
+      },
+      async linkProduct(unit, id, input) {
+        const result = await operation(unit, 'vincular', { ...input, id }, 'catalogo_unidade');
+        const saved = product(result.produto);
+        if (saved.id !== id) unavailable();
+        return { produto: saved };
+      },
       async products(unit, query) {
         const result = await operation(unit, 'produtos', query);
         if (!Array.isArray(result.produtos) || result.produtos.length > 50 || typeof result.total !== 'number' || !Number.isSafeInteger(result.total) || result.total < 0) unavailable();

@@ -78,6 +78,8 @@ Verificar troca obrigatória no primeiro acesso e negação das demais ações a
 
 ## Evidência e próximos critérios
 
+Confirmação manual posterior em 10/11/2026: a responsável informou nesta conversa que acessou e funcionou. Isso confirma seu acesso pessoal, além da validação sintética/automatizada abaixo; não encerra gestão administrativa nem RF-008 integral. Sua senha e seu link não serão usados nas próximas verificações de desenvolvimento.
+
 Levantamento: leitura do DRS/documentos/código/configuração e consulta remota readonly em 10/11. Nenhum teste novo de painel administrativo foi executado, pois ele não existe. [Issue #19](https://github.com/larabeatrizs/ERP_Restaurantes_Joinville/issues/19) mantém os critérios observáveis de UI, autorização, bootstrap idempotente, falhas parciais e jornada de staging; permanece aberta. Documentar não encerra RF-008.
 
 Resultado executado de ADM-001/A em 10/11: [evidência hospedada](../evidencias/adm-001/acesso-hospedado.json) e [tela móvel sem credenciais](../evidencias/adm-001/definir-senha-360.png). Runtime `db576ee9dd519cd353f553b13766eae1a797a714`, versão Cloudflare `be929f32-f3b0-4e71-92f7-11359a86a31d`, na mesma URL do staging. [CI do runtime](https://github.com/larabeatrizs/ERP_Restaurantes_Joinville/actions/runs/42864989276): quatro jobs aprovados, incluindo 28 cenários de navegador e PostgreSQL descartável. Cinco cenários novos de primeiro acesso também passaram localmente no Edge; `npm run check` passou antes do ajuste de navegação, com lint/tipos/build e novo navegador revalidados após o ajuste.

@@ -1,0 +1,77 @@
+{
+  "postflight": {
+    "lots": 6,
+    "users": 5,
+    "products": 8,
+    "receipts": 6,
+    "movements": 6,
+    "migrations": 5,
+    "rls_tables": 20,
+    "captured_at": "2026-11-10T18:00:57.726526+00:00",
+    "unit_b_balances": 0,
+    "ledger_mismatches": 0,
+    "link_audit_events": 2,
+    "product_unit_links": 10,
+    "stock_audit_events": 25,
+    "unit_b_product_links": 2
+  },
+  "authorization": {
+    "rls_tables": 20,
+    "new_functions": [
+      {
+        "name": "catalogo_unidade",
+        "owner": "postgres",
+        "config": [
+          "search_path=\"\""
+        ],
+        "schema": "erp",
+        "definer": false,
+        "anon_execute": false,
+        "authenticated_execute": true
+      },
+      {
+        "name": "catalogo_unidade",
+        "owner": "erp_stock_writer",
+        "config": [
+          "search_path=\"\""
+        ],
+        "schema": "erp_private",
+        "definer": true,
+        "anon_execute": false,
+        "authenticated_execute": true
+      }
+    ],
+    "migration_count": 5,
+    "stock_writer_create": false,
+    "client_writer_member": false,
+    "stock_writer_auth_usage": false
+  },
+  "advisors": [
+    {
+      "name": "rls_enabled_no_policy",
+      "level": "INFO",
+      "count": 14,
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy"
+    },
+    {
+      "name": "auth_leaked_password_protection",
+      "level": "WARN",
+      "count": 1,
+      "remediation": "https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection"
+    }
+  ],
+  "baselineBefore": {
+    "products": 6,
+    "productUnitLinks": 6,
+    "movements": 6,
+    "stockAuditEvents": 21,
+    "users": 5
+  },
+  "change": {
+    "productsAdded": 2,
+    "productUnitLinksAdded": 4,
+    "newLinkAuditEvents": 2,
+    "stockAuditEventsAdded": 4,
+    "movementsAdded": 0
+  }
+}
