@@ -5,8 +5,9 @@ import fs from 'node:fs/promises';
 const user = { id: '00000000-0000-4000-8000-000000000001', aud: 'authenticated', role: 'authenticated', email: 'teste@example.invalid' };
 const session = { access_token: 'eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ0ZXN0ZSJ9.ficticio', refresh_token: 'ficticio', token_type: 'bearer', expires_in: 3600, user };
 const balance = { produto_id:'11', produto:'Arroz', unidade_medida:'kg', lote_id:'12', lote:'ARROZ-A', validade:'2030-12-31', camara_id:'13', local:'Câmara fria', quantidade:'7.000001', valor_unitario:'2.123456' };
-async function setup(page, { failIndicators=false, recoveryFails=false } = {}) {
+async function setup(page, { failIndicators=false, recoveryFails=false, delayUnits=false } = {}) {
   const requests=[], recoveries=[];
+  let unitCalls=0;
   await page.route('https://auth-ficticio.supabase.co/**', route => {
     const request=route.request(), url=new URL(request.url());
     if(url.pathname.endsWith('/recover')) {
@@ -17,13 +18,13 @@ async function setup(page, { failIndicators=false, recoveryFails=false } = {}) {
     if(url.pathname.endsWith('/user')) return route.fulfill({json:user});
     return route.fulfill({json:{}});
   });
-  await page.route('**/api/**', route => {
+  await page.route('**/api/**', async route => {
     const request=route.request(), url=new URL(request.url());
     if(url.pathname==='/api/auth/login') return route.fulfill({json:{access_token:session.access_token,refresh_token:session.refresh_token}});
     requests.push(url.pathname);
     expect(request.headers().authorization).toMatch(/^Bearer /);
     if(url.pathname==='/api/me') return route.fulfill({json:{nome:'Pessoa de teste'}});
-    if(url.pathname==='/api/unidades') return route.fulfill({json:{unidades:[{id:'1',codigo:'RP1',nome:'Unidade A'},{id:'2',codigo:'RP2',nome:'Unidade B'}]}});
+    if(url.pathname==='/api/unidades') { if(++unitCalls>1&&delayUnits)await new Promise(resolve=>setTimeout(resolve,700)); return route.fulfill({json:{unidades:[{id:'1',codigo:'RP1',nome:'Unidade A'},{id:'2',codigo:'RP2',nome:'Unidade B'}]}}); }
     if(failIndicators) return route.fulfill({status:503,json:{error:{code:'UNAVAILABLE'}}});
     const unit=url.pathname.split('/')[3];
     if(url.pathname.endsWith('/produtos')) return route.fulfill({json:{produtos:[],total:unit==='1'?3:9}});
@@ -70,6 +71,14 @@ test('indicador indisponível não vira zero fictício',async({page})=>{
   await setup(page,{failIndicators:true}); await login(page); await enter(page);
   await expect(page.getByRole('alert')).toContainText('Alguns indicadores não estão disponíveis');
   await expect(page.locator('.home-metrics strong')).toHaveText(['—','—','—']);
+});
+test('consulta lenta de vínculos não mostra unidade vazia nem indicadores prematuros',async({page})=>{
+  await setup(page,{delayUnits:true}); await login(page); await enter(page);
+  await expect(page.getByText('Carregando unidade…',{exact:true})).toBeVisible();
+  await expect(page.getByText('Nenhuma unidade ativa disponível para sua conta.',{exact:false})).toHaveCount(0);
+  await expect(page.locator('.home-metrics')).toHaveCount(0);
+  await expect(page.locator('.unit-caption')).toContainText('Unidade A');
+  await expect(page.locator('.home-metrics')).toBeVisible();
 });
 test('pesquisa saldos e exporta somente o resultado da unidade selecionada',async({page})=>{
   await setup(page); await login(page); await enter(page);

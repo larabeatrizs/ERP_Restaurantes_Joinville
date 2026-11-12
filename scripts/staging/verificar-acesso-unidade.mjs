@@ -28,6 +28,7 @@ try {
   }
   async function api(label,route,status=200) {
     const response=await fetch(origin+route,{headers:label?{Authorization:'Bearer '+sessions[label].token}:{},signal:AbortSignal.timeout(30000)});
+    if(response.status!==status) { proof.failure={kind:'http_status',route:route.replace(/\d+/g,':id'),expected:status,actual:response.status}; }
     assert.equal(response.status,status);
     return response.json();
   }
@@ -41,7 +42,7 @@ try {
     const units=await api(label,'/api/unidades'); assert.equal(units.unidades.length,1); assert.equal(units.unidades[0].id,expected);
   }
   const baseline=await api('readerA',`/api/unidades/${state.units.A}/estoque/saldos`);
-  await api('readerA',`/api/unidades/${state.units.B}/estoque/saldos`,403);
+  await api('readerA',`/api/unidades/${state.units.B}/estoque/saldos`,404);
   proof.scenarios.push('identificação autenticada retorna somente nome; ausência de sessão negada','duas contas sintéticas veem apenas sua unidade; saldo de outra unidade negado');
   proof.phase='browser'; browser=await chromium.launch({channel:process.env.PLAYWRIGHT_CHANNEL||undefined});
   for(const [label,width] of [['readerA',360],['editorB',1280]]) {
@@ -64,12 +65,16 @@ try {
     const selected=String(state.units[label==='readerA'?'A':'B']); await selector.selectOption(selected);
     await page.getByRole('button',{name:'Acessar unidade',exact:true}).click();
     await expect(page.getByRole('heading',{name:'Início',exact:true})).toBeVisible();
+    await expect(page.getByRole('combobox',{name:'Unidade',exact:true})).toHaveValue(selected);
     await expect(page.locator('.unit-caption')).toContainText(identities[label].nome);
+    await expect(page.locator('.unit-caption')).not.toContainText('Consultando unidade');
+    await expect(page.locator('.home-metrics')).toBeVisible();
     await expect(page.getByText('Consultando indicadores…',{exact:true})).toHaveCount(0);
     await expect(page.locator('html')).toHaveJSProperty('scrollWidth',width);
     await page.screenshot({path:path.join(root,`ux003-inicio-${width}.png`),fullPage:true});
     if(label==='readerA') {
       await page.getByRole('navigation',{name:'Principal'}).getByRole('link',{name:'Saldo',exact:true}).click();
+      await expect(page.getByLabel('Pesquisar saldos',{exact:true})).toBeVisible();
       await expect(page.getByText('Consultando saldos…',{exact:true})).toHaveCount(0);
       if(!baseline.saldos.length)throw Error('Balance fixture missing');
       const term=baseline.saldos[0].produto;
@@ -86,10 +91,14 @@ try {
     await expect(page.getByRole('heading',{name:'Entrar',exact:true})).toBeVisible();
   }
   proof.scenarios.push('UI real exige escolha antes de dados operacionais; mostra nome e Início em 360/1280','mostrar/ocultar senha; saldos pesquisáveis e CSV real; Meu acesso disponível sem envio de email');
+  // Sair na UI encerra globalmente as sessões da conta; obter nova sessão para conferir persistência.
+  const fresh=await clients[0].auth.signInWithPassword({email:sessions.readerA.account.email,password:sessions.readerA.account.password});
+  if(fresh.error||!fresh.data.session)throw Error('Fresh synthetic session failed');
+  sessions.readerA.token=fresh.data.session.access_token;
   assert.deepEqual(await api('readerA',`/api/unidades/${state.units.A}/estoque/saldos`),baseline);
   proof.scenarios.push('saldos anteriores preservados; nenhuma senha, permissão ou link pessoal alterado');
   proof.completed=true;proof.phase='completed';console.log('PASS: acesso por unidade e consultas reais, sem escrita no estoque.');
-} catch {console.error('FAIL: jornada UX-003 interrompida; fase registrada privadamente, sem credenciais no log.');process.exitCode=1;}
+} catch(error) {if(!proof.failure)proof.failure={kind:error.code==='ERR_ASSERTION'?'assertion':error.name};console.error('FAIL: jornada UX-003 interrompida; fase registrada privadamente, sem credenciais no log.');process.exitCode=1;}
 finally {
   for(const context of contexts)await context.close(); if(browser)await browser.close();
   for(const client of clients)await client.auth.signOut({scope:'local'});

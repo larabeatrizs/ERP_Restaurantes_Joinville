@@ -22,6 +22,7 @@ export function StockPanel({ api, stock, categories, page, onNavigate, initialUn
   initialUnit: string; onUnitChange: (unit: string) => void; onSignOut: () => Promise<void>;
 }) {
   const [units, setUnits] = useState<UnitSummary[]>([]);
+  const [unitsLoaded, setUnitsLoaded] = useState(false);
   const [unit, setUnit] = useState(initialUnit);
   const [context, setContext] = useState<StockContext>();
   const [loading, setLoading] = useState(true);
@@ -31,12 +32,13 @@ export function StockPanel({ api, stock, categories, page, onNavigate, initialUn
   const [busy, setBusy] = useState(false);
   useEffect(() => {
     let active = true;
-    void api.units().then(list => { if (active) { setUnits(list); setUnit(current => list.some(item => item.id === current) ? current : list[0]?.id ?? ''); if (!list.length) setLoading(false); } })
-      .catch(err => { if (active) { setError(stockError(err)); setLoading(false); } });
+    setUnitsLoaded(false); setLoading(true);
+    void api.units().then(list => { if (active) { setUnits(list); setUnitsLoaded(true); setUnit(current => list.some(item => item.id === current) ? current : list[0]?.id ?? ''); if (!list.length) setLoading(false); } })
+      .catch(err => { if (active) { setError(stockError(err)); setLoading(false); setUnitsLoaded(true); } });
     return () => { active = false; };
   }, [api, retry]);
   useEffect(() => {
-    if (!unit) return;
+    if (!unit || !unitsLoaded || !units.some(item => item.id === unit)) return;
     let active = true;
     onUnitChange(unit);
     setContext(undefined); setLoading(true); setError('');
@@ -44,7 +46,7 @@ export function StockPanel({ api, stock, categories, page, onNavigate, initialUn
     void stock.context(unit).then(data => { if (active) { setContext(data); setLoading(false); } })
       .catch(err => { if (active) { setError(stockError(err)); setLoading(false); } });
     return () => { active = false; };
-  }, [stock, unit, retry, onUnitChange, page]);
+  }, [stock, unit, units, unitsLoaded, retry, onUnitChange, page]);
   useEffect(() => {
     if (!dirty) return;
     const protect = (event: BeforeUnloadEvent) => event.preventDefault();
@@ -64,16 +66,16 @@ export function StockPanel({ api, stock, categories, page, onNavigate, initialUn
     <main id="conteudo" className="main stock-main">
       <header><p className="eyebrow">GESTÃO DA UNIDADE</p><h1>{title[page]}</h1><p className="muted">{subtitle[page]}</p></header>
       <section className="card unit-card" aria-label="Unidade">
-        <label className="field">Unidade<select value={unit} disabled={busy || loading || !units.length} onChange={event => { if (discard()) setUnit(event.target.value); }}>
+        <label className="field">Unidade<select value={unit} disabled={busy || loading || !unitsLoaded || !units.length} onChange={event => { if (discard()) setUnit(event.target.value); }}>
           {units.map(item => <option key={item.id} value={item.id}>{item.codigo} — {item.nome}</option>)}
         </select></label><p className="hint">Seu vínculo e suas permissões definem as ações disponíveis.</p>
       </section>
       {error && <p role="alert" className="notice error">{error}</p>}
       {loading && <p role="status">Carregando unidade…</p>}
-      {!loading && !units.length && !error && <p className="notice">Nenhuma unidade ativa disponível para sua conta. Procure a administração.</p>}
+      {unitsLoaded && !loading && !units.length && !error && <p className="notice">Nenhuma unidade ativa disponível para sua conta. Procure a administração.</p>}
       {!loading && !context && error && <button onClick={() => setRetry(value => value + 1)}>Tentar novamente</button>}
-      {!loading && unit && page === 'inicio' && <HomePanel key={unit} api={stock} unit={unit} name={userName} onNavigate={onNavigate} />}
-      {!loading && unit && page === 'conta' && <AccountPanel name={userName} />}
+      {unitsLoaded && !loading && units.some(item => item.id === unit) && page === 'inicio' && <HomePanel key={unit} api={stock} unit={unit} name={userName} onNavigate={onNavigate} />}
+      {unitsLoaded && !loading && units.some(item => item.id === unit) && page === 'conta' && <AccountPanel name={userName} />}
       {context && !loading && <>
         {page === 'categorias' && <Suspense fallback={<p role="status">Carregando categorias…</p>}><CategoryPanel key={unit} api={categories} unit={unit} onDirty={setDirty} onBusy={setBusy} /></Suspense>}
         {page === 'produtos' && <ProductPanel key={unit} api={stock} unit={unit} context={context} onDirty={setDirty} onBusy={setBusy} />}
