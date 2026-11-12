@@ -4,6 +4,13 @@ import { SettingsService } from '../services/settings-service.ts';
 import type { RuntimeEnv, SessionFactory } from '../repositories/settings-repository.ts';
 
 const etag = (unit: string, revision: string) => `"cfg-${unit}-${revision}"`;
+export async function identityController(request: Request, env: RuntimeEnv, factory: SessionFactory): Promise<Response> {
+  const token = /^Bearer\s+(\S+)$/i.exec(request.headers.get('Authorization') ?? '')?.[1];
+  if (!token) throw new ApiError(401, 'UNAUTHORIZED', 'Informe uma sessão válida.');
+  const session = factory(env, token); await session.authenticate();
+  if (!session.repository.identity) throw new ApiError(503, 'SERVICE_UNAVAILABLE', 'Identificação temporariamente indisponível.');
+  return Response.json(await session.repository.identity(), { headers: { 'Cache-Control': 'no-store' } });
+}
 async function jsonBody(request: Request): Promise<unknown> {
   if (!/^application\/json(?:\s*;|$)/i.test(request.headers.get('Content-Type') ?? '')) {
     throw new ApiError(415, 'UNSUPPORTED_MEDIA_TYPE', 'Use application/json.');

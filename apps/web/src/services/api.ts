@@ -33,6 +33,11 @@ export interface SettingsSnapshot extends ConfigurationResult {
 }
 export class SettingsApi {
   constructor(private token: () => Promise<string | undefined>) {}
+  async identity(): Promise<{ nome: string }> {
+    const value: unknown = await (await this.request('/me')).json();
+    if (!isRecord(value) || typeof value.nome !== 'string' || !value.nome.trim()) throw new RequestError(503);
+    return { nome: value.nome };
+  }
   private async request(path: string, init?: RequestInit): Promise<Response> {
     const token = await this.token();
     if (!token) throw new RequestError(401);

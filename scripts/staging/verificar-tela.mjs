@@ -1,3 +1,4 @@
+import { selectWorkspaceUnit } from './acessar-unidade.mjs';
 // Opt-in: Playwright sem mocks/traces, com identidades sintéticas privadas.
 import fs from 'node:fs/promises';
 import path from 'node:path';
@@ -18,9 +19,11 @@ async function enter(label,width){
  if(!account||!/^int003-.*@example\.invalid$/.test(account.email))throw Error('Conta não sintética');
  const context=await browser.newContext({viewport:{width,height:900}});contexts.push(context);
  const page=await context.newPage();await page.goto(origin.href);
- await page.getByLabel('E-mail',{exact:true}).fill(account.email);await page.getByLabel('Senha',{exact:true}).fill(account.password);
+ await page.getByLabel('Nome de usuário',{exact:true}).fill(label.toLowerCase());await page.getByLabel('Senha',{exact:true}).fill(account.password);
  await page.getByRole('button',{name:'Entrar',exact:true}).click();
- await expect(page.getByRole('heading',{name:'Operação e custos'})).toBeVisible({timeout:30000});
+ await selectWorkspaceUnit(page);
+ await page.getByRole('navigation',{name:'Principal'}).getByRole('link',{name:'Configurações',exact:true}).click();
+ await expect(page.getByRole('heading',{name:'Operação e custos'})).toBeVisible();
  await expect(page.getByRole('combobox',{name:'Unidade',exact:true}).locator('option')).toHaveCount(1);
  return page;
 }

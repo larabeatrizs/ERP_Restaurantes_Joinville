@@ -28,22 +28,22 @@ test('primeiro acesso remove token, valida confirmação e encerra sessão após
  await expect(page).toHaveURL(/\/$/);
  expect(state.apiCalls()).toBe(0);
  await page.getByLabel('Nova senha',{exact:true}).fill('NovaSenhaSegura-123!');
- await page.getByLabel('Confirmar nova senha').fill('Diferente-123!');
+ await page.getByLabel('Confirmar nova senha',{exact:true}).fill('Diferente-123!');
  await page.getByRole('button',{name:'Salvar senha',exact:true}).click();
  await expect(page.getByRole('alert')).toHaveText('As senhas precisam ser iguais.');
  expect(state.writes).toHaveLength(0);
  await page.getByLabel('Nova senha',{exact:true}).fill('fraca');
- await page.getByLabel('Confirmar nova senha').fill('fraca');
+ await page.getByLabel('Confirmar nova senha',{exact:true}).fill('fraca');
  await page.getByRole('button',{name:'Salvar senha',exact:true}).click();
- await expect(page.getByRole('alert')).toContainText('Use pelo menos 12 caracteres');
+ await expect(page.getByRole('alert')).toContainText('Pelo menos 8 caracteres, com uma letra maiúscula ou minúscula, um número e um símbolo.');
  expect(state.writes).toHaveLength(0);
- await page.getByLabel('Nova senha',{exact:true}).fill('NovaSenhaSegura-123!');
- await page.getByLabel('Confirmar nova senha').fill('NovaSenhaSegura-123!');
+ await page.getByLabel('Nova senha',{exact:true}).fill('abcdef1!');
+ await page.getByLabel('Confirmar nova senha',{exact:true}).fill('abcdef1!');
  await page.getByRole('button',{name:'Salvar senha',exact:true}).click();
  await expect(page.getByRole('heading',{name:'Entrar',exact:true})).toBeVisible();
- await expect(page.getByRole('status')).toHaveText('Senha definida. Entre com seu e-mail e a nova senha.');
+ await expect(page.getByRole('status')).toHaveText('Senha definida. Entre com seu nome de usuário e a nova senha.');
  expect(state.writes).toHaveLength(1);
- expect(state.writes[0]).toMatchObject({password:'NovaSenhaSegura-123!'});
+ expect(state.writes[0]).toMatchObject({password:'abcdef1!'});
  expect(state.apiCalls()).toBe(0);
 });
 test('link inválido não abre o workspace nem conserva o token na URL',async({page})=>{
@@ -57,7 +57,7 @@ test('link inválido não abre o workspace nem conserva o token na URL',async({p
 test('falha ao salvar mantém a definição de senha e não abre dados',async({page})=>{
  const state=await setup(page,{updateFails:true});
  await page.getByLabel('Nova senha',{exact:true}).fill('NovaSenhaSegura-123!');
- await page.getByLabel('Confirmar nova senha').fill('NovaSenhaSegura-123!');
+ await page.getByLabel('Confirmar nova senha',{exact:true}).fill('NovaSenhaSegura-123!');
  await page.getByRole('button',{name:'Salvar senha',exact:true}).click();
  await expect(page.getByRole('alert')).toContainText('Não foi possível concluir');
  await expect(page.getByRole('heading',{name:'Definir senha',exact:true})).toBeVisible();expect(state.apiCalls()).toBe(0);

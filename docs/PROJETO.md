@@ -123,6 +123,8 @@ Realizar a primeira implantação operacional no RP1, com duas semanas em parale
 
 ## 16 — Continuidade e evidências
 
+- **Retorno de 12/11:** [DOM-002](decisoes/DOM-002-AJUSTES-12-11.md)/[UX-003/A](fundacao/UX-003-ACESSO-INICIO.md), [issue #31](https://github.com/larabeatrizs/ERP_Restaurantes_Joinville/issues/31), revisa login, senha, escolha de unidade, Início, saldos e administração. Login por nome de usuário via adaptador privado, nome/unidade visíveis, Início real, pesquisa/CSV e recuperação implementados/testados localmente; publicação pendente neste registro. Responsável confirmou cadastros compartilhados e operações/estoque separados, desbloqueando o escopo de CAD-004/PR #30. Envio geral de email foi explicitamente adiado. Símbolo obrigatório server-side, gestão de usuários/filiais/convite, exclusão elegível e relatórios continuam pendentes; importação de planilhas no final. Nenhuma senha pessoal, privilégio ou saldo alterado.
+
 - **Baseline histórica:** relocação do código do protótipo para `legacy/`, documentação da reconstrução integral e templates de SDD/PR. Os incrementos seguintes registram a implementação nova.
 - **Auditoria em andamento:** [FND-000](auditoria/FND-000.md), vinculada à issue #2, reúne inventário, matriz de investigação, mapa de UI, comparação documental dos dados e decisões/dependências. Seus limites e critérios ainda pendentes estão explícitos no relatório.
 - **Skills do projeto:** `erp-requisitos` e `erp-entregas`, versionadas em `.agents/skills/` e encaminhadas por `AGENTS.md`. Apoiam rastreabilidade e revisão por critério; não concedem autorização operacional nem provam conformidade.

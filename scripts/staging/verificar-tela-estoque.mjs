@@ -1,3 +1,4 @@
+import { selectWorkspaceUnit } from './acessar-unidade.mjs';
 // Opt-in: cria demonstração sintética pela UI real; sem mocks, traces ou chave administrativa.
 // Os registros confirmados e a trilha permanecem para a limpeza final planejada.
 import fs from 'node:fs/promises';
@@ -44,10 +45,10 @@ async function enter(label, width) {
   const page = await context.newPage();
   page.setDefaultTimeout(30000);
   await page.goto(origin.href);
-  await page.getByLabel('E-mail', { exact: true }).fill(account.email);
+  await page.getByLabel('Nome de usuário', { exact: true }).fill(label.toLowerCase());
   await page.getByLabel('Senha', { exact: true }).fill(account.password);
   await page.getByRole('button', { name: 'Entrar', exact: true }).click();
-  await expect(page.getByRole('heading', { name: 'Configurações', exact: true })).toBeVisible();
+  await selectWorkspaceUnit(page);
   await expect(page.getByRole('combobox', { name: 'Unidade', exact: true })).toHaveValue(String(state.units.A));
   await expect(page.getByRole('combobox', { name: 'Unidade', exact: true }).locator('option')).toHaveCount(1);
   return page;

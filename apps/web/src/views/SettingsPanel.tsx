@@ -67,12 +67,14 @@ export function SettingsPanel({
   onNavigate,
   initialUnit = '',
   onUnitChange,
+  userName = '',
 }: {
   api: SettingsApi;
   onSignOut: () => Promise<void>;
   onNavigate?: (page: WorkspacePage) => void;
   initialUnit?: string;
   onUnitChange?: (unit: string) => void;
+  userName?: string;
 }) {
   const [units, setUnits] = useState<UnitSummary[]>([]);
   const [unit, setUnit] = useState(initialUnit);
@@ -230,7 +232,7 @@ export function SettingsPanel({
       </a>
       <aside className="side">
         <div className="brand">Restaurante Popular</div>
-        <p className="unit-caption">Joinville · Gestão</p>
+        <p className="unit-caption"><strong>{userName || 'Conta conectada'}</strong><br />{units.find(item => item.id === unit)?.nome ?? 'Consultando unidade…'}</p>
         <nav aria-label="Principal">
           {workspacePages.map(item => <a key={item.key} href={`#${item.key}`} aria-current={item.key === 'configuracoes' ? 'page' : undefined} aria-disabled={saving} onClick={event => {
             event.preventDefault();
@@ -253,6 +255,7 @@ export function SettingsPanel({
           <p className="eyebrow">GESTÃO DA UNIDADE</p>
           <h1>Configurações</h1>
           <p className="muted">Parâmetros para a rotina de cada restaurante.</p>
+          <p className="hint">Defina regras e prazos da unidade. As alterações passam por revisão, exigem motivo e ficam registradas no histórico.</p>
         </header>
         <section className="card unit-card" aria-label="Unidade">
           <label className="field">

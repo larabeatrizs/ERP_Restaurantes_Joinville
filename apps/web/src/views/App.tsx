@@ -2,20 +2,28 @@ import { CategoryApi } from '../services/category-api.ts';
 import { useEffect, useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
 import type { Session } from '@supabase/supabase-js';
-import { auth, initialPasswordToken, passwordPending, markPasswordPending, activatePasswordLink } from '../services/auth.ts';
+import { auth, initialPasswordToken, initialPasswordError, passwordPending, markPasswordPending, activatePasswordLink } from '../services/auth.ts';
 import { SettingsApi } from '../services/api.ts';
 import { Workspace } from './Workspace.tsx';
 import { StockApi } from '../services/stock-api.ts';
 import { PasswordPanel } from './PasswordPanel.tsx';
 import './styles.css';
+import type { UnitSummary } from '@erp/contracts';
+import { PasswordField } from './PasswordField.tsx';
+import { RecoveryPanel } from './RecoveryPanel.tsx';
+import { UnitAccess } from './UnitAccess.tsx';
+import { signIn } from '../services/login-api.ts';
 export function App() {
   const [session, setSession] = useState<Session | null>(null);
   const [ready, setReady] = useState(!auth);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [passwordMode, setPasswordMode] = useState(passwordPending);
-  const [linkState, setLinkState] = useState(initialPasswordToken !== null ? 'verifying' : 'none');
+  const [linkState, setLinkState] = useState(initialPasswordError ? 'invalid' : initialPasswordToken !== null ? 'verifying' : 'none');
   const [notice, setNotice] = useState('');
+  const [recovering, setRecovering] = useState(false);
+  const [unit, setUnit] = useState<UnitSummary>();
+  const [userName, setUserName] = useState('');
   const api = useMemo(
     () =>
       new SettingsApi(
@@ -36,7 +44,7 @@ export function App() {
       setSession(next);
       setReady(true);
       if (event === 'PASSWORD_RECOVERY') { markPasswordPending(true); setPasswordMode(true); }
-      if (event === 'SIGNED_OUT') { markPasswordPending(false); setPasswordMode(false); }
+      if (event === 'SIGNED_OUT') { markPasswordPending(false); setPasswordMode(false); setUnit(undefined); setUserName(''); }
     });
     let active = true;
     if (initialPasswordToken !== null) void activatePasswordLink().then((ok) => {
@@ -48,7 +56,7 @@ export function App() {
     const result = await auth?.signOut({ scope: 'local' });
     if (result?.error) throw result.error;
     markPasswordPending(false); setPasswordMode(false); setLinkState('none'); setSession(null);
-    setNotice(saved ? 'Senha definida. Entre com seu e-mail e a nova senha.' : '');
+    setNotice(saved ? 'Senha definida. Entre com seu nome de usuário e a nova senha.' : '');
   }
   async function login(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -56,16 +64,12 @@ export function App() {
     setBusy(true);
     setError('');
     try {
-      const result = await auth?.signInWithPassword({
-        email: String(fields.get('email')),
-        password: String(fields.get('password')),
-      });
-      if (result?.error)
-        setError(
-          'Não foi possível entrar. Verifique seus dados ou procure a administração.',
-        );
+      if (!auth) throw Error('Unavailable');
+      const tokens = await signIn(String(fields.get('login')), String(fields.get('password')));
+      const result = await auth.setSession(tokens);
+      if (result.error) throw Error('Invalid session');
     } catch {
-      setError('Serviço indisponível. Tente novamente.');
+      setError('Não foi possível entrar. Verifique seus dados ou procure a administração.');
     } finally {
       setBusy(false);
     }
@@ -78,9 +82,13 @@ export function App() {
     );
   if (linkState === 'invalid') return <main className="login-form"><h1>Link indisponível</h1><p role="alert">Este link expirou, já foi utilizado ou é inválido. Solicite um novo link à administração.</p><button onClick={() => { void endPasswordSession().catch(() => setError('Não foi possível sair. Tente novamente.')); }}>Voltar ao login</button>{error && <p role="alert">{error}</p>}</main>;
   if (session && passwordMode) return <PasswordPanel onDone={() => endPasswordSession(true)} onCancel={() => endPasswordSession()} />;
+  if (session && !unit) return <UnitAccess api={api} onEnter={(value, name) => { setUnit(value); setUserName(name); }} onSignOut={async () => { const result = await auth!.signOut(); if (result.error) throw result.error; }} />;
+  if (!session && recovering) return <RecoveryPanel onBack={() => setRecovering(false)} />;
   if (session)
     return (
       <Workspace
+        initialUnit={unit!.id}
+        userName={userName}
         categories={categories}
         api={api}
         stock={stock}
@@ -107,7 +115,7 @@ export function App() {
         <form onSubmit={(event) => void login(event)}>
           <header>
             <h1>Entrar</h1>
-            <p className="muted">Use seu e-mail e senha para acessar.</p>
+            <p className="muted">Use seu nome de usuário e senha para acessar.</p>
           </header>
           {notice && <p role="status" className="notice">{notice}</p>}
           {!auth && (
@@ -122,32 +130,19 @@ export function App() {
             </p>
           )}
           <label className="field">
-            E-mail
+            Nome de usuário
             <input
-              name="email"
-              type="email"
-              placeholder="nome@exemplo.com"
+              name="login"
+              type="text"
+              maxLength={40}
+              placeholder="Seu nome de login"
               autoComplete="username"
               required
               disabled={!auth || busy}
             />
           </label>
-          <div className="field">
-            <label htmlFor="password">Senha</label>
-            <input
-              id="password"
-              name="password"
-              type="password"
-              placeholder="Sua senha"
-              aria-describedby="password-hint"
-              autoComplete="current-password"
-              required
-              disabled={!auth || busy}
-            />
-            <p id="password-hint" className="hint">
-              Esqueceu a senha? Fale com o administrador do sistema.
-            </p>
-          </div>
+          <PasswordField id="password" name="password" label="Senha" autoComplete="current-password" disabled={!auth || busy} />
+          <button type="button" disabled={busy || !auth} onClick={() => setRecovering(true)}>Esqueci minha senha</button>
           <button className="primary" disabled={!auth || busy}>
             {busy ? 'Entrando…' : 'Entrar'}
           </button>
