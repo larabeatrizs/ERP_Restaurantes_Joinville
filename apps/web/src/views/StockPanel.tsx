@@ -1,3 +1,4 @@
+import { MeasureApi } from '../services/measure-api.ts';
 import { CategoryApi } from '../services/category-api.ts';
 import { lazy, Suspense, useEffect, useState } from 'react';
 import type { StockContext, StockBalance, UnitSummary } from '@erp/contracts';
@@ -7,14 +8,15 @@ import { workspacePages } from './Workspace.tsx';
 import type { WorkspacePage } from './Workspace.tsx';
 import { ProductPanel } from './ProductPanel.tsx';
 import { ReceiptPanel } from './ReceiptPanel.tsx';
+const MeasurePanel = lazy(() => import('./MeasurePanel.tsx').then(module => ({default: module.MeasurePanel})));
 const CategoryPanel = lazy(() => import('./CategoryPanel.tsx').then(module => ({ default: module.CategoryPanel })));
 
 export type StockPageProps = { api: StockApi; unit: string; context: StockContext; onDirty: (dirty: boolean) => void; onBusy: (busy: boolean) => void };
-const title = { categorias: 'Categorias de produtos', produtos: 'Produtos e alimentos', recebimentos: 'Entrada de materiais', saldo: 'Saldo de estoque' };
-const subtitle = { categorias: 'Organize o catálogo compartilhado de produtos.', produtos: 'Cadastro do estoque seco, resfriado e congelado.', recebimentos: 'Registre o recebimento de uma nota fiscal.', saldo: 'Consulte os lotes e os locais da unidade selecionada.' };
+const title = { medidas: 'Unidades de medida', categorias: 'Categorias de produtos', produtos: 'Produtos e alimentos', recebimentos: 'Entrada de materiais', saldo: 'Saldo de estoque' };
+const subtitle = { medidas: 'Mantenha as unidades do catálogo compartilhado.', categorias: 'Organize o catálogo compartilhado de produtos.', produtos: 'Cadastro do estoque seco, resfriado e congelado.', recebimentos: 'Registre o recebimento de uma nota fiscal.', saldo: 'Consulte os lotes e os locais da unidade selecionada.' };
 
-export function StockPanel({ api, stock, categories, page, onNavigate, initialUnit, onUnitChange, onSignOut }: {
-  categories: CategoryApi; api: SettingsApi; stock: StockApi; page: Exclude<WorkspacePage, 'configuracoes'>; onNavigate: (page: WorkspacePage) => void;
+export function StockPanel({ api, stock, categories, measures, page, onNavigate, initialUnit, onUnitChange, onSignOut }: {
+  measures: MeasureApi; categories: CategoryApi; api: SettingsApi; stock: StockApi; page: Exclude<WorkspacePage, 'configuracoes'>; onNavigate: (page: WorkspacePage) => void;
   initialUnit: string; onUnitChange: (unit: string) => void; onSignOut: () => Promise<void>;
 }) {
   const [units, setUnits] = useState<UnitSummary[]>([]);
@@ -68,6 +70,7 @@ export function StockPanel({ api, stock, categories, page, onNavigate, initialUn
       {!loading && !units.length && !error && <p className="notice">Nenhuma unidade ativa disponível para sua conta. Procure a administração.</p>}
       {!loading && !context && error && <button onClick={() => setRetry(value => value + 1)}>Tentar novamente</button>}
       {context && !loading && <>
+        {page === 'medidas' && <Suspense fallback={<p role="status">Carregando unidades de medida...</p>}><MeasurePanel key={unit} api={measures} unit={unit} onDirty={setDirty} onBusy={setBusy} /></Suspense>}
         {page === 'categorias' && <Suspense fallback={<p role="status">Carregando categorias…</p>}><CategoryPanel key={unit} api={categories} unit={unit} onDirty={setDirty} onBusy={setBusy} /></Suspense>}
         {page === 'produtos' && <ProductPanel key={unit} api={stock} unit={unit} context={context} onDirty={setDirty} onBusy={setBusy} />}
         {page === 'recebimentos' && <ReceiptPanel key={unit} api={stock} unit={unit} context={context} onDirty={setDirty} onBusy={setBusy} />}

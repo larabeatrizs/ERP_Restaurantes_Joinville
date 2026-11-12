@@ -9,12 +9,17 @@ import type { StockSessionFactory } from './repositories/stock-repository.ts';
 import { categoryController } from './controllers/category-controller.ts';
 import { createSupabaseCategorySession } from './repositories/supabase-categories.ts';
 import type { CategorySessionFactory } from './repositories/category-repository.ts';
+import { measureController } from './controllers/measure-controller.ts';
+import { createSupabaseMeasureSession } from './repositories/supabase-measures.ts';
+import type { MeasureSessionFactory } from './repositories/measure-repository.ts';
 
-export function createApp(factory: SessionFactory = createSupabaseSession, stockFactory: StockSessionFactory = createSupabaseStockSession, categoryFactory: CategorySessionFactory = createSupabaseCategorySession) {
+export function createApp(factory: SessionFactory = createSupabaseSession, stockFactory: StockSessionFactory = createSupabaseStockSession, categoryFactory: CategorySessionFactory = createSupabaseCategorySession, measureFactory: MeasureSessionFactory = createSupabaseMeasureSession) {
   return {
     async fetch(request: Request, env: RuntimeEnv = {}): Promise<Response> {
       try {
         const path = new URL(request.url).pathname;
+        const measure = /^\/api\/unidades\/([^/]+)\/medidas(?:\/(exportar|[^/]+(?:\/status)?))?$/.exec(path);
+        if (measure?.[1]) return await measureController(request, env, measure[1], measure[2] ?? '', measureFactory);
         const category = /^\/api\/unidades\/([^/]+)\/categorias(?:\/(exportar|[^/]+(?:\/status)?))?$/.exec(path);
         if (category?.[1]) return await categoryController(request, env, category[1], category[2] ?? '', categoryFactory);
         if (path === '/api/unidades') {

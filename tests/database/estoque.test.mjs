@@ -28,7 +28,7 @@ before(async () => {
     insert into erp.perfil_permissao(perfil_id,permissao) values
       (1,'PRODUTO_LER'),(1,'PRODUTO_GERIR'),(1,'ESTOQUE_LER'),(1,'RECEBIMENTO_GERIR'),
       (2,'PRODUTO_LER'),(2,'PRODUTO_GERIR'),(2,'ESTOQUE_LER'),(2,'RECEBIMENTO_APROVAR_DIVERGENCIA'),
-      (1,'CATEGORIA_EDITAR'),(2,'CATEGORIA_EDITAR'),(2,'CATEGORIA_CICLO_VIDA'),(3,'PRODUTO_LER'),(3,'ESTOQUE_LER'),(4,'CONFIGURACAO_EDITAR');
+      (1,'MEDIDA_EDITAR'),(2,'MEDIDA_EDITAR'),(2,'MEDIDA_CICLO_VIDA'),(1,'CATEGORIA_EDITAR'),(2,'CATEGORIA_EDITAR'),(2,'CATEGORIA_CICLO_VIDA'),(3,'PRODUTO_LER'),(3,'ESTOQUE_LER'),(4,'CONFIGURACAO_EDITAR');
     insert into erp.usuario(id,perfil_id,nome,status) values
       ('${uid(1)}',1,'Estoquista sintético A','ATIVO'),('${uid(2)}',1,'Estoquista sintético B','ATIVO'),
       ('${uid(3)}',3,'Leitor sintético A','ATIVO'),('${uid(4)}',2,'Gestor sintético A','ATIVO'),
@@ -45,6 +45,38 @@ after(async () => { if (close) await close(); });
 
 const categoryInput = (extra = {}) => ({ descricao: 'Categoria CAD-003', tipo_item: 'ALIMENTO', armazenamento_padrao: 'SECO', dias_alerta_validade: null, ...extra });
 const categoryQuery = (extra = {}) => ({ q: '', status: 'ATIVO', ordem: 'asc', offset: 0, ...extra });
+const measureInput = (extra = {}) => ({sigla:'MG-TEST',descricao:'Medida CAD004',grandeza:'MASSA',fator_base:'0.000001',...extra});
+async function measure(action,data={},unit=1,client=db){return (await client.query('select erp.medida_operacao($1,$2,$3::jsonb) as result',[unit,action,JSON.stringify(data)])).rows[0].result;}
+async function measureRejects(action,data,code='PT422',unit=1){await db.exec('savepoint measure_error');await assert.rejects(()=>measure(action,data,unit),{code});await db.exec('rollback to savepoint measure_error');}
+test('medidas: fator exato/null, busca por sigla e edição preservam produto e revisão',async()=>actor(1,async()=>{
+ let m=(await measure('criar',measureInput())).medida;assert.equal(m.fator_base,'0.000001');assert.equal(m.status,'ATIVO');
+ const p=await create({unidade_medida_id:m.id});assert.equal(p.unidade_medida_id,m.id);
+ assert.equal((await measure('listar',categoryQuery({q:'mg-test'}))).medidas[0].id,m.id);
+ m=(await measure('editar',{...measureInput({descricao:'Medida alterada',fator_base:null}),id:m.id,revisao:m.revisao})).medida;assert.equal(m.revisao,'2');assert.equal(m.fator_base,null);assert.equal(m.pode_excluir,false);
+ assert.equal((await rpc('produtos')).produtos[0].quantidade_apresentacao,p.quantidade_apresentacao);
+ await measureRejects('editar',{...measureInput(),id:m.id,revisao:'1'},'PT412');await become(2);assert.equal((await measure('listar',categoryQuery({q:'alterada'}),2)).medidas[0].id,m.id);
+}));
+test('medidas: descrição normalizada única e entrada sem coerção de fator/grandeza/sigla',async()=>actor(4,async()=>{
+ await measure('criar',measureInput({descricao:'Massa  Especial'}));await measureRejects('criar',measureInput({descricao:'MASSA ESPECIAL'}),'PT409');
+ for(const extra of [{fator_base:0.001},{fator_base:'0'},{fator_base:'-1'},{fator_base:'1e-3'},{fator_base:'0.0000001'},{fator_base:'1000000000000'},{grandeza:'OUTRA'},{sigla:''},{sigla:'\t'},{status:'INATIVO'},{ator_id:uid(1)}])await measureRejects('criar',measureInput(extra));
+ const max=(await measure('criar',measureInput({descricao:'Fator limite',fator_base:'999999999999.999999'}))).medida;assert.equal(max.fator_base,'999999999999.999999');
+}));
+test('medidas: I distinto de X, vínculos globais, inativação/seleção e exclusão auditada',async()=>actor(1,async()=>{
+ let m=(await measure('criar',measureInput())).medida;await measureRejects('status',{id:m.id,revisao:m.revisao,status:'INATIVO'},'PT403');
+ await become(2);await rpc('produto_salvar',product({descricao:'Medida vinculada B',unidade_medida_id:m.id}),2);await become(4);
+ await measureRejects('excluir',{id:m.id,revisao:m.revisao},'PT409');m=(await measure('status',{id:m.id,revisao:m.revisao,status:'INATIVO'})).medida;
+ assert.ok(!(await rpc('contexto')).medidas.some(x=>x.id===m.id));assert.equal((await measure('listar',categoryQuery({status:'INATIVO'}))).medidas[0].id,m.id);
+ const disposable=(await measure('criar',measureInput({descricao:'Medida sem vinculo'}))).medida;assert.deepEqual(await measure('excluir',{id:disposable.id,revisao:disposable.revisao}),{excluida:true});
+ await become(3);assert.deepEqual((await measure('listar',categoryQuery())).capacidades,{editar:false,ciclo_vida:false});await measureRejects('criar',measureInput(),'PT403');await measureRejects('listar',categoryQuery(),'PT404',2);
+}));
+test('medidas: paginação/CSV completos, falha de auditoria e DML direto negado',async()=>actor(4,async()=>{
+ for(let n=0;n<51;n++)await measure('criar',measureInput({sigla:'CSV',descricao:'Medida CSV '+String(n).padStart(2,'0')}));
+ assert.equal((await measure('listar',categoryQuery({q:'Medida CSV'}))).medidas.length,50);assert.equal((await measure('listar',categoryQuery({q:'Medida CSV',offset:50}))).medidas.length,1);
+ assert.equal((await measure('exportar',categoryQuery({q:'Medida CSV'}))).medidas.length,51);await measureRejects('exportar',categoryQuery({offset:1}));
+ const m=(await measure('criar',measureInput())).medida;await db.exec('reset role');await db.exec("create function erp_private.falha_medida() returns trigger language plpgsql as $$ begin if new.acao in ('medida_editar','medida_excluir') then raise exception 'Falha induzida'; end if; return new; end $$; create trigger falha_medida before insert on erp.auditoria_estoque for each row execute function erp_private.falha_medida()");await become(4);
+ await measureRejects('editar',{...measureInput({sigla:'NOVO'}),id:m.id,revisao:m.revisao},'P0001');await measureRejects('excluir',{id:m.id,revisao:m.revisao},'P0001');assert.equal((await measure('listar',categoryQuery({q:m.descricao}))).medidas[0].sigla,m.sigla);
+ await sqlRejects('delete from erp.unidade_medida');await sqlRejects("update erp.unidade_medida set fator_base=1");await sqlRejects('select erp_private.medida_json(1)');
+}));
 async function category(action, data = {}, unit = 1, client = db) { return (await client.query('select erp.categoria_operacao($1,$2,$3::jsonb) as result', [unit, action, JSON.stringify(data)])).rows[0].result; }
 async function categoryRejects(action, data, code = 'PT422', unit = 1) { await db.exec('savepoint category_error'); await assert.rejects(() => category(action, data, unit), { code }); await db.exec('rollback to savepoint category_error'); }
 
@@ -440,5 +472,34 @@ test('categorias: duas conexões revalidam revogação e vínculo concorrente im
  } finally {
   await a.query('rollback').catch(()=>{}); if(pending)await pending; await b.query('rollback').catch(()=>{});
   await db.exec('reset role'); await db.exec("insert into erp.perfil_permissao values(1,'CATEGORIA_EDITAR') on conflict do nothing"); await Promise.all([a.end(),b.end()]);
+ }
+});
+
+test('medidas: duas conexões revalidam revogação e vínculo concorrente impede exclusão', { skip: !process.env.DATABASE_STOCK_TEST_URL, timeout: 20000 }, async () => {
+ const a = new pg.Client({ connectionString: process.env.DATABASE_STOCK_TEST_URL }), b = new pg.Client({ connectionString: process.env.DATABASE_STOCK_TEST_URL });
+ await Promise.all([a.connect(), b.connect()]); let pending; let measureId;
+ const pid = (await b.query('select pg_backend_pid() as pid')).rows[0].pid;
+ async function waitLock() { for(let i=0;i<200;i++){if((await db.query("select wait_event_type from pg_stat_activity where pid=$1",[pid])).rows[0]?.wait_event_type==='Lock')return;await new Promise(resolve=>setTimeout(resolve,25));}throw Error('Expected blocked category operation'); }
+ try {
+  measureId = (await db.query("insert into erp.unidade_medida(sigla,descricao) values ('CAD004','Medida concorrente') returning id::text")).rows[0].id;
+  await a.query('begin'); await a.query('select id from erp.unidade_medida where id=$1 for update',[measureId]);
+  await b.query('begin'); await b.query("select set_config('request.jwt.claim.sub',$1,true)",[uid(1)]); await b.query('set local role authenticated');
+  pending=measure('editar',{...measureInput(),id:measureId,revisao:'1'},1,b).then(value=>({value}),error=>({error})); await waitLock();
+  await db.exec("delete from erp.perfil_permissao where perfil_id=1 and permissao='MEDIDA_EDITAR'"); await a.query('commit'); assert.equal((await pending).error?.code,'PT403'); await b.query('rollback');
+  await db.exec("insert into erp.perfil_permissao values(1,'MEDIDA_EDITAR')");
+  await a.query('begin'); await a.query('select id from erp.unidade_medida where id=$1 for share',[measureId]);
+  await b.query('begin'); await b.query("select set_config('request.jwt.claim.sub',$1,true)",[uid(4)]); await b.query('set local role authenticated');
+  pending=measure('excluir',{id:measureId,revisao:'1'},1,b).then(value=>({value}),error=>({error})); await waitLock();
+  await a.query("select set_config('request.jwt.claim.sub',$1,true)",[uid(2)]); await a.query('set local role authenticated');
+  await rpc('produto_salvar',product({descricao:'CAD004 produto disputa exclusiva',unidade_medida_id:measureId}),2,a); await a.query('commit'); assert.equal((await pending).error?.code,'PT409'); await b.query('rollback');
+  // Two writers cannot create duplicate normalized descriptions.
+  await a.query('begin'); await a.query("select set_config('request.jwt.claim.sub',$1,true)",[uid(1)]); await a.query('set local role authenticated');
+  await measure('criar',measureInput({descricao:'Unicidade concorrente'}),1,a);
+  await b.query('begin'); await b.query("select set_config('request.jwt.claim.sub',$1,true)",[uid(4)]); await b.query('set local role authenticated');
+  pending=measure('criar',measureInput({descricao:'UNICIDADE CONCORRENTE'}),1,b).then(value=>({value}),error=>({error})); await waitLock();
+  await a.query('commit'); assert.equal((await pending).error?.code,'PT409'); await b.query('rollback');
+ } finally {
+  await a.query('rollback').catch(()=>{}); if(pending)await pending; await b.query('rollback').catch(()=>{});
+  await db.exec('reset role'); await db.exec("insert into erp.perfil_permissao values(1,'MEDIDA_EDITAR') on conflict do nothing"); await Promise.all([a.end(),b.end()]);
  }
 });

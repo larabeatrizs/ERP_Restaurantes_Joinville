@@ -1,3 +1,4 @@
+import { MeasureApi } from '../services/measure-api.ts';
 import { CategoryApi } from '../services/category-api.ts';
 import { useEffect, useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
@@ -23,6 +24,7 @@ export function App() {
       ),
     [],
   );
+  const measures = useMemo(() => new MeasureApi(async () => (await auth?.getSession())?.data.session?.access_token), []);
   const categories = useMemo(() => new CategoryApi(async () => (await auth?.getSession())?.data.session?.access_token), []);
   const stock = useMemo(() => new StockApi(async () => (await auth?.getSession())?.data.session?.access_token), []);
   useEffect(() => {
@@ -81,6 +83,7 @@ export function App() {
   if (session)
     return (
       <Workspace
+        measures={measures}
         categories={categories}
         api={api}
         stock={stock}

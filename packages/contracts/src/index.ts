@@ -50,3 +50,4 @@ export function isConfigurationPatch(value: unknown): value is ConfigurationPatc
   });
 }
 export * from './categories.ts';
+export * from './measures.ts';
