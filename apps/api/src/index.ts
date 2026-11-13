@@ -15,12 +15,17 @@ import type { LoginFactory } from './repositories/login-repository.ts';
 import { measureController } from './controllers/measure-controller.ts';
 import { createSupabaseMeasureSession } from './repositories/supabase-measures.ts';
 import type { MeasureSessionFactory } from './repositories/measure-repository.ts';
+import { supplierController } from './controllers/supplier-controller.ts';
+import { createSupabaseSupplierSession } from './repositories/supabase-suppliers.ts';
+import type { SupplierSessionFactory } from './repositories/supplier-repository.ts';
 
-export function createApp(factory: SessionFactory = createSupabaseSession, stockFactory: StockSessionFactory = createSupabaseStockSession, categoryFactory: CategorySessionFactory = createSupabaseCategorySession, loginFactory: LoginFactory = createLoginRepository, measureFactory: MeasureSessionFactory = createSupabaseMeasureSession) {
+export function createApp(factory: SessionFactory = createSupabaseSession, stockFactory: StockSessionFactory = createSupabaseStockSession, categoryFactory: CategorySessionFactory = createSupabaseCategorySession, loginFactory: LoginFactory = createLoginRepository, measureFactory: MeasureSessionFactory = createSupabaseMeasureSession, supplierFactory: SupplierSessionFactory = createSupabaseSupplierSession) {
   return {
     async fetch(request: Request, env: RuntimeEnv = {}): Promise<Response> {
       try {
         const path = new URL(request.url).pathname;
+        const supplier = /^\/api\/unidades\/([^/]+)\/fornecedores(?:\/(exportar|[^/]+(?:\/status)?))?$/.exec(path);
+        if (supplier?.[1]) return await supplierController(request, env, supplier[1], supplier[2] ?? '', supplierFactory);
         const measure = /^\/api\/unidades\/([^/]+)\/medidas(?:\/(exportar|[^/]+(?:\/status)?))?$/.exec(path);
         if (measure?.[1]) return await measureController(request, env, measure[1], measure[2] ?? '', measureFactory);
         if (path === '/api/auth/login') {

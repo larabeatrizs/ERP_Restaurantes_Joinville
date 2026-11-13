@@ -53,5 +53,6 @@ export * from './categories.ts';
 export * from './password.ts';
 export * from './login.ts';
 export * from './measures.ts';
+export * from './suppliers.ts';
 export * from './csv.ts';
 export * from './stock-summary.ts';
