@@ -1,6 +1,6 @@
 # UX-003/A — Acesso por usuário e unidade, Início e saldos
 
-Data: 12/11/2026. [Issue #31](https://github.com/larabeatrizs/ERP_Restaurantes_Joinville/issues/31); decisão [DOM-002](../decisoes/DOM-002-AJUSTES-12-11.md). Estado: implementado e verificado localmente; publicação e evidência hospedada ainda pendentes neste registro.
+Data: 12/11/2026. [Issue #31](https://github.com/larabeatrizs/ERP_Restaurantes_Joinville/issues/31); decisão [DOM-002](../decisoes/DOM-002-AJUSTES-12-11.md); [PR #32](https://github.com/larabeatrizs/ERP_Restaurantes_Joinville/pull/32). Estado: **publicado e verificado no staging**. [Evidência sanitizada](../evidencias/ux-003/jornada-hospedada.json).
 
 ## Contrato do recorte
 
@@ -25,10 +25,16 @@ A responsável decidiu manter **envio geral de email pendente**. Sem SMTP própr
 ## Verificação e continuidade
 
 - `npm run check`: lint/tipos/build e testes locais. API: 75; testes de banco em PGlite não cobrem os cenários concorrentes omitidos sem PostgreSQL nativo. Nenhuma migration ou escrita de estoque nesta entrega.
-- Navegador: 41 cenários locais no Edge, incluindo escolha obrigatória antes de dados, troca de unidade, nome, Início real/indisponível, responsividade 360/768/1280, pesquisa/CSV, mostrar senha, recuperação neutra/limites, Meu acesso e definição com senha de oito caracteres. Dublês não comprovam Auth/RLS hospedados ou entrega de email.
-- Verificador hospedado: `scripts/staging/verificar-acesso-unidade.mjs`, opt-in com estado privado fora do checkout; somente contas sintéticas existentes, leitura, CSV e screenshots privadas. Não dispara email ou troca senha. Execução pendente neste ponto; anexar resultado sanitizado após publicar.
+- Navegador: 42 cenários locais no Edge, incluindo escolha obrigatória antes de dados, troca de unidade, nome, Início real/indisponível, responsividade 360/768/1280, pesquisa/CSV, mostrar senha, recuperação neutra/limites, Meu acesso e definição com senha de oito caracteres. Inclui consulta lenta de vínculos: não mostrar vazio nem indicadores antes da unidade. Dublês não comprovam Auth/RLS hospedados ou entrega de email.
+- Verificador hospedado: `scripts/staging/verificar-acesso-unidade.mjs`, opt-in com estado privado fora do checkout; somente contas sintéticas existentes, leitura e CSV. Completou cinco cenários em Auth/API/UI reais. [Início desktop](../evidencias/ux-003/inicio-1280.png) e [saldos móvel](../evidencias/ux-003/saldos-360.png) contêm apenas contas/dados sintéticos. Não disparou email nem trocou senha.
 - Verificadores ativos de categorias, vínculo, configurações e estoque ajustados à nova entrada. O antigo `verificar-acesso-admin.mjs` é histórico de bootstrap: depende de credencial removida e **não deve ser reexecutado para testar esta entrega**.
 
 Decisão confirmada em 12/11: **cadastros compartilhados; estoque/operações separados por filial**. Isso remove a dúvida que mantinha CAD-004/PR #30 em draft; preservar seu recorte e atualizar com a main antes de continuar a verificação/publicação própria. Nenhuma migration de medidas foi aplicada por esta entrega de UX.
 
 Pendências da issue #31: gestão administrativa de login/nome/email/perfil/filiais e convite, imposição integral da política de senha no servidor, exclusão elegível de produtos (edição já existe por permissão), relatórios de Produtos/Recebimentos/Saldos e filtros posteriores. RF-036/importação fica no final com prévia/validação, conforme pedido; skeleton continua futuro na issue #24. SMTP geral explicitamente adiado. AMB-001 congelada; sem novo ambiente permanente ou reset.
+
+## Publicação e pós-condições
+
+Runtime `b6bd081fb81c9df443a57bc97b5b4079b988a5be`, Cloudflare `c3362da7-252b-469b-a460-e66d7f9cb61f`, [CI 43295104085](https://github.com/larabeatrizs/ERP_Restaurantes_Joinville/actions/runs/43295104085) com os quatro jobs concluídos em sucesso (inclui PostgreSQL nativo e navegador). A comparação visual identificou um vazio prematuro durante a consulta dos vínculos; esse runtime aguarda o carregamento antes de montar o resumo. O verificador respeita o 404 de unidade não autorizada e obtém nova sessão após Sair global para conferir persistência.
+
+Consulta readonly posterior confirmou: cinco usuários de domínio, oito produtos, dez vínculos, quatro categorias, seis recebimentos/lotes/movimentos, 34 eventos de estoque, 20 tabelas erp com RLS, seis migrations e três capacidades ADMIN. Nenhuma migration deste recorte; saldo comparado antes/depois em nova sessão. A conta de acompanhamento usa login **`admin` com a senha já definida**, sem nova credencial, reset ou ampliação de privilégios. Acesso pessoal não foi usado como fixture. Confirmação de deploy não equivale a aceite institucional ou liberação de produção.

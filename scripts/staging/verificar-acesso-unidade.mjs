@@ -48,6 +48,7 @@ try {
   for(const [label,width] of [['readerA',360],['editorB',1280]]) {
     const context=await browser.newContext({viewport:{width,height:900}}); contexts.push(context);
     const page=await context.newPage(); page.setDefaultTimeout(30000);
+    proof.phase=`browser:${label}:login`;
     const operational=[];
     page.on('request',request=>{if(new URL(request.url()).pathname.startsWith('/api/unidades/'))operational.push(request.url());});
     await page.goto(origin);
@@ -57,6 +58,7 @@ try {
     await expect(page.getByLabel('Senha',{exact:true})).toHaveAttribute('type','text');
     await page.getByRole('button',{name:'Ocultar senha',exact:true}).click();
     await page.getByRole('button',{name:'Entrar',exact:true}).click();
+    proof.phase=`browser:${label}:select-unit`;
     await expect(page.getByRole('heading',{name:'Selecionar unidade',exact:true})).toBeVisible();
     await expect(page.getByRole('button',{name:'Acessar unidade',exact:true})).toBeDisabled();
     const selector=page.getByLabel('Unidade de acesso',{exact:true});
@@ -64,15 +66,18 @@ try {
     assert.equal(operational.length,0);
     const selected=String(state.units[label==='readerA'?'A':'B']); await selector.selectOption(selected);
     await page.getByRole('button',{name:'Acessar unidade',exact:true}).click();
+    proof.phase=`browser:${label}:unit-header`;
     await expect(page.getByRole('heading',{name:'Início',exact:true})).toBeVisible();
     await expect(page.getByRole('combobox',{name:'Unidade',exact:true})).toHaveValue(selected);
     await expect(page.locator('.unit-caption')).toContainText(identities[label].nome);
     await expect(page.locator('.unit-caption')).not.toContainText('Consultando unidade');
+    proof.phase=`browser:${label}:indicators`;
     await expect(page.locator('.home-metrics')).toBeVisible();
     await expect(page.getByText('Consultando indicadores…',{exact:true})).toHaveCount(0);
     await expect(page.locator('html')).toHaveJSProperty('scrollWidth',width);
     await page.screenshot({path:path.join(root,`ux003-inicio-${width}.png`),fullPage:true});
     if(label==='readerA') {
+      proof.phase='browser:readerA:balances';
       await page.getByRole('navigation',{name:'Principal'}).getByRole('link',{name:'Saldo',exact:true}).click();
       await expect(page.getByLabel('Pesquisar saldos',{exact:true})).toBeVisible();
       await expect(page.getByText('Consultando saldos…',{exact:true})).toHaveCount(0);
@@ -80,11 +85,13 @@ try {
       const term=baseline.saldos[0].produto;
       await page.getByLabel('Pesquisar saldos',{exact:true}).fill(term);
       const downloadPromise=page.waitForEvent('download');
+      proof.phase='browser:readerA:csv';
       await page.getByRole('button',{name:'Exportar saldos em CSV',exact:true}).click();
       const download=await downloadPromise, csv=await fs.readFile(await download.path(),'utf8');
       assert.ok(csv.startsWith('\uFEFF')); assert.ok(csv.includes(term)); assert.ok(csv.includes(baseline.saldos[0].quantidade.replace('.',',')));
       await page.screenshot({path:path.join(root,'ux003-saldos-360.png'),fullPage:true});
       await page.getByRole('navigation',{name:'Principal'}).getByRole('link',{name:'Meu acesso',exact:true}).click();
+      proof.phase='browser:readerA:account';
       await expect(page.getByRole('button',{name:'Enviar link para trocar senha',exact:true})).toBeVisible();
     }
     await page.getByRole('button',{name:'Sair',exact:true}).click();
@@ -98,7 +105,7 @@ try {
   assert.deepEqual(await api('readerA',`/api/unidades/${state.units.A}/estoque/saldos`),baseline);
   proof.scenarios.push('saldos anteriores preservados; nenhuma senha, permissão ou link pessoal alterado');
   proof.completed=true;proof.phase='completed';console.log('PASS: acesso por unidade e consultas reais, sem escrita no estoque.');
-} catch(error) {if(!proof.failure)proof.failure={kind:error.code==='ERR_ASSERTION'?'assertion':error.name};console.error('FAIL: jornada UX-003 interrompida; fase registrada privadamente, sem credenciais no log.');process.exitCode=1;}
+} catch(error) {if(!proof.failure)proof.failure={kind:error.code==='ERR_ASSERTION'?'assertion':error.name};await fs.writeFile(path.join(root,'ux003-error-private.txt'),String(error.stack));console.error('FAIL: jornada UX-003 interrompida; fase registrada privadamente, sem credenciais no log.');process.exitCode=1;}
 finally {
   for(const context of contexts)await context.close(); if(browser)await browser.close();
   for(const client of clients)await client.auth.signOut({scope:'local'});
