@@ -1,0 +1,50 @@
+{
+    "executedAt":  "2026-11-13T20:49:15.316Z",
+    "origin":  "https://erp-joinville-staging.erp-restaurantes-joinville.workers.dev",
+    "mocked":  false,
+    "completed":  true,
+    "scenarios":  [
+                      {
+                          "name":  "Produtos",
+                          "passed":  true,
+                          "rows":  8,
+                          "csv":  true,
+                          "printMedia":  true,
+                          "pdfGenerated":  true,
+                          "responsive":  [
+                                             360,
+                                             768,
+                                             1280
+                                         ]
+                      },
+                      {
+                          "name":  "Recebimentos",
+                          "passed":  true,
+                          "rows":  6,
+                          "csv":  true,
+                          "printMedia":  true,
+                          "pdfGenerated":  true,
+                          "responsive":  [
+                                             360,
+                                             768,
+                                             1280
+                                         ]
+                      },
+                      {
+                          "name":  "Saldo",
+                          "passed":  true,
+                          "rows":  6,
+                          "csv":  true,
+                          "printMedia":  true,
+                          "pdfGenerated":  true,
+                          "responsive":  [
+                                             360,
+                                             768,
+                                             1280
+                                         ]
+                      }
+                  ],
+    "operationalMutations":  0,
+    "runtimeCommit":  "9fc60b845b3e72913bc92e0f8e418787df8802ee",
+    "cloudflareVersion":  "dcff4c61-ccb5-4db0-bf74-c6644924b10b"
+}

@@ -1,6 +1,6 @@
 # REL-001/A — Relatórios básicos de consulta
 
-**13/11/2026 — implementação local verificada; issue [#35](https://github.com/larabeatrizs/ERP_Restaurantes_Joinville/issues/35).** Continuidade da D1 e de DOM-002/issue #31 após CAD-005. Publicação/verificação hospedada ainda pendentes neste snapshot. Não representa aceite institucional ou conclusão dos relatórios gerenciais.
+**13/11/2026 — publicado e verificado no staging; issue [#35](https://github.com/larabeatrizs/ERP_Restaurantes_Joinville/issues/35)/[PR #36](https://github.com/larabeatrizs/ERP_Restaurantes_Joinville/pull/36).** Continuidade da D1 e de DOM-002/issue #31 após CAD-005. Não representa aceite institucional ou conclusão dos relatórios gerenciais.
 
 ## Contrato e rastreabilidade
 
@@ -21,3 +21,13 @@ Executado localmente: `npm run check` (lint, tipos, 89 API, laboratórios de ban
 Artefatos: `apps/web/src/services/stock-reports.ts`, `apps/web/src/views/ReportPreview.tsx`, integrações nas três Views e `tests/browser/estoque.spec.mjs`. `scripts/staging/verificar-relatorios.mjs` faz opt-in de leitura com conta sintética reservada, sem salvar CSV/PDF ou credenciais no checkout; evidência sanitizada registra contagem, exportação, impressão, responsividade e ausência de mutations.
 
 RF-021–028 integrais, kardex completo, filtros avançados por data/produto/categoria, ordenação/ciclo de vida faltantes de Produtos e RF-008 permanecem próprios. SMTP geral, skeleton, importação final e AMB-001 continuam conforme decisões vigentes. Não alterar conta pessoal ou estoque.
+
+## Publicação e evidências executadas
+
+Runtime `9fc60b845b3e72913bc92e0f8e418787df8802ee`, versão Cloudflare `dcff4c61-ccb5-4db0-bf74-c6644924b10b`, [mesma URL](https://erp-joinville-staging.erp-restaurantes-joinville.workers.dev). [Jornada real](../evidencias/rel-001/jornada-hospedada.json) em 13/11: leitor sintético autenticado por nome de acesso, sem capacidades adicionais; 8 produtos, 6 itens de recebimentos e 6 posições exportados, PDF gerado em memória, CSS de impressão e 360/768/1280 px conferidos. A primeira revisão visual apontou compressão de palavras no celular; corrigida com largura mínima e rolagem horizontal somente na prévia, testes pertinentes reexecutados e nova publicação/jornada concluídas. [Desktop](../evidencias/rel-001/produtos-1280.png) e [mobile](../evidencias/rel-001/saldos-360.png) inspecionados antes de versionar; somente dados sintéticos.
+
+[Preservação do banco](../evidencias/rel-001/verificacao-banco.json): oito migrations/20 tabelas, oito produtos/três fornecedores/cinco usuários, seis movimentos e 52 eventos mantidos. Hashes antes/depois idênticos para produtos, saldos, recebimentos, usuários de domínio, vínculos e capacidades de todos os perfis (incluindo ADMIN). Nenhuma mutation operacional na jornada, migration, novo ambiente, redefinição de senha ou acesso à identidade pessoal. Isso não substitui backup/restauração ou auditoria integral de Auth.
+
+CI do primeiro fonte: [43504708217](https://github.com/larabeatrizs/ERP_Restaurantes_Joinville/actions/runs/43504708217), quatro jobs aprovados, com PostgreSQL nativo e 57 jornadas UI. Após a correção visual, lint/tipos e cinco jornadas de relatórios locais passaram novamente; build publicado com chunk principal de 506,28 kB. A rodada do runtime [43505035532](https://github.com/larabeatrizs/ERP_Restaurantes_Joinville/actions/runs/43505035532) também passou nos quatro jobs. Integração aguarda o HEAD documental final; o registro da PR/issue acompanhará CI e sincronização final.
+
+Continuidade planejada: especificar e implementar o ciclo de vida/exclusão elegível de Produtos na issue #31, preservando RN-002 e histórico em todas as unidades. Administração integral (#19) e unidades/calendário (RF-006) continuam dependências D1; filtros avançados e relatórios gerenciais não foram encerrados por este incremento.

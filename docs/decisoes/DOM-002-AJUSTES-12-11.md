@@ -13,7 +13,7 @@ Fonte: mensagem explícita da responsável, com prints de Início, Produtos e Mo
 | Separação de filiais | Operações/saldos separados; produtos, categorias, medidas e fornecedores compartilhados | **Confirmado pela responsável em 12/11:** cadastros compartilhados; operações e estoque separados |
 | Perfil e unidades permitidas | Cadastro administrativo com login/nome/email, perfil e filiais autorizadas; controles de backend/RLS e convite por email | ADM-001/ADM-002, sem escalada automática de privilégios |
 | Saldos: pesquisa e CSV | Buscar produto/lote/local nos saldos da unidade e exportar os resultados filtrados, preservando precisão e protegendo fórmulas | Publicado/verificado em UX-003/A |
-| Relatórios e filtros | Produtos/Recebimentos/Saldos: relatórios; filtros por data, produto e categoria em incremento posterior, conforme pedido | Planejado, não declarar concluído com um CSV simples |
+| Relatórios e filtros | Produtos/Recebimentos/Saldos: relatórios; filtros por data, produto e categoria em incremento posterior, conforme pedido | REL-001/A/PR #36 publicou prévia, impressão/PDF e CSV por unidade; Produtos até 10 mil do filtro, Recebimentos até 50 recentes, Saldos pesquisados. Filtros avançados e relatórios gerenciais integrais permanecem pendentes |
 | Produtos editar/excluir | Edição já existe para perfis autorizados. Exclusão física somente sem vínculos; oferecer inativação e explicar impedimento conforme RN-002 | Exclusão a implementar |
 | Planilhas do cliente | Importação no final (RF-036): inventário de arquivos, mapa de colunas, validação/duplicidades, prévia e autorização de abertura de saldo | Adiada explicitamente; não importar dados reais agora |
 
