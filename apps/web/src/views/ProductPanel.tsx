@@ -3,6 +3,10 @@ import type { Product, ProdutoInput } from '@erp/contracts';
 import { isProdutoInput, productInputFields } from '@erp/contracts';
 import { decimalInput, decimalLabel, stockError } from '../services/stock-api.ts';
 import type { StockPageProps } from './StockPanel.tsx';
+import { productReport } from '../services/stock-reports.ts';
+import type { ConsultationReport } from '../services/stock-reports.ts';
+import { ReportPreview } from './ReportPreview.tsx';
+import { RequestError } from '../services/api.ts';
 const ProductLinkPanel = lazy(() => import('./ProductLinkPanel.tsx').then(module => ({ default: module.ProductLinkPanel })));
 
 const storage = { SECO: 'Seco', RESFRIADO: 'Resfriado', CONGELADO: 'Congelado' };
@@ -20,7 +24,8 @@ function normalize(draft: ProdutoInput): ProdutoInput {
   return result;
 }
 
-export function ProductPanel({ api, unit, context, onDirty, onBusy }: StockPageProps) {
+export function ProductPanel({ api, unit, unitName = '', context, onDirty, onBusy }: StockPageProps) {
+  const [report, setReport] = useState<ConsultationReport>();
   const [rows, setRows] = useState<Product[]>([]);
   const [total, setTotal] = useState(0);
   const [query, setQuery] = useState('');
@@ -46,6 +51,13 @@ export function ProductPanel({ api, unit, context, onDirty, onBusy }: StockPageP
     return () => { active = false; };
   }, [api, unit, query, status, offset, reload]);
   const discard = () => !dirty || window.confirm('Descartar as alterações ainda não salvas?');
+  async function generateReport() {
+    if (saving) return;
+    setSaving(true); setError('');
+    try { setReport(await productReport(api, unit, unitName, query, status)); }
+    catch (err) { setError(err instanceof RequestError ? stockError(err) : err instanceof Error ? err.message : stockError(err)); }
+    finally { setSaving(false); }
+  }
   function open(product?: Product) {
     if (!discard()) return;
     setSelected(product); setError(''); setMessage(''); setDirty(false);
@@ -73,6 +85,7 @@ export function ProductPanel({ api, unit, context, onDirty, onBusy }: StockPageP
   if (linking) return <Suspense fallback={<p role="status">Carregando catálogo…</p>}><ProductLinkPanel key={unit} api={api} unit={unit} context={context} onDirty={onDirty} onBusy={onBusy}
     onCancel={() => setLinking(false)} onDone={product => { setLinking(false); setQuery(product.descricao); setSearch(product.descricao); setStatus('ATIVO'); setOffset(0); setReload(v => v + 1); setMessage('Produto vinculado à unidade com sucesso.'); }} /></Suspense>;
   return <>
+    {report && <ReportPreview report={report} onClose={() => setReport(undefined)} />}
     {message && <p role="status" className="success">{message}</p>}
     {error && <p role="alert" className="notice error">{error}</p>}
     {draft ? <form onSubmit={event => { event.preventDefault(); void save(); }} aria-label="Cadastro de produto">
@@ -101,17 +114,17 @@ export function ProductPanel({ api, unit, context, onDirty, onBusy }: StockPageP
       <div className="actions footer-actions"><button type="button" disabled={saving} onClick={() => { if (discard()) { setDraft(undefined); setSelected(undefined); setDirty(false); setError(''); setReload(value => value + 1); } }}>Voltar aos produtos</button>
         <button className="primary" disabled={saving || !editable || !dirty}>{saving ? 'Salvando…' : 'Salvar produto'}</button></div>
     </form> : <>
-      <div className="section-heading"><p className="hint">{editable ? 'Produtos compartilhados; parâmetros de estoque definidos por unidade.' : 'Acesso somente para consulta.'}</p><div className="actions"><button disabled={!editable || saving} onClick={() => { setError(''); setMessage(''); setLinking(true); }}>Vincular produto existente</button><button className="primary" disabled={!editable || saving || !context.medidas.length || !context.categorias.length} onClick={() => open()}>Novo produto</button></div></div>
+      <div className="section-heading"><p className="hint">{editable ? 'Produtos compartilhados; parâmetros de estoque definidos por unidade.' : 'Acesso somente para consulta.'}</p><div className="actions"><button disabled={loading || saving} onClick={() => void generateReport()}>{saving ? 'Gerando relatório…' : 'Relatório de produtos'}</button><button disabled={!editable || saving} onClick={() => { setError(''); setMessage(''); setLinking(true); }}>Vincular produto existente</button><button className="primary" disabled={!editable || saving || !context.medidas.length || !context.categorias.length} onClick={() => open()}>Novo produto</button></div></div>
       <section className="card">
         <form className="stock-filters" aria-label="Filtros de produtos" onSubmit={e => { e.preventDefault(); setQuery(search.trim()); setOffset(0); setReload(value => value + 1); }}>
-          <label className="field">Buscar produto<input type="search" maxLength={200} value={search} onChange={e => setSearch(e.target.value)} /></label>
-          <label className="field compact-field">Situação<select value={status} onChange={e => { setStatus(e.target.value); setOffset(0); }}><option value="ATIVO">Ativos</option><option value="INATIVO">Inativos</option></select></label><button disabled={loading}>Buscar</button>
+          <label className="field">Buscar produto<input type="search" maxLength={200} disabled={saving} value={search} onChange={e => setSearch(e.target.value)} /></label>
+          <label className="field compact-field">Situação<select disabled={saving} value={status} onChange={e => { setStatus(e.target.value); setOffset(0); }}><option value="ATIVO">Ativos</option><option value="INATIVO">Inativos</option></select></label><button disabled={loading || saving}>Buscar</button>
         </form>
         {loading ? <p role="status">Carregando produtos…</p> : rows.length ? <div className="table-wrap" tabIndex={0} aria-label="Lista de produtos"><table>
           <thead><tr><th>Produto</th><th>Categoria</th><th>Armazenamento</th><th>Unidade</th><th>Estoque mínimo</th><th>Situação</th><th>Ações</th></tr></thead>
-          <tbody>{rows.map(product => <tr key={product.id}><th scope="row">{product.descricao}<span className="table-secondary">{product.complemento}</span></th><td>{product.categoria_descricao}</td><td>{storage[product.armazenamento]}</td><td>{product.unidade_sigla}</td><td className="numeric">{decimalLabel(product.estoque_minimo)}</td><td><span className="badge">{product.status === 'ATIVO' ? 'Ativo' : 'Inativo'}</span></td><td><button className="table-action" onClick={() => open(product)}>{editable ? 'Editar' : 'Visualizar'}<span className="sr-only"> {product.descricao}</span></button></td></tr>)}</tbody>
+          <tbody>{rows.map(product => <tr key={product.id}><th scope="row">{product.descricao}<span className="table-secondary">{product.complemento}</span></th><td>{product.categoria_descricao}</td><td>{storage[product.armazenamento]}</td><td>{product.unidade_sigla}</td><td className="numeric">{decimalLabel(product.estoque_minimo)}</td><td><span className="badge">{product.status === 'ATIVO' ? 'Ativo' : 'Inativo'}</span></td><td><button className="table-action" disabled={saving} onClick={() => open(product)}>{editable ? 'Editar' : 'Visualizar'}<span className="sr-only"> {product.descricao}</span></button></td></tr>)}</tbody>
         </table></div> : <p className="empty">Nenhum produto encontrado para esta consulta.</p>}
-        <div className="pagination"><p className="hint">{total ? `${offset + 1} a ${Math.min(offset + rows.length, total)} de ${total} produtos` : '0 produtos'}</p><div className="actions"><button disabled={loading || offset === 0} onClick={() => setOffset(value => Math.max(0, value - 50))}>Anterior</button><button disabled={loading || offset + rows.length >= total} onClick={() => setOffset(value => value + 50)}>Próxima</button></div></div>
+        <div className="pagination"><p className="hint">{total ? `${offset + 1} a ${Math.min(offset + rows.length, total)} de ${total} produtos` : '0 produtos'}</p><div className="actions"><button disabled={loading || saving || offset === 0} onClick={() => setOffset(value => Math.max(0, value - 50))}>Anterior</button><button disabled={loading || saving || offset + rows.length >= total} onClick={() => setOffset(value => value + 50)}>Próxima</button></div></div>
       </section>
     </>}
   </>;

@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { readFile } from 'node:fs/promises';
 
 // Transport doubles exercise UI state/DTOs. They do not prove hosted Auth, RLS or database atomicity.
 const unit = '9007199254740993';
@@ -123,6 +124,49 @@ async function setup(page, options = {}) {
   return state;
 }
 async function navigate(page, name) { await page.getByRole('navigation', { name: 'Principal' }).getByRole('link', { name, exact: true }).click(); }
+test('relatório de produtos exporta todas as páginas do filtro e mantém precisão para leitor', async ({page}) => {
+  const products=Array.from({length:51},(_,i)=>({...product,id:String(200+i),descricao:i===50?'=Arroz especial':'Arroz '+String(i).padStart(2,'0'),estoque_minimo:'900000000001.123456'}));
+  const state=await setup(page,{products,capabilities:{produto_escrever:false}}); await navigate(page,'Produtos');
+  await page.getByLabel('Buscar produto',{exact:true}).fill('Arroz'); await page.getByRole('button',{name:'Buscar',exact:true}).click();
+  await expect(page.getByText('1 a 50 de 51 produtos',{exact:true})).toBeVisible();
+  // An unsubmitted search must not silently change the applied filter.
+  await page.getByLabel('Buscar produto',{exact:true}).fill('Não aplicado');
+  await page.getByRole('button',{name:'Relatório de produtos',exact:true}).click();
+  const dialog=page.getByRole('dialog'); await expect(dialog.getByText('51 linhas.',{exact:false})).toBeVisible();
+  await expect(dialog.getByText('=Arroz especial',{exact:true})).toBeVisible();
+  await expect(dialog.getByText('Unidade: Unidade de demonstração',{exact:true})).toBeVisible();
+  const pending=page.waitForEvent('download'); await dialog.getByRole('button',{name:'Exportar relatório em CSV',exact:true}).click();
+  const download=await pending; expect(download.suggestedFilename()).toBe('produtos.csv'); const csv=await readFile(await download.path(),'utf8');
+  expect(csv.split('\r\n').filter(Boolean)).toHaveLength(52); expect(csv).toContain('900000000001,123456'); expect(csv).toContain('"\'=Arroz especial"'); expect(csv).toContain('Busca: Arroz'); expect(csv).not.toContain('Não aplicado');
+  for(const width of [360,768,1280]){await page.setViewportSize({width,height:900}); expect(await page.locator('html').evaluate(el=>el.scrollWidth)).toBe(width);}
+  await page.emulateMedia({media:'print'}); await expect(page.locator('#root')).toBeHidden(); await expect(dialog.getByRole('button',{name:'Fechar relatório'})).toBeHidden(); await expect(dialog.getByRole('heading')).toBeVisible();
+  await page.emulateMedia({media:'screen'}); await page.keyboard.press('Escape'); await expect(dialog).toHaveCount(0); expect(state.writes).toHaveLength(0);
+});
+test('relatório não oferece CSV parcial quando falha a segunda página ou ultrapassa o limite', async ({page}) => {
+  await setup(page,{products:Array.from({length:51},(_,i)=>({...product,id:String(200+i),descricao:'Arroz '+i}))}); await navigate(page,'Produtos');
+  await expect(page.getByText('1 a 50 de 51 produtos',{exact:true})).toBeVisible();
+  let mode='failure'; await page.route('**/produtos?**',route=>{const offset=Number(new URL(route.request().url()).searchParams.get('offset')); if(mode==='limit')return route.fulfill({json:{produtos:[product],total:10001}}); if(offset===50)return route.fulfill({status:503,json:{error:{code:'TEST'}}}); return route.fallback();});
+  await page.getByRole('button',{name:'Relatório de produtos',exact:true}).click(); await expect(page.getByRole('alert')).toContainText('Não foi possível'); await expect(page.getByRole('dialog')).toHaveCount(0);
+  mode='limit'; await page.getByRole('button',{name:'Relatório de produtos',exact:true}).click(); await expect(page.getByRole('alert')).toContainText('10.000'); await expect(page.getByRole('dialog')).toHaveCount(0);
+});
+test('relatório recusa paginação que mudou durante a geração e libera navegação após erro', async ({page}) => {
+  await setup(page,{products:Array.from({length:51},(_,i)=>({...product,id:String(200+i),descricao:'Arroz '+i}))}); await navigate(page,'Produtos'); await expect(page.getByText('1 a 50 de 51 produtos',{exact:true})).toBeVisible();
+  await page.route('**/produtos?**',route=>Number(new URL(route.request().url()).searchParams.get('offset'))===50?route.fulfill({json:{produtos:[{...product,id:'200'}],total:51}}):route.fallback());
+  await page.getByRole('button',{name:'Relatório de produtos',exact:true}).click(); await expect(page.getByRole('alert')).toContainText('consulta mudou'); await expect(page.getByRole('dialog')).toHaveCount(0); await navigate(page,'Início'); await expect(page.getByRole('heading',{name:'Início',exact:true})).toBeVisible();
+});
+test('relatório de recebimentos identifica teto, rascunho e conformidade sem efetuar escrita', async ({page}) => {
+  const state=await setup(page,{receipts:[receipt()],capabilities:{produto_escrever:false,recebimento_escrever:false}}); await navigate(page,'Recebimentos');
+  await page.getByRole('button',{name:'Relatório de recebimentos',exact:true}).click(); const dialog=page.getByRole('dialog');
+  await expect(dialog).toContainText('Até 50 registros mais recentes'); await expect(dialog).toContainText('não representa o histórico completo'); await expect(dialog.getByRole('cell',{name:'RASCUNHO',exact:true})).toBeVisible();
+  const pending=page.waitForEvent('download'); await dialog.getByRole('button',{name:'Exportar relatório em CSV'}).click(); const csv=await readFile(await(await pending).path(),'utf8'); expect(csv).toContain('NF-DEMO-20');expect(csv).toContain('CONFORME');expect(csv).toContain('Unidade de demonstração');expect(state.writes).toHaveLength(0);
+});
+test('relatório de saldos respeita pesquisa e troca de unidade sem misturar posições', async ({page}) => {
+  const balance={produto_id:productId,produto:'Arroz branco',unidade_medida:'kg',lote_id:'20',lote:'L-TESTE',validade:null,camara_id:'14',local:'Seco',quantidade:'7.000001',valor_unitario:'4.123456'};
+  const state=await setup(page,{balances:[balance,{...balance,lote_id:'21',produto:'Feijão',lote:'OUTRO'}]}); await navigate(page,'Saldo');
+  await page.getByLabel('Pesquisar saldos',{exact:true}).fill('arroz'); await page.getByRole('button',{name:'Relatório de saldos',exact:true}).click(); const dialog=page.getByRole('dialog');
+  await expect(dialog).toContainText('1 posições'); await expect(dialog).not.toContainText('Feijão'); const pending=page.waitForEvent('download');await dialog.getByRole('button',{name:'Exportar relatório em CSV'}).click();const csv=await readFile(await(await pending).path(),'utf8');expect(csv).toContain('7,000001');expect(csv).not.toContain('Feijão');
+  await page.keyboard.press('Escape');await page.getByRole('combobox',{name:'Unidade',exact:true}).selectOption(otherUnit);await expect(page.getByText('Nenhum saldo registrado nesta unidade.',{exact:true})).toBeVisible();await page.getByRole('button',{name:'Relatório de saldos',exact:true}).click();await expect(page.getByRole('dialog')).toContainText('Unidade: Outra unidade');await expect(page.getByRole('dialog')).not.toContainText('Arroz branco');expect(state.writes).toHaveLength(0);
+});
 test('medidas cadastra fator exato em português e reabre null sem alterar precisão',async({page})=>{
  const state=await setup(page);await navigate(page,'Unidades de medida');await page.getByRole('button',{name:'Incluir medida',exact:true}).click();await page.getByLabel('Descrição *',{exact:true}).fill('Miligrama teste');await page.getByLabel('Sigla *',{exact:true}).fill('MG');await page.getByLabel('Fator-base',{exact:true}).fill('0,000001');await page.getByRole('button',{name:'Salvar medida',exact:true}).click();await expect(page.getByText('Medida salva com sucesso.',{exact:true})).toBeVisible();expect(state.writes.at(-1).body.fator_base).toBe('0.000001');expect(state.writes.at(-1).body).not.toHaveProperty('status');
  await page.getByRole('button',{name:'Editar Miligrama teste',exact:true}).click();await page.getByLabel('Fator-base',{exact:true}).fill('');await page.getByRole('button',{name:'Salvar medida',exact:true}).click();await page.getByRole('button',{name:'Visualizar Miligrama teste',exact:true}).click();await expect(page.getByLabel('Fator-base',{exact:true})).toHaveValue('');await expect(page.getByLabel('Sigla *',{exact:true})).toBeDisabled();expect(state.writes.at(-1).body.fator_base).toBeNull();
