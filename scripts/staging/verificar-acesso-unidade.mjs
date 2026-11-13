@@ -94,6 +94,25 @@ try {
       proof.phase='browser:readerA:account';
       await expect(page.getByRole('button',{name:'Enviar link para trocar senha',exact:true})).toBeVisible();
     }
+    // Quando CAD-004 está publicado, conferir seus dados sintéticos persistidos sem novas escritas.
+    const measureLink=page.getByRole('navigation',{name:'Principal'}).getByRole('link',{name:'Unidades de medida',exact:true});
+    if(await measureLink.count()) {
+      proof.phase=`browser:${label}:measure-readonly`;
+      await measureLink.click();
+      await page.getByLabel('Buscar medida',{exact:true}).fill('CAD-004 UI');
+      await page.getByRole('button',{name:'Buscar',exact:true}).click();
+      const view=page.getByRole('button',{name:/^Visualizar CAD-004 UI /}).first();
+      await expect(view).toBeVisible();
+      if(label==='readerA') {
+        await expect(page.getByRole('button',{name:'Incluir medida',exact:true})).toBeDisabled();
+        await page.screenshot({path:path.join(root,'cad004-medidas-360.png'),fullPage:true});
+      }
+      await view.click();
+      await expect(page.getByLabel('Fator-base',{exact:true})).toHaveValue('0,123456');
+      await expect(page.getByLabel('Descrição *',{exact:true})).toBeDisabled();
+      await expect(page.locator('.unit-caption')).toContainText(identities[label].nome);
+      if(label==='editorB')await page.screenshot({path:path.join(root,'cad004-detalhe-1280.png'),fullPage:true});
+    }
     await page.getByRole('button',{name:'Sair',exact:true}).click();
     await expect(page.getByRole('heading',{name:'Entrar',exact:true})).toBeVisible();
   }

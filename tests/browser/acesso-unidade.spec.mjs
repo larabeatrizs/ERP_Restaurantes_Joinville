@@ -5,11 +5,13 @@ import fs from 'node:fs/promises';
 const user = { id: '00000000-0000-4000-8000-000000000001', aud: 'authenticated', role: 'authenticated', email: 'teste@example.invalid' };
 const session = { access_token: 'eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ0ZXN0ZSJ9.ficticio', refresh_token: 'ficticio', token_type: 'bearer', expires_in: 3600, user };
 const balance = { produto_id:'11', produto:'Arroz', unidade_medida:'kg', lote_id:'12', lote:'ARROZ-A', validade:'2030-12-31', camara_id:'13', local:'Câmara fria', quantidade:'7.000001', valor_unitario:'2.123456' };
-async function setup(page, { failIndicators=false, recoveryFails=false, delayUnits=false } = {}) {
+async function setup(page, { failIndicators=false, recoveryFails=false, delayUnits=false, delayIdentity=false } = {}) {
   const requests=[], recoveries=[];
   let holdUnits=false;
   let releaseUnits;
   const unitGate=new Promise(resolve=>{releaseUnits=resolve;});
+  let releaseIdentity;
+  const identityGate=new Promise(resolve=>{releaseIdentity=resolve;});
   await page.route('https://auth-ficticio.supabase.co/**', route => {
     const request=route.request(), url=new URL(request.url());
     if(url.pathname.endsWith('/recover')) {
@@ -25,7 +27,7 @@ async function setup(page, { failIndicators=false, recoveryFails=false, delayUni
     if(url.pathname==='/api/auth/login') return route.fulfill({json:{access_token:session.access_token,refresh_token:session.refresh_token}});
     requests.push(url.pathname);
     expect(request.headers().authorization).toMatch(/^Bearer /);
-    if(url.pathname==='/api/me') return route.fulfill({json:{nome:'Pessoa de teste'}});
+    if(url.pathname==='/api/me') { if(delayIdentity)await identityGate; return route.fulfill({json:{nome:'Pessoa de teste'}}); }
     if(url.pathname==='/api/unidades') { if(holdUnits&&delayUnits)await unitGate; return route.fulfill({json:{unidades:[{id:'1',codigo:'RP1',nome:'Unidade A'},{id:'2',codigo:'RP2',nome:'Unidade B'}]}}); }
     if(failIndicators) return route.fulfill({status:503,json:{error:{code:'UNAVAILABLE'}}});
     const unit=url.pathname.split('/')[3];
@@ -35,7 +37,7 @@ async function setup(page, { failIndicators=false, recoveryFails=false, delayUni
     return route.fulfill({status:404,json:{error:{code:'UNEXPECTED'}}});
   });
   await page.goto('/');
-  return { requests, recoveries, releaseUnits, holdUnits:()=>{holdUnits=true;} };
+  return { requests, recoveries, releaseUnits, releaseIdentity, holdUnits:()=>{holdUnits=true;} };
 }
 async function login(page) {
   await page.getByLabel('Nome de usuário',{exact:true}).fill('teste');
@@ -74,6 +76,21 @@ test('indicador indisponível não vira zero fictício',async({page})=>{
   await setup(page,{failIndicators:true}); await login(page); await enter(page);
   await expect(page.getByRole('alert')).toContainText('Alguns indicadores não estão disponíveis');
   await expect(page.locator('.home-metrics strong')).toHaveText(['—','—','—']);
+});
+test('identificação lenta impede entrar com nome vazio mesmo se os vínculos já chegaram',async({page})=>{
+  const state=await setup(page,{delayIdentity:true});
+  try {
+    await page.getByLabel('Nome de usuário',{exact:true}).fill('teste');
+    await page.getByLabel('Senha',{exact:true}).fill('abcdef1!');
+    await page.getByRole('button',{name:'Entrar',exact:true}).click();
+    await expect(page.getByRole('heading',{name:'Selecionar unidade',exact:true})).toBeVisible();
+    await expect(page.getByLabel('Unidade de acesso',{exact:true})).toBeDisabled();
+    await expect(page.getByRole('button',{name:'Acessar unidade',exact:true})).toBeDisabled();
+    expect(state.requests.every(path=>['/api/me','/api/unidades'].includes(path))).toBe(true);
+  } finally {state.releaseIdentity();}
+  await expect(page.getByText('Olá, Pessoa de teste.',{exact:true})).toBeVisible();
+  await enter(page);
+  await expect(page.locator('.unit-caption')).toContainText('Pessoa de teste');
 });
 test('consulta lenta de vínculos não mostra unidade vazia nem indicadores prematuros',async({page})=>{
   const state=await setup(page,{delayUnits:true}); await login(page); state.holdUnits();
