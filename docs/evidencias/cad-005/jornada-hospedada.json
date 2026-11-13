@@ -1,0 +1,43 @@
+{
+  "executedAt": "2026-11-13T17:19:21.466Z",
+  "origin": "https://erp-joinville-staging.erp-restaurantes-joinville.workers.dev",
+  "mocked": false,
+  "completed": true,
+  "scenarios": [
+    "cadastro compartilhado, documento alfanumérico/duplicidade, zero/null, revisão e ciclo de vida reais",
+    "inativo ausente da seleção; fornecedor anterior vinculado não exclui; exclusão funcional nova preserva auditoria",
+    "sem sessão/leitor/unidade alheia/DML/payload indevido negados; estoquista edita sem X",
+    "UI real cria/edita em 360/768/1280 e nova sessão consulta dados persistidos",
+    "CSV real filtrado preserva precisão e leitura não concede escrita",
+    "saldos preservados; sem compra, mensagem, troca de senha ou uso da conta pessoal"
+  ],
+  "runtimeCommit": "140404b6a29966e930324c5544995acac7553db7",
+  "cloudflareVersion": "54e2e312-1851-4870-957c-33b43dbd2b69",
+  "ciRun": 43471522660,
+  "migration": "20261113171459",
+  "migrationFileSha256": "f35689fac7fe0ab9700b21d01aca30a581fe2ab355a48114acb83318286b8937",
+  "migrationBodyMatchesHosted": true,
+  "tests": {
+    "api": 89,
+    "stockPostgres": 44,
+    "configurationPostgres": 32,
+    "browser": 52
+  },
+  "preserved": {
+    "products": true,
+    "balances": true,
+    "receipts": true,
+    "users": true,
+    "userUnitLinks": true,
+    "adminCapabilities": true,
+    "previousSupplierIdentity": true
+  },
+  "limits": [
+    "Only synthetic suppliers/accounts exercised; no personal credential/link or actual client document used.",
+    "Document validation proves structure/check digits only; no official registry lookup.",
+    "No automatic interpretation of order minimum as currency or quantity; consumer RF-033 remains separate.",
+    "Concurrent locks/revocation/rollback tested in lab/CI, not induced on hosted staging.",
+    "Existing supplier retains unknown agricultural-family metadata; no invented backfill.",
+    "No institutional acceptance, production release, general email delivery, real spreadsheet import or new environment implied."
+  ]
+}

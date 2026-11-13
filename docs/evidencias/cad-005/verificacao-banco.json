@@ -1,0 +1,50 @@
+{
+  "capturedOn": "2026-11-13",
+  "preflight": {
+    "suppliers": 1,
+    "invalidDocuments": 0,
+    "products": 8,
+    "receipts": 6,
+    "movements": 6,
+    "stockAuditEvents": 43,
+    "domainUsers": 5,
+    "migrations": 7
+  },
+  "postconditions": {
+    "suppliers": 3,
+    "unknownAgriculturalFamily": 1,
+    "products": 8,
+    "productUnitLinks": 10,
+    "receipts": 6,
+    "lots": 6,
+    "movements": 6,
+    "stockAuditEvents": 52,
+    "supplierAuditEvents": 9,
+    "domainUsers": 5,
+    "adminCapabilities": 3,
+    "migrations": 8,
+    "erpRlsTables": 20,
+    "bookBalanceDifferences": 0
+  },
+  "preservationComparedByDatabaseHashes": true,
+  "permissions": {
+    "clientDirectWrite": false,
+    "anonymousRpc": false,
+    "authenticatedRpc": true,
+    "wrapperInvoker": true,
+    "privateExecutor": "erp_stock_writer"
+  },
+  "advisors": [
+    {
+      "name": "rls_enabled_no_policy",
+      "level": "INFO",
+      "count": 14
+    },
+    {
+      "name": "auth_leaked_password_protection",
+      "level": "WARN",
+      "count": 1
+    }
+  ],
+  "newAdvisorFinding": false
+}
