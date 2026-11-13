@@ -1,0 +1,55 @@
+{
+  "executedAt": "2026-11-13T11:27:12.173Z",
+  "origin": "https://erp-joinville-staging.erp-restaurantes-joinville.workers.dev",
+  "mocked": false,
+  "completed": true,
+  "scenarios": [
+    "cadastro global compartilhado, zero/null, unicidade, revisao e ciclo de vida por API",
+    "exclusao com vinculo negada; medida isolada de ensaio excluida com trilha preservada",
+    "sem sessao/leitor/outra unidade/DML negados; estoquista edita mas nao executa X; corpo indevido recusado",
+    "UI real cria/edita em 360/768/1280 sem overflow global; nova sessao visualiza dados persistidos",
+    "CSV real filtrado e leitura sem escrita; valores preservados em nova sessao",
+    "saldos anteriores preservados"
+  ],
+  "initialCrudRuntime": {
+    "commit": "78a4ee84067b7a0dccbaa7b4a7853cbfc34afa7e",
+    "cloudflareVersion": "1b1b5217-b3ae-4594-800b-e2dd896c93d3",
+    "ciRun": 43416870345
+  },
+  "runtimeCommit": "0ca2e47a01f0e88830289fda54edc87b71305a76",
+  "cloudflareVersion": "50aff6f7-4bc3-4dcb-aaa3-168ee1824dc8",
+  "ciRun": 43417617686,
+  "readonlyVerification": {
+    "executedAt": "2026-11-13T11:30:37.032Z",
+    "completed": true,
+    "stockWrites": false,
+    "emailSent": false,
+    "passwordChanged": false,
+    "measureViewsAcrossAuthorizedUnits": 2,
+    "displayNamesVerified": true
+  },
+  "migration": "20261113112652",
+  "migrationFileSha256": "3ba88be10c91b5bbfe350fc77f749fc1c643326230ae2256f1841d3b296275d7",
+  "migrationBodyMatchesHosted": true,
+  "tests": {
+    "api": 83,
+    "stockPostgres": 37,
+    "configurationPostgres": 32,
+    "browser": 47
+  },
+  "preserved": {
+    "products": true,
+    "balances": true,
+    "users": true,
+    "userUnitLinks": true,
+    "adminCapabilities": true
+  },
+  "limits": [
+    "Only synthetic accounts exercised; personal password/link not read or reset.",
+    "No automatic transaction conversion engine; quantities remain in product base unit.",
+    "Hosted CRUD tested on initial runtime; final UI identity fix verified readonly without repeating stock or measure writes.",
+    "Concurrent locks/rollback tested in laboratory and CI, not induced on hosted staging.",
+    "SMTP delivery, full user administration, product deletion and complete reports remain separate pending increments.",
+    "No institutional acceptance or production release implied."
+  ]
+}

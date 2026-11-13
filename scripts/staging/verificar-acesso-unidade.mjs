@@ -100,7 +100,9 @@ try {
       proof.phase=`browser:${label}:measure-readonly`;
       await measureLink.click();
       await page.getByLabel('Buscar medida',{exact:true}).fill('CAD-004 UI');
+      const loaded=page.waitForResponse(response=>{const url=new URL(response.url());return url.pathname.endsWith('/medidas')&&url.searchParams.get('q')==='CAD-004 UI';});
       await page.getByRole('button',{name:'Buscar',exact:true}).click();
+      assert.ok((await loaded).ok());
       const view=page.getByRole('button',{name:/^Visualizar CAD-004 UI /}).first();
       await expect(view).toBeVisible();
       if(label==='readerA') {
