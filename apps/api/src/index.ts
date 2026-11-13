@@ -1,5 +1,5 @@
 import { healthController } from './controllers/health-controller.ts';
-import { settingsController, unitsController } from './controllers/settings-controller.ts';
+import { identityController, settingsController, unitsController } from './controllers/settings-controller.ts';
 import { createSupabaseSession } from './repositories/supabase-settings.ts';
 import type { RuntimeEnv, SessionFactory } from './repositories/settings-repository.ts';
 import { ApiError } from './errors.ts';
@@ -9,12 +9,23 @@ import type { StockSessionFactory } from './repositories/stock-repository.ts';
 import { categoryController } from './controllers/category-controller.ts';
 import { createSupabaseCategorySession } from './repositories/supabase-categories.ts';
 import type { CategorySessionFactory } from './repositories/category-repository.ts';
+import { loginController } from './controllers/login-controller.ts';
+import { createLoginRepository } from './repositories/supabase-login.ts';
+import type { LoginFactory } from './repositories/login-repository.ts';
 
-export function createApp(factory: SessionFactory = createSupabaseSession, stockFactory: StockSessionFactory = createSupabaseStockSession, categoryFactory: CategorySessionFactory = createSupabaseCategorySession) {
+export function createApp(factory: SessionFactory = createSupabaseSession, stockFactory: StockSessionFactory = createSupabaseStockSession, categoryFactory: CategorySessionFactory = createSupabaseCategorySession, loginFactory: LoginFactory = createLoginRepository) {
   return {
     async fetch(request: Request, env: RuntimeEnv = {}): Promise<Response> {
       try {
         const path = new URL(request.url).pathname;
+        if (path === '/api/auth/login') {
+          if (request.method !== 'POST') return methodNotAllowed('POST', request.method === 'HEAD');
+          return await loginController(request, env, loginFactory);
+        }
+        if (path === '/api/me') {
+          if (request.method !== 'GET') return methodNotAllowed('GET', request.method === 'HEAD');
+          return await identityController(request, env, factory);
+        }
         const category = /^\/api\/unidades\/([^/]+)\/categorias(?:\/(exportar|[^/]+(?:\/status)?))?$/.exec(path);
         if (category?.[1]) return await categoryController(request, env, category[1], category[2] ?? '', categoryFactory);
         if (path === '/api/unidades') {

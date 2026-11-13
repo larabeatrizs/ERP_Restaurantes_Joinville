@@ -48,6 +48,7 @@ export function createSupabaseSession(env: RuntimeEnv, token: string, fetcher: t
     },
   });
   const database = client.schema('erp');
+  let actor: string | undefined;
   return {
     async authenticate() {
       const { data, error } = await client.auth.getUser(token);
@@ -55,8 +56,16 @@ export function createSupabaseSession(env: RuntimeEnv, token: string, fetcher: t
       if (error || !data.user || data.user.is_anonymous || data.user.aud !== 'authenticated') {
         throw new ApiError(401, 'UNAUTHORIZED', 'Sessão inválida ou expirada.');
       }
+      actor = data.user.id;
     },
     repository: {
+      async identity() {
+        if (!actor) throw new ApiError(401, 'UNAUTHORIZED', 'Sessão inválida.');
+        const { data, error, status } = await database.from('usuario').select('nome').eq('id', actor).eq('status', 'ATIVO').maybeSingle();
+        translateError(error, status);
+        if (!isRecord(data) || typeof data.nome !== 'string' || !data.nome.trim() || data.nome.length > 200) throw new ApiError(403, 'ACCESS_DENIED', 'Perfil indisponível.');
+        return { nome: data.nome };
+      },
       async listUnits() {
         const { data, error, status } = await database.from('unidade').select('id::text,codigo,nome').eq('status', 'ATIVO').order('nome');
         translateError(error, status);

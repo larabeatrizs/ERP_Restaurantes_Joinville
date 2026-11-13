@@ -1,3 +1,4 @@
+import { selectWorkspaceUnit } from './acessar-unidade.mjs';
 // Opt-in: somente identidades sintéticas; cria demonstrações e mantém auditoria.
 import fs from 'node:fs/promises';
 import path from 'node:path';
@@ -53,7 +54,7 @@ try{
  proof.scenarios.push('sem sessão, readonly, outra unidade, DML direto e campos globais indevidos negados');
  const p2=(await api('editorA',base(a)+'/produtos','POST',input('UI'),201)).produto;
  browser=await chromium.launch({channel:process.env.PLAYWRIGHT_CHANNEL||undefined});
- async function enter(width){const context=await browser.newContext({viewport:{width,height:900}});contexts.push(context);const page=await context.newPage();await page.goto(origin);await page.getByLabel('E-mail',{exact:true}).fill(accounts.editorB.email);await page.getByLabel('Senha',{exact:true}).fill(accounts.editorB.password);await page.getByRole('button',{name:'Entrar',exact:true}).click();await expect(page.getByRole('heading',{name:'Operação e custos'})).toBeVisible({timeout:30000});await page.getByRole('navigation',{name:'Principal'}).getByRole('link',{name:'Produtos',exact:true}).click();return page;}
+ async function enter(width){const context=await browser.newContext({viewport:{width,height:900}});contexts.push(context);const page=await context.newPage();await page.goto(origin);await page.getByLabel('Nome de usuário',{exact:true}).fill('editorb');await page.getByLabel('Senha',{exact:true}).fill(accounts.editorB.password);await page.getByRole('button',{name:'Entrar',exact:true}).click();await selectWorkspaceUnit(page, b);await page.getByRole('navigation',{name:'Principal'}).getByRole('link',{name:'Produtos',exact:true}).click();return page;}
  proof.phase='browser-link';const page=await enter(360);
  await page.getByRole('button',{name:'Vincular produto existente',exact:true}).click();
  await page.getByLabel('Buscar no catálogo',{exact:true}).fill(p2.descricao);

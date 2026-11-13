@@ -1,3 +1,5 @@
 # Copiar para .dev.vars no ambiente autorizado. Não versionar valores reais.
 SUPABASE_URL=https://seu-projeto.supabase.co
 SUPABASE_PUBLISHABLE_KEY=sb_publishable_substituir
+# Somente no servidor, como segredo. Exemplo fictício; não contém senhas.
+AUTH_LOGIN_DIRECTORY={"admin":"administrador@example.invalid"}
