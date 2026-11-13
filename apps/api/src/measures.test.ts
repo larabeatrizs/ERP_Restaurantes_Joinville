@@ -16,7 +16,7 @@ function setup() {
     status: async (...args) => { calls.push(['status', ...args]); return row; },
     remove: async (...args) => { calls.push(['remove', ...args]); },
   } });
-  const app = createApp(undefined, undefined, undefined, factory);
+  const app = createApp(undefined, undefined, undefined, undefined, factory);
   const request = (route = '', method = 'GET', body?: unknown, authorized = true) => app.fetch(new Request('https://erp.test/api/unidades/1/medidas' + route, {
     method, headers: { ...(authorized ? { Authorization: 'Bearer synthetic' } : {}), ...(body === undefined ? {} : { 'Content-Type': 'application/json' }) }, ...(body === undefined ? {} : { body: JSON.stringify(body) }),
   }), env);
@@ -60,14 +60,14 @@ test('medidas SDK: Auth antes da RPC; sessão/publicável/RLS e payload exato', 
     const url = new URL(String(target)); calls.push({ path: url.pathname, headers: new Headers(init?.headers), body: init?.body ? JSON.parse(String(init.body)) : null });
     return url.pathname === '/auth/v1/user' ? Response.json({ id: '10000000-0000-4000-8000-000000000001', aud: 'authenticated', is_anonymous: false }) : Response.json(list);
   };
-  const app = createApp(undefined, undefined, undefined, (runtime, token) => measureSession(runtime, token, fetcher));
+  const app = createApp(undefined, undefined, undefined, undefined, (runtime, token) => measureSession(runtime, token, fetcher));
   const response = await app.fetch(new Request('https://erp.test/api/unidades/1/medidas', { headers: { Authorization: 'Bearer synthetic' } }), env);
   assert.equal(response.status, 200); assert.deepEqual(calls.map(c => c.path), ['/auth/v1/user', '/rest/v1/rpc/medida_operacao']);
   assert.equal(calls[1]?.headers.get('Content-Profile'), 'erp'); assert.equal(calls[1]?.headers.get('Authorization'), 'Bearer synthetic'); assert.equal(calls[1]?.headers.get('apikey'), env.SUPABASE_PUBLISHABLE_KEY);
 });
 test('medidas SDK: erros seguros e resposta inválida não expõem SQL', async () => {
   for (const [code, status] of [['PT403', 403], ['PT404', 404], ['PT409', 409], ['PT412', 412], ['PT422', 422], ['PT413', 413], ['P0001', 503]] as const) {
-    const app = createApp(undefined, undefined, undefined, (runtime, token) => measureSession(runtime, token, async target => String(target).includes('/auth/v1/user') ? Response.json({ id: '10000000-0000-4000-8000-000000000001', aud: 'authenticated' }) : Response.json({ code, message: 'SQL SECRET detail' }, { status: 400 })));
+    const app = createApp(undefined, undefined, undefined, undefined, (runtime, token) => measureSession(runtime, token, async target => String(target).includes('/auth/v1/user') ? Response.json({ id: '10000000-0000-4000-8000-000000000001', aud: 'authenticated' }) : Response.json({ code, message: 'SQL SECRET detail' }, { status: 400 })));
     const response = await app.fetch(new Request('https://erp.test/api/unidades/1/medidas', { headers: { Authorization: 'Bearer synthetic' } }), env);
     assert.equal(response.status, status); assert.ok(!(await response.text()).includes('SECRET'));
   }
@@ -75,13 +75,13 @@ test('medidas SDK: erros seguros e resposta inválida não expõem SQL', async (
 test('medidas SDK: DTO inválido é recusado e propriedades internas não são publicadas', async () => {
  for (const invalid of [false, true]) {
   const result={...list, segredo:'interno',capacidades:{...list.capacidades,interno:true},medidas:[{...row,id:invalid?42:row.id,segredo:'interno'}]};
-  const app=createApp(undefined, undefined, undefined, (runtime,token)=>measureSession(runtime,token,async target=>String(target).includes('/auth/v1/user')?Response.json({id:'10000000-0000-4000-8000-000000000001',aud:'authenticated'}):Response.json(result)));
+  const app=createApp(undefined, undefined, undefined, undefined, (runtime,token)=>measureSession(runtime,token,async target=>String(target).includes('/auth/v1/user')?Response.json({id:'10000000-0000-4000-8000-000000000001',aud:'authenticated'}):Response.json(result)));
   const response=await app.fetch(new Request('https://erp.test/api/unidades/1/medidas',{headers:{Authorization:'Bearer synthetic'}}),env);
   assert.equal(response.status,invalid?503:200);assert.ok(!(await response.text()).includes('interno'));
  }
 });
 test('medidas SDK: identidade anônima não consulta RPC e credencial administrativa é recusada', async () => {
- let calls=0;const app=createApp(undefined, undefined, undefined, (runtime,token)=>measureSession(runtime,token,async()=>{calls++;return Response.json({id:'10000000-0000-4000-8000-000000000001',aud:'authenticated',is_anonymous:true});}));
+ let calls=0;const app=createApp(undefined, undefined, undefined, undefined, (runtime,token)=>measureSession(runtime,token,async()=>{calls++;return Response.json({id:'10000000-0000-4000-8000-000000000001',aud:'authenticated',is_anonymous:true});}));
  const response=await app.fetch(new Request('https://erp.test/api/unidades/1/medidas',{headers:{Authorization:'Bearer synthetic'}}),env);assert.equal(response.status,401);assert.equal(calls,1);
  assert.throws(()=>measureSession({...env,SUPABASE_PUBLISHABLE_KEY:'sb_secret_ficticia'},'synthetic'),/indisponível/);
 });

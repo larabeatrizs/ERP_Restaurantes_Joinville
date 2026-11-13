@@ -2,6 +2,8 @@
 
 **Estado em 11/11/2026:** especificação do próximo recorte D1, [issue #29](https://github.com/larabeatrizs/ERP_Restaurantes_Joinville/issues/29), após CAD-003. Ainda sem implantação deste recorte.
 
+**Continuidade em 13/11/2026:** responsável confirmou catálogo compartilhado em [DOM-002](../decisoes/DOM-002-AJUSTES-12-11.md). PR #32/UX-003 integrado; branch deste recorte atualizada com a main, preservando login por usuário, seleção de unidade, Início e pesquisa/CSV de saldos. Nova verificação integrada em andamento; migration e publicação de medidas ainda não aplicadas neste ponto do registro.
+
 Fontes: DRS RF-001/seção 7.1, RN-001/002/003/012/019/022, RNF-002/003/008/009/010/011/015; [dicionário](../dados/DICIONARIO.md) e [plano](../planejamento/RECONSTRUCAO_SDD.md). Reusar shell/componentes do Style Guide sem alterar o HTML mestre; não há frame de medida nomeado no inventário visual.
 
 ## Contrato

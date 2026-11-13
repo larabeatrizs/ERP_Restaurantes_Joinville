@@ -5,6 +5,7 @@ import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { createClient } from '@supabase/supabase-js';
 import { chromium, expect } from '@playwright/test';
+import { selectWorkspaceUnit } from './acessar-unidade.mjs';
 const stateFile=process.env.ERP_STOCK_TEST_STATE;
 if(!stateFile)throw Error('Synthetic private state required');
 const state=JSON.parse(await fs.readFile(stateFile,'utf8')),origin=process.env.ERP_STAGING_URL;
@@ -26,6 +27,7 @@ try{
  const balances=await api('editorA',`/api/unidades/${a}/estoque/saldos`);
  proof.phase='api-crud';let c=(await api('editorA',base(a),'POST',input('API'),201)).medida;
  assert.equal(c.fator_base,'0.000001');assert.equal(c.status,'ATIVO');
+ await api('editorA',base(a),'POST',{...input('zero negado'),fator_base:'0'},422);
  assert.equal((await api('editorB',base(b)+query(c.descricao))).medidas[0].id,c.id);
  await api('editorA',base(a),'POST',{...input('API'),descricao:c.descricao.toUpperCase()},409);
  const prior=c.revisao;c=(await api('editorA',base(a)+'/'+c.id,'PATCH',{...input('API'),fator_base:null,revisao:c.revisao})).medida;assert.equal(c.fator_base,null);
@@ -42,11 +44,11 @@ try{
  await api('stockkeeperA',base(a)+'/'+c.id+'/status','POST',{revisao:c.revisao,status:'INATIVO'},403);
  await api('stockkeeperA',base(a)+'/'+c.id,'DELETE',{revisao:c.revisao},403);
  const edited=(await api('stockkeeperA',base(a)+'/'+c.id,'PATCH',{...input('API'),fator_base:'0.001',revisao:c.revisao})).medida;c=edited;
- const dml=await clients.editorA.schema('erp').from('medida').update({descricao:'Indevido'}).eq('id',c.id);assert.equal(dml.error?.code,'42501');
+ const dml=await clients.editorA.schema('erp').from('unidade_medida').update({descricao:'Indevido'}).eq('id',c.id);assert.equal(dml.error?.code,'42501');
  const malformed=await clients.editorA.schema('erp').rpc('medida_operacao',{p_unidade:a,p_acao:'editar',p_dados:{...input('API'),id:c.id,revisao:c.revisao,status:'INATIVO'}});assert.equal(malformed.error?.code,'PT422');
  proof.scenarios.push('sem sessao/leitor/outra unidade/DML negados; estoquista edita mas nao executa X; corpo indevido recusado');
  proof.phase='browser';browser=await chromium.launch({channel:process.env.PLAYWRIGHT_CHANNEL||undefined});
- async function enter(width){const context=await browser.newContext({viewport:{width,height:900}});contexts.push(context);const page=await context.newPage();await page.goto(origin);await page.getByLabel('E-mail',{exact:true}).fill(accounts.editorA.email);await page.getByLabel('Senha',{exact:true}).fill(accounts.editorA.password);await page.getByRole('button',{name:'Entrar',exact:true}).click();await expect(page.getByRole('heading',{name:'Operação e custos'})).toBeVisible({timeout:30000});await page.getByRole('navigation',{name:'Principal'}).getByRole('link',{name:'Unidades de medida',exact:true}).click();return page;}
+ async function enter(width){const context=await browser.newContext({viewport:{width,height:900}});contexts.push(context);const page=await context.newPage();await page.goto(origin);await page.getByLabel('Nome de usuário',{exact:true}).fill('editora');await page.getByLabel('Senha',{exact:true}).fill(accounts.editorA.password);await page.getByRole('button',{name:'Entrar',exact:true}).click();await selectWorkspaceUnit(page,a);await page.getByRole('navigation',{name:'Principal'}).getByRole('link',{name:'Unidades de medida',exact:true}).click();return page;}
  const page=await enter(360);await page.getByRole('button',{name:'Incluir medida',exact:true}).click();const ui=input('UI');await page.getByLabel('Descrição *',{exact:true}).fill(ui.descricao);await page.getByLabel('Sigla *',{exact:true}).fill('U004');await page.getByLabel('Fator-base',{exact:true}).fill('0,000001');await page.getByRole('button',{name:'Salvar medida',exact:true}).click();await expect(page.getByText('Medida salva com sucesso.',{exact:true})).toBeVisible({timeout:30000});
  await page.getByLabel('Buscar medida',{exact:true}).fill(ui.descricao);const loaded=page.waitForResponse(r=>{const u=new URL(r.url());return u.pathname===base(a)&&u.searchParams.get('q')===ui.descricao;});await page.getByRole('button',{name:'Buscar',exact:true}).click();assert.ok((await loaded).ok());await expect(page.getByRole('button',{name:'Editar '+ui.descricao,exact:true})).toBeVisible();
  for(const width of [360,768,1280]){await page.setViewportSize({width,height:900});assert.equal(await page.locator('html').evaluate(el=>el.scrollWidth),width);if(width===360)await page.screenshot({path:path.join(root,'cad004-medidas-360.png'),fullPage:true});}

@@ -1,0 +1,50 @@
+{
+  "executedAt": "2026-11-12T19:56:48.641Z",
+  "origin": "https://erp-joinville-staging.erp-restaurantes-joinville.workers.dev",
+  "mocked": false,
+  "completed": true,
+  "scenarios": [
+    "identificação autenticada retorna somente nome; ausência de sessão negada",
+    "duas contas sintéticas veem apenas sua unidade; saldo de outra unidade negado",
+    "UI real exige escolha antes de dados operacionais; mostra nome e Início em 360/1280",
+    "mostrar/ocultar senha; saldos pesquisáveis e CSV real; Meu acesso disponível sem envio de email",
+    "saldos anteriores preservados; nenhuma senha, permissão ou link pessoal alterado"
+  ],
+  "runtimeCommit": "b6bd081fb81c9df443a57bc97b5b4079b988a5be",
+  "cloudflareVersion": "c3362da7-252b-469b-a460-e66d7f9cb61f",
+  "ciRun": 43295104085,
+  "tests": {
+    "api": 75,
+    "stockPostgres": 32,
+    "configurationPostgres": 32,
+    "browser": 42
+  },
+  "auth": {
+    "minimumLength": 8,
+    "providerRequires": "letter_any_case_and_number",
+    "symbolEnforcedInViewOnly": true,
+    "publicSignupDisabled": true,
+    "siteUrl": "https://erp-joinville-staging.erp-restaurantes-joinville.workers.dev",
+    "smtpConfigured": false,
+    "existingPasswordsUnchanged": true
+  },
+  "postconditions": {
+    "domainUsers": 5,
+    "products": 8,
+    "productUnitLinks": 10,
+    "categories": 4,
+    "receipts": 6,
+    "lots": 6,
+    "movements": 6,
+    "stockAuditEvents": 34,
+    "erpRlsTables": 20,
+    "migrations": 6,
+    "adminCapabilities": 3
+  },
+  "limits": [
+    "General email delivery deferred by project owner; no SMTP delivery claim.",
+    "Persistent user administration, invitations, complete server password policy, product deletion and complete reports remain pending.",
+    "Only synthetic accounts exercised; personal password/link and permissions untouched.",
+    "Hosted verification is not institutional acceptance or production release."
+  ]
+}

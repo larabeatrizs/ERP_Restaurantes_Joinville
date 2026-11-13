@@ -32,12 +32,15 @@ async function setup(page, options = {}) {
       access_token: 'eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ0ZXN0ZSJ9.ficticio', refresh_token: 'ficticio', token_type: 'bearer', expires_in: 3600,
       user: { id: '00000000-0000-4000-8000-000000000001', aud: 'authenticated', role: 'authenticated', email: 'teste@example.invalid' },
     } });
+    if(route.request().url().endsWith('/user')) return route.fulfill({json:{id:'00000000-0000-4000-8000-000000000001',aud:'authenticated',role:'authenticated',email:'teste@example.invalid'}});
     return route.fulfill({ json: {} });
   });
   await page.route('**/api/**', route => {
     const request = route.request(); const url = new URL(request.url());
+    if(url.pathname==='/api/auth/login') return route.fulfill({json:{access_token:'eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ0ZXN0ZSJ9.ficticio',refresh_token:'ficticio'}});
     expect(request.headers().authorization).toMatch(/^Bearer /);
     const respond = json => route.fulfill({ json });
+    if (url.pathname === '/api/me') return respond({nome:'Pessoa de teste'});
     if (url.pathname === '/api/unidades') return respond({ unidades: [{ id: unit, codigo: 'DEMO-A', nome: 'Unidade de demonstração' }, { id: otherUnit, codigo: 'DEMO-B', nome: 'Outra unidade' }] });
     const activeUnit = url.pathname.split('/')[3];
     if (url.pathname.endsWith('/configuracoes')) return route.fulfill({ headers: { ETag: `"cfg-${activeUnit}-1"` }, json: { pode_editar: true, configuracao: { unidade_id: activeUnit, revisao: '1', modo_saida: 'POSTERIOR', margem_percentual: '5', dias_alerta_validade: 7, prazo_amostra_horas: 72, periodicidade_inventario_dias: 7, referencia_preco: 'MENOR_COTACAO', alerta_email_habilitado: false } } });
@@ -111,10 +114,12 @@ async function setup(page, options = {}) {
     return route.fulfill({ status: 404, json: { error: { code: 'UNEXPECTED_TEST_ROUTE' } } });
   });
   await page.goto('/');
-  await page.getByLabel('E-mail', { exact: true }).fill('teste@example.invalid');
+  await page.getByLabel('Nome de usuário', { exact: true }).fill('teste');
   await page.getByLabel('Senha', { exact: true }).fill('senha-ficticia');
   await page.getByRole('button', { name: 'Entrar', exact: true }).click();
-  await expect(page.getByRole('heading', { name: 'Operação e custos' })).toBeVisible();
+  await page.getByLabel('Unidade de acesso',{exact:true}).selectOption(unit);
+  await page.getByRole('button',{name:'Acessar unidade',exact:true}).click();
+  await expect(page.getByRole('heading',{name:'Início',exact:true})).toBeVisible();
   return state;
 }
 async function navigate(page, name) { await page.getByRole('navigation', { name: 'Principal' }).getByRole('link', { name, exact: true }).click(); }
@@ -137,7 +142,7 @@ test('medidas pagina/exporta filtros e cabe em 360/768/1280 com vínculos proteg
 test('categorias cadastra zero, edita null e reabre consulta sem escrita implícita', async ({page}) => {
  const state=await setup(page);await navigate(page,'Categorias');await page.getByRole('button',{name:'Incluir categoria',exact:true}).click();
  await page.getByLabel('Descrição *',{exact:true}).fill('Categoria nova');await page.getByLabel('Dias de alerta de validade',{exact:true}).fill('0');await page.getByRole('button',{name:'Salvar categoria',exact:true}).click();
- await expect(page.getByRole('status')).toContainText('Categoria salva');expect(state.writes.at(-1).body.dias_alerta_validade).toBe(0);expect(state.writes.at(-1).body).not.toHaveProperty('status');
+ await expect(page.getByText('Categoria salva com sucesso.',{exact:true})).toBeVisible();expect(state.writes.at(-1).body.dias_alerta_validade).toBe(0);expect(state.writes.at(-1).body).not.toHaveProperty('status');
  await page.getByRole('button',{name:'Editar Categoria nova',exact:true}).click();await page.getByLabel('Dias de alerta de validade',{exact:true}).fill('');await page.getByRole('button',{name:'Salvar categoria',exact:true}).click();
  await page.getByRole('button',{name:'Visualizar Categoria nova',exact:true}).click();await expect(page.getByLabel('Descrição *',{exact:true})).toBeDisabled();await expect(page.getByLabel('Dias de alerta de validade',{exact:true})).toHaveValue('');expect(state.writes.at(-1).body.dias_alerta_validade).toBeNull();
 });

@@ -19,6 +19,7 @@ function transport(options: { authStatus?: number; databaseCode?: string; databa
     }
     if (options.databaseCode) return Response.json({ code: options.databaseCode, message: 'SQL e detalhe interno' }, { status: options.databaseStatus ?? 400 });
     if (url.pathname.endsWith('/unidade')) return Response.json([{ id: '1', codigo: 'TESTE_A', nome: 'Unidade fictícia A' }]);
+    if (url.pathname.endsWith('/usuario')) return Response.json([{ nome: 'Pessoa de teste', email: 'nao-retornar@example.invalid' }]);
     if (url.pathname.endsWith('/perfil_permissao')) return Response.json([{ permissao: 'CONFIGURACAO_EDITAR' }]);
     if (url.pathname.includes('/rpc/')) return Response.json({ ...row, revisao: '3' });
     if (options.badRow) return Response.json({ ...row, revisao: 9007199254740992 });
@@ -44,6 +45,20 @@ test('SDK valida usuário e encaminha Bearer/publicável ao schema erp, sem sess
   assert.equal(query?.headers.get('Accept-Profile'), 'erp');
   assert.equal(query?.url.searchParams.get('unidade_id'), 'eq.1');
   assert.match(query?.url.searchParams.get('select') ?? '', /revisao::text/);
+});
+
+test('identificação consulta apenas o ator autenticado ativo e retorna somente nome', async () => {
+  const { fetcher, requests } = transport();
+  const session = createSupabaseSession(env, 'ficticio', fetcher);
+  await assert.rejects(() => session.repository.identity!(), (error: unknown) => error instanceof ApiError && error.status === 401);
+  assert.equal(requests.length, 0);
+  await session.authenticate();
+  assert.deepEqual(await session.repository.identity!(), { nome: 'Pessoa de teste' });
+  const query = requests.find(request => request.url.pathname.endsWith('/usuario'))!;
+  assert.equal(query.url.searchParams.get('select'), 'nome');
+  assert.equal(query.url.searchParams.get('id'), `eq.${user.id}`);
+  assert.equal(query.url.searchParams.get('status'), 'eq.ATIVO');
+  assert.equal(query.headers.get('Accept-Profile'), 'erp');
 });
 test('RPC usa revisão e unidade string e não usa update direto', async () => {
   const { fetcher, requests } = transport();

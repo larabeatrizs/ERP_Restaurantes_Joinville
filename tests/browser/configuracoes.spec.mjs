@@ -41,10 +41,15 @@ async function setup(
           user,
         },
       });
-    } else await route.fulfill({ json: {} });
+    } else if (url.endsWith('/user')) await route.fulfill({json:{id:'00000000-0000-4000-8000-000000000001',aud:'authenticated',role:'authenticated',email:'teste@example.invalid'}});
+    else await route.fulfill({ json: {} });
   });
   await page.route('**/api/**', async (route) => {
+    if(route.request().url().endsWith('/auth/login')) return route.fulfill({json:{access_token:'eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ0ZXN0ZSJ9.ficticio',refresh_token:'ficticio'}});
     expect(route.request().headers().authorization).toMatch(/^Bearer /);
+    if (route.request().url().endsWith('/me')) return route.fulfill({json:{nome:'Pessoa de teste'}});
+    if (route.request().url().includes('/produtos')) return route.fulfill({json:{produtos:[],total:0}});
+    if (route.request().url().includes('/estoque/saldos')) return route.fulfill({json:{saldos:[]}});
     if (route.request().url().endsWith('/unidades'))
       return route.fulfill({
         json: {
@@ -87,14 +92,18 @@ async function setup(
       fullPage: true,
     });
   await page
-    .getByLabel('E-mail', { exact: true })
-    .fill('teste@example.invalid');
+    .getByLabel('Nome de usuário', { exact: true })
+    .fill('teste');
   await page.getByLabel('Senha', { exact: true }).fill('senha-ficticia');
   await page.getByRole('button', { name: 'Entrar', exact: true }).click();
-  if (units)
+  if (units) {
+    await page.getByLabel('Unidade de acesso',{exact:true}).selectOption('1');
+    await page.getByRole('button',{name:'Acessar unidade',exact:true}).click();
+    await page.getByRole('navigation',{name:'Principal'}).getByRole('link',{name:'Configurações',exact:true}).click();
     await expect(
       page.getByRole('heading', { name: 'Operação e custos' }),
     ).toBeVisible();
+  }
   return {
     writes,
     fail: (status) => {
@@ -201,7 +210,7 @@ test('consulta não oferece escrita; lista vazia não inventa unidades', async (
 test('sem unidade exibe estado vazio', async ({ page }) => {
   await setup(page, { units: false });
   await expect(
-    page.getByText('Nenhuma unidade ativa disponível', { exact: false }),
+    page.getByText('Nenhuma unidade ativa vinculada', { exact: false }),
   ).toBeVisible();
 });
 test('validação, troca de unidade e saída protegem alterações não salvas', async ({
