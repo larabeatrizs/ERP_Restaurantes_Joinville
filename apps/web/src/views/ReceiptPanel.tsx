@@ -4,6 +4,9 @@ import { isEntradaInput } from '@erp/contracts';
 import { decimalInput, decimalLabel, decimalUnits, stockError } from '../services/stock-api.ts';
 import { dateLabel } from './StockPanel.tsx';
 import type { StockPageProps } from './StockPanel.tsx';
+import { receiptReport } from '../services/stock-reports.ts';
+import type { ConsultationReport } from '../services/stock-reports.ts';
+import { ReportPreview } from './ReportPreview.tsx';
 
 function today(): string {
   const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date());
@@ -36,7 +39,8 @@ function divergent(receipt: Receipt): boolean {
 }
 const condition = { CONFORME: 'Conforme', RESSALVA: 'Aceito com ressalva', RECUSADO: 'Recusado' };
 
-export function ReceiptPanel({ api, unit, context, onDirty, onBusy }: StockPageProps) {
+export function ReceiptPanel({ api, unit, unitName = '', context, onDirty, onBusy }: StockPageProps) {
+  const [report, setReport] = useState<ConsultationReport>();
   const [rows, setRows] = useState<Receipt[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [draft, setDraft] = useState<EntradaInput>();
@@ -116,6 +120,7 @@ export function ReceiptPanel({ api, unit, context, onDirty, onBusy }: StockPageP
   }
   function back() { if (discard()) { setDraft(undefined); setSelected(undefined); setDirty(false); setError(''); setReason(''); } }
   return <>
+    {report && <ReportPreview report={report} onClose={() => setReport(undefined)} />}
     {message && <p role="status" className="success">{message}</p>}
     {error && <p role="alert" className="notice error">{error}</p>}
     {draft ? <form aria-label="Novo recebimento" onSubmit={event => { event.preventDefault(); void create(); }}>
@@ -162,7 +167,7 @@ export function ReceiptPanel({ api, unit, context, onDirty, onBusy }: StockPageP
       <div className="actions footer-actions"><button disabled={busy} onClick={back}>Voltar aos recebimentos</button>{selected.estado === 'RASCUNHO' && <button className="primary confirm-receipt" disabled={busy || !canWrite || (divergent(selected) && !selected.divergencia_aprovada)} onClick={() => void confirm()}>{busy ? 'Confirmando…' : 'Confirmar recebimento'}</button>}</div>
     </> : <>
       <div className="section-heading"><p className="hint">{canWrite ? 'Compras recebidas nesta unidade, com nota fiscal e conferência.' : 'Acesso para consulta dos recebimentos.'}</p><button className="primary" disabled={!canWrite || !context.fornecedores.length || !context.locais.length || !products.length} onClick={open}>Novo recebimento</button></div>
-      <section className="card"><div className="section-heading"><h2>Recebimentos recentes</h2><button disabled={loading} onClick={() => setReload(value => value + 1)}>Atualizar recebimentos</button></div>
+      <section className="card"><div className="section-heading"><h2>Recebimentos recentes</h2><div className="actions"><button disabled={loading || !!error} onClick={() => setReport(receiptReport(rows, unitName))}>Relatório de recebimentos</button><button disabled={loading} onClick={() => setReload(value => value + 1)}>Atualizar recebimentos</button></div></div>
         {loading ? <p role="status">Carregando recebimentos…</p> : rows.length ? <div className="table-wrap" tabIndex={0} aria-label="Lista de recebimentos"><table><thead><tr><th>Nota fiscal</th><th>Fornecedor</th><th>Data</th><th>Total dos itens</th><th>Situação</th><th>Ações</th></tr></thead><tbody>{rows.map(receipt => <tr key={receipt.id}><th scope="row">{receipt.numero_nf}</th><td>{receipt.fornecedor}</td><td>{dateLabel(receipt.data_entrada)}</td><td className="numeric">R$ {decimalLabel(receipt.total_itens, 2)}</td><td><span className="badge">{receipt.estado === 'CONFIRMADA' ? 'Confirmada' : receipt.estado === 'ESTORNADA' ? 'Estornada' : 'Rascunho'}</span>{receipt.estado === 'RASCUNHO' && divergent(receipt) && !receipt.divergencia_aprovada && <span className="table-secondary">Aguarda aprovação de divergência</span>}</td><td><button className="table-action" onClick={() => { setSelected(receipt); setMessage(''); setError(''); setReason(''); }}>Visualizar<span className="sr-only"> nota {receipt.numero_nf}</span></button></td></tr>)}</tbody></table></div> : <p className="empty">Nenhum recebimento registrado nesta unidade.</p>}
         <p className="hint stock-footnote">Até 50 recebimentos mais recentes. Este fluxo recebe compras; doações e estornos serão disponibilizados nos próximos incrementos.</p>
       </section>

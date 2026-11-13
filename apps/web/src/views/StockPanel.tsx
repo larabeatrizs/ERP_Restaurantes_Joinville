@@ -12,11 +12,14 @@ import { ProductPanel } from './ProductPanel.tsx';
 import { ReceiptPanel } from './ReceiptPanel.tsx';
 import { HomePanel } from './HomePanel.tsx';
 import { AccountPanel } from './AccountPanel.tsx';
+import { ReportPreview } from './ReportPreview.tsx';
+import { balanceReport } from '../services/stock-reports.ts';
+import type { ConsultationReport } from '../services/stock-reports.ts';
 const CategoryPanel = lazy(() => import('./CategoryPanel.tsx').then(module => ({ default: module.CategoryPanel })));
 const MeasurePanel = lazy(() => import('./MeasurePanel.tsx').then(module => ({ default: module.MeasurePanel })));
 const SupplierPanel = lazy(() => import('./SupplierPanel.tsx').then(module => ({ default: module.SupplierPanel })));
 
-export type StockPageProps = { api: StockApi; unit: string; context: StockContext; onDirty: (dirty: boolean) => void; onBusy: (busy: boolean) => void };
+export type StockPageProps = { api: StockApi; unit: string; unitName?: string; context: StockContext; onDirty: (dirty: boolean) => void; onBusy: (busy: boolean) => void };
 const title = { fornecedores: 'Fornecedores', medidas: 'Unidades de medida', inicio: 'Início', conta: 'Meu acesso', categorias: 'Categorias de produtos', produtos: 'Produtos e alimentos', recebimentos: 'Entrada de materiais', saldo: 'Saldo de estoque' };
 const subtitle = { fornecedores: 'Mantenha os fornecedores do cadastro compartilhado.', medidas: 'Mantenha as unidades do catálogo compartilhado.', inicio: 'Resumo do estoque da sua unidade.', conta: 'Identificação e recuperação da sua senha.', categorias: 'Organize o catálogo compartilhado de produtos.', produtos: 'Cadastro do estoque seco, resfriado e congelado.', recebimentos: 'Registre o recebimento de uma nota fiscal.', saldo: 'Consulte os lotes e os locais da unidade selecionada.' };
 
@@ -86,8 +89,8 @@ export function StockPanel({ api, stock, categories, measures, suppliers, page, 
         {page === 'fornecedores' && <Suspense fallback={<p role="status">Carregando fornecedores…</p>}><SupplierPanel key={unit} api={suppliers} unit={unit} onDirty={setDirty} onBusy={setBusy} /></Suspense>}
         {page === 'medidas' && <Suspense fallback={<p role="status">Carregando medidas…</p>}><MeasurePanel key={unit} api={measures} unit={unit} onDirty={setDirty} onBusy={setBusy} /></Suspense>}
         {page === 'categorias' && <Suspense fallback={<p role="status">Carregando categorias…</p>}><CategoryPanel key={unit} api={categories} unit={unit} onDirty={setDirty} onBusy={setBusy} /></Suspense>}
-        {page === 'produtos' && <ProductPanel key={unit} api={stock} unit={unit} context={context} onDirty={setDirty} onBusy={setBusy} />}
-        {page === 'recebimentos' && <ReceiptPanel key={unit} api={stock} unit={unit} context={context} onDirty={setDirty} onBusy={setBusy} />}
+        {page === 'produtos' && <ProductPanel key={unit} api={stock} unit={unit} unitName={units.find(item => item.id === unit)?.nome ?? ''} context={context} onDirty={setDirty} onBusy={setBusy} />}
+        {page === 'recebimentos' && <ReceiptPanel key={unit} api={stock} unit={unit} unitName={units.find(item => item.id === unit)?.nome ?? ''} context={context} onDirty={setDirty} onBusy={setBusy} />}
         {page === 'saldo' && <Balances key={unit} api={stock} unit={unit} unitName={units.find(item => item.id === unit)?.nome ?? ''} />}
       </>}
     </main>
@@ -95,6 +98,7 @@ export function StockPanel({ api, stock, categories, measures, suppliers, page, 
 }
 
 function Balances({ api, unit, unitName }: { api: StockApi; unit: string; unitName: string }) {
+  const [report, setReport] = useState<ConsultationReport>();
   const [rows, setRows] = useState<StockBalance[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -113,7 +117,8 @@ function Balances({ api, unit, unitName }: { api: StockApi; unit: string; unitNa
   return <section className="card" aria-label="Consulta de saldo">
     <div className="section-heading"><h2>Posição por lote e local</h2><button disabled={loading} onClick={() => setRetry(value => value + 1)}>Atualizar saldo</button></div>
     {error && <p role="alert" className="notice error">{error}</p>}
-    <div className="filters"><label className="field">Pesquisar saldos<input value={query} maxLength={200} placeholder="Produto, lote ou local" disabled={loading} onChange={event => setQuery(event.target.value)} /></label><button disabled={loading || !!error || !filtered.length} onClick={exportCsv}>Exportar saldos em CSV</button></div>
+    {report && <ReportPreview report={report} onClose={() => setReport(undefined)} />}
+    <div className="filters"><label className="field">Pesquisar saldos<input value={query} maxLength={200} placeholder="Produto, lote ou local" disabled={loading} onChange={event => setQuery(event.target.value)} /></label><button disabled={loading || !!error || !filtered.length} onClick={exportCsv}>Exportar saldos em CSV</button><button disabled={loading || !!error} onClick={() => setReport(balanceReport(filtered, unitName, query))}>Relatório de saldos</button></div>
     {!loading && !error && <p className="hint">{filtered.length} de {rows.length} posições da unidade selecionada. O CSV respeita a pesquisa.</p>}
     {loading ? <p role="status">Consultando saldos…</p> : !error && !rows.length ? <p className="empty">Nenhum saldo registrado nesta unidade.</p> : !error && !filtered.length ? <p className="empty">Nenhum saldo corresponde à pesquisa.</p> : !error && <div className="table-wrap" tabIndex={0} aria-label="Saldos por lote e local"><table>
       <thead><tr><th>Produto</th><th>Lote</th><th>Validade</th><th>Local</th><th>Saldo</th><th>Valor unitário</th></tr></thead>
