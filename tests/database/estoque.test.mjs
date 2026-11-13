@@ -28,7 +28,7 @@ before(async () => {
     insert into erp.perfil_permissao(perfil_id,permissao) values
       (1,'PRODUTO_LER'),(1,'PRODUTO_GERIR'),(1,'ESTOQUE_LER'),(1,'RECEBIMENTO_GERIR'),
       (2,'PRODUTO_LER'),(2,'PRODUTO_GERIR'),(2,'ESTOQUE_LER'),(2,'RECEBIMENTO_APROVAR_DIVERGENCIA'),
-      (1,'MEDIDA_EDITAR'),(2,'MEDIDA_EDITAR'),(2,'MEDIDA_CICLO_VIDA'),(1,'CATEGORIA_EDITAR'),(2,'CATEGORIA_EDITAR'),(2,'CATEGORIA_CICLO_VIDA'),(3,'PRODUTO_LER'),(3,'ESTOQUE_LER'),(4,'CONFIGURACAO_EDITAR');
+      (1,'FORNECEDOR_EDITAR'),(2,'FORNECEDOR_EDITAR'),(2,'FORNECEDOR_CICLO_VIDA'),(1,'MEDIDA_EDITAR'),(2,'MEDIDA_EDITAR'),(2,'MEDIDA_CICLO_VIDA'),(1,'CATEGORIA_EDITAR'),(2,'CATEGORIA_EDITAR'),(2,'CATEGORIA_CICLO_VIDA'),(3,'PRODUTO_LER'),(3,'ESTOQUE_LER'),(4,'CONFIGURACAO_EDITAR');
     insert into erp.usuario(id,perfil_id,nome,status) values
       ('${uid(1)}',1,'Estoquista sintético A','ATIVO'),('${uid(2)}',1,'Estoquista sintético B','ATIVO'),
       ('${uid(3)}',3,'Leitor sintético A','ATIVO'),('${uid(4)}',2,'Gestor sintético A','ATIVO'),
@@ -44,6 +44,48 @@ before(async () => {
 after(async () => { if (close) await close(); });
 
 const categoryInput = (extra = {}) => ({ descricao: 'Categoria CAD-003', tipo_item: 'ALIMENTO', armazenamento_padrao: 'SECO', dias_alerta_validade: null, ...extra });
+const supplierInput=(extra={})=>({razao_social:'Fornecedor CAD005',cnpj_cpf:'12ABC34501DE35',nome_fantasia:null,contato:null,telefone:null,email:null,endereco:null,observacoes:null,tipo_fornecedor:null,condicao_pagamento:null,prazo_entrega_dias:0,pedido_minimo:'0.000001',agricultura_familiar:false,canal_preferido:null,...extra});
+function supplierDocument(base){let result=base;for(let step=0;step<2;step++){let sum=0;for(let i=0;i<result.length;i++)sum+=(result.charCodeAt(i)-48)*(2+(result.length-1-i)%8);const mod=sum%11;result+=mod<2?'0':String(11-mod);}return result;}
+async function supplier(action,data={},unit=1,client=db){return (await client.query('select erp.fornecedor_operacao($1,$2,$3::jsonb) as result',[unit,action,JSON.stringify(data)])).rows[0].result;}
+async function supplierRejects(action,data,code='PT422',unit=1){await db.exec('savepoint supplier_error');await assert.rejects(()=>supplier(action,data,unit),{code});await db.exec('rollback to savepoint supplier_error');}
+test('fornecedor: exemplo RFB/máscara, null/zero/precisão e compatibilidade de campos anteriores',async()=>actor(1,async()=>{
+ const previous=(await supplier('listar',{q:'sintético',status:'ATIVO',ordem:'asc',offset:0})).fornecedores[0];assert.equal(previous.agricultura_familiar,null);
+ let s=(await supplier('criar',supplierInput({cnpj_cpf:'12.abc.345/01de-35'}))).fornecedor;assert.equal(s.cnpj_cpf,'12ABC34501DE35');assert.equal(s.pedido_minimo,'0.000001');assert.equal(s.prazo_entrega_dias,0);assert.equal(s.agricultura_familiar,false);
+ s=(await supplier('editar',{...supplierInput({nome_fantasia:'Nome fantasia',pedido_minimo:null,prazo_entrega_dias:null,agricultura_familiar:true}),id:s.id,revisao:s.revisao})).fornecedor;assert.equal(s.revisao,'2');assert.equal(s.pedido_minimo,null);
+ await supplierRejects('editar',{...supplierInput(),id:s.id,revisao:'1'},'PT412');await become(2);assert.equal((await supplier('listar',{q:'fantasia',status:'ATIVO',ordem:'asc',offset:0},2)).fornecedores[0].id,s.id);
+}));
+test('fornecedor: unicidade de nome/documento e validação SQL sem coerção ou alteração parcial',async()=>actor(4,async()=>{
+ await supplier('criar',supplierInput({razao_social:'Fornecedor  Especial'}));
+ await supplierRejects('criar',supplierInput({razao_social:'FORNECEDOR ESPECIAL',cnpj_cpf:'12345678909'}),'PT409');
+ await supplierRejects('criar',supplierInput({razao_social:'Outro nome',cnpj_cpf:'12.abc.345/01de-35'}),'PT409');
+ for(const extra of [{cnpj_cpf:'12ABC34501DE36'},{cnpj_cpf:'11111111111'},{agricultura_familiar:null},{agricultura_familiar:'false'},{prazo_entrega_dias:'0'},{prazo_entrega_dias:-1},{prazo_entrega_dias:2147483648},{pedido_minimo:1},{pedido_minimo:'-1'},{pedido_minimo:'0.0000001'},{canal_preferido:['EMAIL']},{email:'invalido'},{contato:''},{status:'INATIVO'}])await supplierRejects('criar',supplierInput(extra));
+ assert.equal((await supplier('listar',{q:'',status:'ATIVO',ordem:'asc',offset:0})).total,2);
+}));
+test('fornecedor: I sem X, leitura sem escrita, unidade alheia e DML direto negados',async()=>actor(1,async()=>{
+ const s=(await supplier('criar',supplierInput())).fornecedor;
+ await supplierRejects('status',{id:s.id,revisao:s.revisao,status:'INATIVO'},'PT403');await supplierRejects('excluir',{id:s.id,revisao:s.revisao},'PT403');
+ await become(3);assert.deepEqual((await supplier('listar',{q:'',status:'ATIVO',ordem:'asc',offset:0})).capacidades,{editar:false,ciclo_vida:false});await supplierRejects('criar',supplierInput(),'PT403');await supplierRejects('listar',{q:'',status:'ATIVO',ordem:'asc',offset:0},'PT404',2);
+ await db.exec('savepoint dml_supplier');await assert.rejects(()=>db.exec("update erp.fornecedor set razao_social='Indevido'"),{code:'42501'});await db.exec('rollback to savepoint dml_supplier');
+}));
+test('fornecedor: vínculos de outra unidade bloqueiam exclusão e inativo não aceita recebimento',async()=>actor(4,async()=>{
+ let s=(await supplier('criar',supplierInput())).fornecedor;
+ await become(2);const p=(await rpc('produto_salvar',product({descricao:'Fornecedor produto B'}),2)).produto;await rpc('entrada_criar',receipt(p.id,{fornecedor_id:s.id,itens:[line(p.id,{camara_id:'2'})]}),2);await become(4);
+ await supplierRejects('excluir',{id:s.id,revisao:s.revisao},'PT409');s=(await supplier('status',{id:s.id,revisao:s.revisao,status:'INATIVO'})).fornecedor;
+ await become(1);assert.ok(!(await rpc('contexto')).fornecedores.some(x=>x.id===s.id));await rejects('entrada_criar',receipt(p.id,{fornecedor_id:s.id}),'PT422');
+ await become(4);const disposable=(await supplier('criar',supplierInput({razao_social:'Descartável',cnpj_cpf:'12345678909'}))).fornecedor;
+ assert.deepEqual(await supplier('excluir',{id:disposable.id,revisao:disposable.revisao}),{excluida:true});
+ await db.exec('reset role');
+ assert.equal((await db.query("select count(*)::int n from erp.auditoria_estoque where acao='fornecedor_excluir'")).rows[0].n,1);
+}));
+test('fornecedor: falha de auditoria reverte edição e exclusão',async()=>actor(4,async()=>{
+ const s=(await supplier('criar',supplierInput())).fornecedor;await db.exec('reset role');await db.exec("create function erp_private.falha_fornecedor() returns trigger language plpgsql as $$ begin if new.acao in ('fornecedor_editar','fornecedor_excluir') then raise exception 'Falha induzida'; end if; return new; end $$; create trigger falha_fornecedor before insert on erp.auditoria_estoque for each row execute function erp_private.falha_fornecedor()");await become(4);
+ await supplierRejects('editar',{...supplierInput({nome_fantasia:'Não persistir'}),id:s.id,revisao:s.revisao},'P0001');await supplierRejects('excluir',{id:s.id,revisao:s.revisao},'P0001');assert.equal((await supplier('listar',{q:s.razao_social,status:'ATIVO',ordem:'asc',offset:0})).fornecedores[0].nome_fantasia,null);
+}));
+test('fornecedor: paginação/ordem e exportação integral respeitam a busca',async()=>actor(4,async()=>{
+ for(let n=0;n<51;n++)await supplier('criar',supplierInput({razao_social:'Fornecedor CSV '+String(n).padStart(2,'0'),cnpj_cpf:supplierDocument('CAD005'+String(n).padStart(6,'0'))}));
+ const query={q:'CSV',status:'ATIVO',ordem:'asc',offset:0};const first=await supplier('listar',query);assert.equal(first.total,51);assert.equal(first.fornecedores.length,50);
+ assert.equal((await supplier('listar',{...query,offset:50})).fornecedores.length,1);const all=await supplier('exportar',{...query,ordem:'desc'});assert.equal(all.fornecedores.length,51);assert.equal(all.fornecedores[0].razao_social,'Fornecedor CSV 50');await supplierRejects('exportar',{...query,offset:50});
+}));
 const categoryQuery = (extra = {}) => ({ q: '', status: 'ATIVO', ordem: 'asc', offset: 0, ...extra });
 const measureInput = (extra = {}) => ({sigla:'MG-TEST',descricao:'Medida CAD004',grandeza:'MASSA',fator_base:'0.000001',...extra});
 async function measure(action,data={},unit=1,client=db){return (await client.query('select erp.medida_operacao($1,$2,$3::jsonb) as result',[unit,action,JSON.stringify(data)])).rows[0].result;}
@@ -502,4 +544,26 @@ test('medidas: duas conexões revalidam revogação e vínculo concorrente imped
   await a.query('rollback').catch(()=>{}); if(pending)await pending; await b.query('rollback').catch(()=>{});
   await db.exec('reset role'); await db.exec("insert into erp.perfil_permissao values(1,'MEDIDA_EDITAR') on conflict do nothing"); await Promise.all([a.end(),b.end()]);
  }
+});
+
+test('fornecedor: concorrência revalida revogação, recebimento vinculado e documento único', {skip:!process.env.DATABASE_STOCK_TEST_URL,timeout:20000},async()=>{
+ const a=new pg.Client({connectionString:process.env.DATABASE_STOCK_TEST_URL}),b=new pg.Client({connectionString:process.env.DATABASE_STOCK_TEST_URL});await Promise.all([a.connect(),b.connect()]);let pending;
+ const pid=(await b.query('select pg_backend_pid() pid')).rows[0].pid;
+ async function waitLock(){for(let i=0;i<200;i++){if((await db.query('select wait_event_type from pg_stat_activity where pid=$1',[pid])).rows[0]?.wait_event_type==='Lock')return;await new Promise(resolve=>setTimeout(resolve,25));}throw Error('Expected blocked supplier operation');}
+ try {
+  const id=(await db.query('insert into erp.fornecedor(razao_social,cnpj_cpf) values ($1,$2) returning id::text',['Fornecedor bloqueado',supplierDocument('CAD005LOCK01')])).rows[0].id;
+  await a.query('begin');await a.query('select id from erp.fornecedor where id=$1 for update',[id]);
+  await b.query('begin');await b.query("select set_config('request.jwt.claim.sub',$1,true)",[uid(1)]);await b.query('set local role authenticated');
+  pending=supplier('editar',{...supplierInput(),id,revisao:'1'},1,b).then(value=>({value}),error=>({error}));await waitLock();
+  await db.exec("delete from erp.perfil_permissao where perfil_id=1 and permissao='FORNECEDOR_EDITAR'");await a.query('commit');assert.equal((await pending).error?.code,'PT403');await b.query('rollback');await db.exec("insert into erp.perfil_permissao values(1,'FORNECEDOR_EDITAR')");
+  await a.query('begin');await a.query('select id from erp.fornecedor where id=$1 for share',[id]);
+  await b.query('begin');await b.query("select set_config('request.jwt.claim.sub',$1,true)",[uid(4)]);await b.query('set local role authenticated');
+  pending=supplier('excluir',{id,revisao:'1'},1,b).then(value=>({value}),error=>({error}));await waitLock();
+  await a.query("select set_config('request.jwt.claim.sub',$1,true)",[uid(2)]);await a.query('set local role authenticated');
+  const p=(await rpc('produto_salvar',product({descricao:'Fornecedor concorrente produto B'}),2,a)).produto;
+  await rpc('entrada_criar',receipt(p.id,{fornecedor_id:id,numero_nf:'CAD005-CONCORRENTE',itens:[line(p.id,{camara_id:'2'})]}),2,a);await a.query('commit');assert.equal((await pending).error?.code,'PT409');await b.query('rollback');
+  await a.query('begin');await a.query("select set_config('request.jwt.claim.sub',$1,true)",[uid(1)]);await a.query('set local role authenticated');await supplier('criar',supplierInput({razao_social:'Fornecedor unicidade concorrente'}),1,a);
+  await b.query('begin');await b.query("select set_config('request.jwt.claim.sub',$1,true)",[uid(4)]);await b.query('set local role authenticated');
+  pending=supplier('criar',supplierInput({razao_social:'FORNECEDOR UNICIDADE CONCORRENTE'}),1,b).then(value=>({value}),error=>({error}));await waitLock();await a.query('commit');assert.equal((await pending).error?.code,'PT409');await b.query('rollback');
+ } finally {await a.query('rollback').catch(()=>{});if(pending)await pending;await b.query('rollback').catch(()=>{});await db.exec('reset role');await db.exec("insert into erp.perfil_permissao values(1,'FORNECEDOR_EDITAR') on conflict do nothing");await Promise.all([a.end(),b.end()]);}
 });

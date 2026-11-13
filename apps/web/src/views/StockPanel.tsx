@@ -1,5 +1,6 @@
 import { CategoryApi } from '../services/category-api.ts';
 import { MeasureApi } from '../services/measure-api.ts';
+import { SupplierApi } from '../services/supplier-api.ts';
 import { lazy, Suspense, useEffect, useState } from 'react';
 import type { StockContext, StockBalance, UnitSummary } from '@erp/contracts';
 import { filterBalances, balancesCsv } from '@erp/contracts';
@@ -13,12 +14,14 @@ import { HomePanel } from './HomePanel.tsx';
 import { AccountPanel } from './AccountPanel.tsx';
 const CategoryPanel = lazy(() => import('./CategoryPanel.tsx').then(module => ({ default: module.CategoryPanel })));
 const MeasurePanel = lazy(() => import('./MeasurePanel.tsx').then(module => ({ default: module.MeasurePanel })));
+const SupplierPanel = lazy(() => import('./SupplierPanel.tsx').then(module => ({ default: module.SupplierPanel })));
 
 export type StockPageProps = { api: StockApi; unit: string; context: StockContext; onDirty: (dirty: boolean) => void; onBusy: (busy: boolean) => void };
-const title = { medidas: 'Unidades de medida', inicio: 'Início', conta: 'Meu acesso', categorias: 'Categorias de produtos', produtos: 'Produtos e alimentos', recebimentos: 'Entrada de materiais', saldo: 'Saldo de estoque' };
-const subtitle = { medidas: 'Mantenha as unidades do catálogo compartilhado.', inicio: 'Resumo do estoque da sua unidade.', conta: 'Identificação e recuperação da sua senha.', categorias: 'Organize o catálogo compartilhado de produtos.', produtos: 'Cadastro do estoque seco, resfriado e congelado.', recebimentos: 'Registre o recebimento de uma nota fiscal.', saldo: 'Consulte os lotes e os locais da unidade selecionada.' };
+const title = { fornecedores: 'Fornecedores', medidas: 'Unidades de medida', inicio: 'Início', conta: 'Meu acesso', categorias: 'Categorias de produtos', produtos: 'Produtos e alimentos', recebimentos: 'Entrada de materiais', saldo: 'Saldo de estoque' };
+const subtitle = { fornecedores: 'Mantenha os fornecedores do cadastro compartilhado.', medidas: 'Mantenha as unidades do catálogo compartilhado.', inicio: 'Resumo do estoque da sua unidade.', conta: 'Identificação e recuperação da sua senha.', categorias: 'Organize o catálogo compartilhado de produtos.', produtos: 'Cadastro do estoque seco, resfriado e congelado.', recebimentos: 'Registre o recebimento de uma nota fiscal.', saldo: 'Consulte os lotes e os locais da unidade selecionada.' };
 
-export function StockPanel({ api, stock, categories, measures, page, onNavigate, initialUnit, onUnitChange, onSignOut, userName }: {
+export function StockPanel({ api, stock, categories, measures, suppliers, page, onNavigate, initialUnit, onUnitChange, onSignOut, userName }: {
+  suppliers: SupplierApi;
   measures: MeasureApi;
   userName: string;
   categories: CategoryApi; api: SettingsApi; stock: StockApi; page: Exclude<WorkspacePage, 'configuracoes'>; onNavigate: (page: WorkspacePage) => void;
@@ -80,6 +83,7 @@ export function StockPanel({ api, stock, categories, measures, page, onNavigate,
       {unitsLoaded && !loading && units.some(item => item.id === unit) && page === 'inicio' && <HomePanel key={unit} api={stock} unit={unit} name={userName} onNavigate={onNavigate} />}
       {unitsLoaded && !loading && units.some(item => item.id === unit) && page === 'conta' && <AccountPanel name={userName} />}
       {context && !loading && <>
+        {page === 'fornecedores' && <Suspense fallback={<p role="status">Carregando fornecedores…</p>}><SupplierPanel key={unit} api={suppliers} unit={unit} onDirty={setDirty} onBusy={setBusy} /></Suspense>}
         {page === 'medidas' && <Suspense fallback={<p role="status">Carregando medidas…</p>}><MeasurePanel key={unit} api={measures} unit={unit} onDirty={setDirty} onBusy={setBusy} /></Suspense>}
         {page === 'categorias' && <Suspense fallback={<p role="status">Carregando categorias…</p>}><CategoryPanel key={unit} api={categories} unit={unit} onDirty={setDirty} onBusy={setBusy} /></Suspense>}
         {page === 'produtos' && <ProductPanel key={unit} api={stock} unit={unit} context={context} onDirty={setDirty} onBusy={setBusy} />}
