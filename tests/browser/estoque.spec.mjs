@@ -9,6 +9,7 @@ const product = {
   perecivel: true, armazenamento: 'SECO', fator_correcao: '1', apresentacao_compra: 'Pacote de 5 kg', quantidade_apresentacao: '5',
   estoque_minimo: '2.5', estoque_maximo: null, ponto_reposicao: null, status: 'ATIVO', unidade_sigla: 'kg', categoria_descricao: 'Grãos e secos',
 };
+const measureRow = {id:'51',revisao:'1',sigla:'G',descricao:'Grama teste',grandeza:'MASSA',fator_base:'0.001',status:'ATIVO',pode_excluir:true};
 const categoryRow = {id:'12',revisao:'1',descricao:'Categoria teste',tipo_item:'ALIMENTO',armazenamento_padrao:'SECO',dias_alerta_validade:null,status:'ATIVO',pode_excluir:true};
 const context = {
   medidas: [{ id: '11', sigla: 'kg', descricao: 'Quilograma' }],
@@ -25,7 +26,7 @@ function receipt(extra = {}) {
   };
 }
 async function setup(page, options = {}) {
-  const state = { categories: options.categories ?? [{...categoryRow}], categoryFailure: 0, categoryCsv: [], products: options.products ?? [{ ...product }], available: [{ ...product }], receipts: options.receipts ?? [], balances: options.balances ?? [], writes: [], confirmKeys: [], confirmFailures: options.confirmFailures ?? [], productFailure: 0 };
+  const state = { measures: options.measures ?? [{...measureRow}], measureFailure: 0, measureCsv: [], categories: options.categories ?? [{...categoryRow}], categoryFailure: 0, categoryCsv: [], products: options.products ?? [{ ...product }], available: [{ ...product }], receipts: options.receipts ?? [], balances: options.balances ?? [], writes: [], confirmKeys: [], confirmFailures: options.confirmFailures ?? [], productFailure: 0 };
   await page.route('https://auth-ficticio.supabase.co/**', route => {
     if (route.request().url().includes('/token')) return route.fulfill({ json: {
       access_token: 'eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ0ZXN0ZSJ9.ficticio', refresh_token: 'ficticio', token_type: 'bearer', expires_in: 3600,
@@ -44,6 +45,20 @@ async function setup(page, options = {}) {
     const activeUnit = url.pathname.split('/')[3];
     if (url.pathname.endsWith('/configuracoes')) return route.fulfill({ headers: { ETag: `"cfg-${activeUnit}-1"` }, json: { pode_editar: true, configuracao: { unidade_id: activeUnit, revisao: '1', modo_saida: 'POSTERIOR', margem_percentual: '5', dias_alerta_validade: 7, prazo_amostra_horas: 72, periodicidade_inventario_dias: 7, referencia_preco: 'MENOR_COTACAO', alerta_email_habilitado: false } } });
     if (url.pathname.endsWith('/estoque/contexto')) return respond({ ...context, capacidades: { ...context.capacidades, ...options.capabilities } });
+    if (url.pathname.includes('/medidas')) {
+      const caps=options.measureCaps??{editar:true,ciclo_vida:true};
+      const filtered=state.measures.filter(c=>c.status===(url.searchParams.get('status')??'ATIVO')&&c.descricao.toLowerCase().includes((url.searchParams.get('q')??'').toLowerCase())).sort((a,b)=>a.descricao.localeCompare(b.descricao));
+      if(url.searchParams.get('ordem')==='desc')filtered.reverse();
+      if(url.pathname.endsWith('/exportar')){state.measureCsv.push(url.search);return route.fulfill({contentType:'text/csv; charset=utf-8',body:'"Descricao";"Fator-base"\r\n"Grama teste";"0,001"\r\n'});}
+      if(request.method()==='GET'){const offset=Number(url.searchParams.get('offset')??0);return respond({medidas:filtered.slice(offset,offset+50),total:filtered.length,capacidades:caps});}
+      const body=request.postDataJSON();state.writes.push({path:url.pathname,method:request.method(),body});
+      if(state.measureFailure){const status=state.measureFailure;state.measureFailure=0;return route.fulfill({status,json:{error:{code:'TEST',message:'Outra pessoa alterou esta medida. Sua edicao foi preservada.'}}});}
+      const id=url.pathname.split('/')[5];
+      if(request.method()==='DELETE'){state.measures=state.measures.filter(c=>c.id!==id);return respond({excluida:true});}
+      if(url.pathname.endsWith('/status')){const c=state.measures.find(c=>c.id===id);Object.assign(c,{status:body.status,revisao:String(BigInt(c.revisao)+1n)});return respond({medida:c});}
+      const saved={...(state.measures.find(c=>c.id===id)??measureRow),...body,id:id??'33',revisao:id?String(BigInt(body.revisao)+1n):'1'};
+      state.measures=state.measures.filter(c=>c.id!==saved.id);state.measures.push(saved);return respond({medida:saved});
+    }
     if (url.pathname.includes('/categorias')) {
       const caps=options.categoryCaps??{editar:true,ciclo_vida:true};
       const filtered=state.categories.filter(c=>c.status===(url.searchParams.get('status')??'ATIVO')&&c.descricao.toLowerCase().includes((url.searchParams.get('q')??'').toLowerCase())).sort((a,b)=>a.descricao.localeCompare(b.descricao));
@@ -108,6 +123,22 @@ async function setup(page, options = {}) {
   return state;
 }
 async function navigate(page, name) { await page.getByRole('navigation', { name: 'Principal' }).getByRole('link', { name, exact: true }).click(); }
+test('medidas cadastra fator exato em português e reabre null sem alterar precisão',async({page})=>{
+ const state=await setup(page);await navigate(page,'Unidades de medida');await page.getByRole('button',{name:'Incluir medida',exact:true}).click();await page.getByLabel('Descrição *',{exact:true}).fill('Miligrama teste');await page.getByLabel('Sigla *',{exact:true}).fill('MG');await page.getByLabel('Fator-base',{exact:true}).fill('0,000001');await page.getByRole('button',{name:'Salvar medida',exact:true}).click();await expect(page.getByText('Medida salva com sucesso.',{exact:true})).toBeVisible();expect(state.writes.at(-1).body.fator_base).toBe('0.000001');expect(state.writes.at(-1).body).not.toHaveProperty('status');
+ await page.getByRole('button',{name:'Editar Miligrama teste',exact:true}).click();await page.getByLabel('Fator-base',{exact:true}).fill('');await page.getByRole('button',{name:'Salvar medida',exact:true}).click();await page.getByRole('button',{name:'Visualizar Miligrama teste',exact:true}).click();await expect(page.getByLabel('Fator-base',{exact:true})).toHaveValue('');await expect(page.getByLabel('Sigla *',{exact:true})).toBeDisabled();expect(state.writes.at(-1).body.fator_base).toBeNull();
+});
+test('medidas valida zero/precisão e preserva rascunho após 412 e navegação cancelada',async({page})=>{
+ const state=await setup(page);await navigate(page,'Unidades de medida');await page.getByRole('button',{name:'Editar Grama teste',exact:true}).click();await page.getByLabel('Fator-base',{exact:true}).fill('0');await page.getByRole('button',{name:'Salvar medida',exact:true}).click();await expect(page.getByLabel('Fator-base',{exact:true})).toHaveAttribute('aria-invalid','true');expect(state.writes).toHaveLength(0);
+ await page.getByLabel('Fator-base',{exact:true}).fill('0,123456');state.measureFailure=412;await page.getByRole('button',{name:'Salvar medida',exact:true}).click();await expect(page.getByRole('alert')).toContainText('Outra pessoa');await expect(page.getByLabel('Fator-base',{exact:true})).toHaveValue('0,123456');page.once('dialog',d=>d.dismiss());await page.getByRole('navigation',{name:'Principal'}).getByRole('link',{name:'Produtos',exact:true}).click();await expect(page.getByLabel('Fator-base',{exact:true})).toHaveValue('0,123456');
+});
+test('medidas ciclo de vida confirma e consulta não recebe poderes de edição/X',async({page})=>{
+ const state=await setup(page);await navigate(page,'Unidades de medida');page.once('dialog',d=>d.dismiss());await page.getByRole('button',{name:'Inativar Grama teste',exact:true}).click();expect(state.writes).toHaveLength(0);page.once('dialog',d=>d.accept());await page.getByRole('button',{name:'Inativar Grama teste',exact:true}).click();await expect(page.getByText('Nenhuma medida encontrada.',{exact:true})).toBeVisible();await page.getByRole('combobox',{name:'Status',exact:true}).selectOption('INATIVO');await expect(page.getByRole('button',{name:'Ativar Grama teste',exact:true})).toBeVisible();page.once('dialog',d=>d.accept());await page.getByRole('button',{name:'Excluir Grama teste',exact:true}).click();await expect(page.getByText('Nenhuma medida encontrada.',{exact:true})).toBeVisible();
+});
+test('medidas pagina/exporta filtros e cabe em 360/768/1280 com vínculos protegidos',async({page})=>{
+ const measures=Array.from({length:51},(_,i)=>({...measureRow,id:String(100+i),descricao:'Medida '+String(i).padStart(2,'0'),pode_excluir:false}));const state=await setup(page,{measures,measureCaps:{editar:false,ciclo_vida:false}});await navigate(page,'Unidades de medida');await expect(page.getByRole('button',{name:'Incluir medida',exact:true})).toBeDisabled();await expect(page.getByRole('button',{name:'Excluir Medida 00',exact:true})).toBeDisabled();await expect(page.getByRole('button',{name:'Editar Medida 00',exact:true})).toBeDisabled();
+ for(const width of [360,768,1280]){await page.setViewportSize({width,height:900});expect(await page.locator('html').evaluate(el=>el.scrollWidth)).toBe(width);}
+ await page.getByRole('button',{name:'Próxima',exact:true}).click();await expect(page.getByRole('button',{name:'Visualizar Medida 50',exact:true})).toBeVisible();await page.getByRole('combobox',{name:'Ordenação',exact:true}).selectOption('desc');await page.getByLabel('Buscar medida',{exact:true}).fill('Medida 50');await page.getByRole('button',{name:'Buscar',exact:true}).click();await expect(page.getByText('1 medidas · página 1',{exact:true})).toBeVisible();const download=page.waitForEvent('download');await page.getByRole('button',{name:'Exportar CSV',exact:true}).click();expect((await download).suggestedFilename()).toBe('medidas.csv');expect(state.measureCsv.at(-1)).toContain('offset=0');expect(state.measureCsv.at(-1)).toContain('q=Medida+50');expect(state.writes).toHaveLength(0);
+});
 test('categorias cadastra zero, edita null e reabre consulta sem escrita implícita', async ({page}) => {
  const state=await setup(page);await navigate(page,'Categorias');await page.getByRole('button',{name:'Incluir categoria',exact:true}).click();
  await page.getByLabel('Descrição *',{exact:true}).fill('Categoria nova');await page.getByLabel('Dias de alerta de validade',{exact:true}).fill('0');await page.getByRole('button',{name:'Salvar categoria',exact:true}).click();

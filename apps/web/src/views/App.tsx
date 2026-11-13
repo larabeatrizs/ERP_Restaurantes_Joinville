@@ -1,4 +1,5 @@
 import { CategoryApi } from '../services/category-api.ts';
+import { MeasureApi } from '../services/measure-api.ts';
 import { useEffect, useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
 import type { Session } from '@supabase/supabase-js';
@@ -32,6 +33,7 @@ export function App() {
     [],
   );
   const categories = useMemo(() => new CategoryApi(async () => (await auth?.getSession())?.data.session?.access_token), []);
+  const measures = useMemo(() => new MeasureApi(async () => (await auth?.getSession())?.data.session?.access_token), []);
   const stock = useMemo(() => new StockApi(async () => (await auth?.getSession())?.data.session?.access_token), []);
   useEffect(() => {
     if (!auth) return;
@@ -87,6 +89,7 @@ export function App() {
   if (session)
     return (
       <Workspace
+        measures={measures}
         initialUnit={unit!.id}
         userName={userName}
         categories={categories}

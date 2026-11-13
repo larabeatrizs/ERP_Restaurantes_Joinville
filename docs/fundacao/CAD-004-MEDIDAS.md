@@ -1,0 +1,46 @@
+# CAD-004 — Unidades de medida
+
+**Estado em 13/11/2026:** publicado e verificado no staging, [issue #29](https://github.com/larabeatrizs/ERP_Restaurantes_Joinville/issues/29)/[PR #30](https://github.com/larabeatrizs/ERP_Restaurantes_Joinville/pull/30). [Jornada hospedada](../evidencias/cad-004/jornada-hospedada.json) e [verificação do banco](../evidencias/cad-004/verificacao-banco.json). Especificação inicial de 11/11 após CAD-003 preservada abaixo.
+
+Responsável confirmou catálogo compartilhado em [DOM-002](../decisoes/DOM-002-AJUSTES-12-11.md). PR #32/UX-003 integrado; este recorte preserva login por usuário, seleção de unidade, nome, Início e pesquisa/CSV de saldos. A revisão visual também corrigiu a entrada antes de carregar o nome: agora vínculos e identificação devem chegar antes da escolha. Sem novas permissões para a conta pessoal.
+
+Fontes: DRS RF-001/seção 7.1, RN-001/002/003/012/019/022, RNF-002/003/008/009/010/011/015; [dicionário](../dados/DICIONARIO.md) e [plano](../planejamento/RECONSTRUCAO_SDD.md). Reusar shell/componentes do Style Guide sem alterar o HTML mestre; não há frame de medida nomeado no inventário visual.
+
+## Contrato
+
+- Cadastro global: sigla obrigatória até 12 caracteres, descrição obrigatória até 200, grandeza MASSA/VOLUME/CONTAGEM e fator_base string decimal positivo com até 12 inteiros/6 decimais ou null. Limites técnicos já usados pelo schema. Descrição única normalizada ignorando caixa/acentos/espaços; não acrescentar unicidade de sigla ausente do DRS/modelo.
+- Status inicial ATIVO; edição comum não recebe status. Revisão bigint string por migration aditiva. PRODUTO_LER consulta; MEDIDA_EDITAR inclui/edita; MEDIDA_CICLO_VIDA ativa/inativa/exclui. ADMIN de acompanhamento permanece intocado. Fixture separada habilita somente perfis sintéticos já conferidos, com estoquista I sem X e gestor I/X.
+- Inativos não aparecem em novas seleções. Qualquer produto vinculado, inclusive inativo ou de outra unidade, impede exclusão. Confirmar status/exclusão e explicar bloqueio sem revelar dados/unidades alheios.
+- GET/POST `/api/unidades/{id}/medidas`, PATCH/DELETE `/{medidaId}`, POST `/{medidaId}/status`, GET `/exportar`. Query q/status/ordem/offset estrita, busca normalizada em descrição ou sigla, ordem por descrição/ID, páginas de 50. DTO inclui campos editáveis, id/revisao/status/pode_excluir; listagem inclui total/capacidades. PATCH acrescenta revisão; status aceita revisão/status, DELETE só revisão.
+- CSV UTF-8/BOM com os mesmos filtros/ordem e todos resultados até 10000; acima recusar com 413 sem truncar. Proteger fórmulas, aspas e quebras de linha. Não exportar auditoria ou identidade Auth.
+- Corpo JSON estrito de até 64 KiB; sem sessão 401, unidade indisponível 404, capacidade negada 403, duplicidade/vínculo 409, revisão antiga 412, campos inválidos 422. Mensagens por campo sanitizadas, sem SQL interno.
+
+## Integração e limites de RN-019
+
+MeasurePanel/MeasureApi → Controller/Service/Repository próprios → RPC estreita com wrapper invoker e executor privado restrito já existente. Sem API genérica de tabelas, DML direto, chave administrativa no runtime ou imports do legado. Escrita e auditoria antes/depois atômicas; locks compatíveis com os SHARE já usados ao cadastrar/vincular produto; revalidar autorização após espera e depois de escrita que possa aguardar índice único.
+
+A edição de metadados segue o CRUD do DRS e é auditada; não troca o ID da unidade-base do produto, não reinterpreta nem recalcula quantidade histórica. RN-019 permite converter apenas na mesma grandeza; null não fornece fator de conversão. Este recorte cadastra os metadados, **sem introduzir conversão automática de lançamentos**: o recebimento atual recebe quantidade na unidade-base do produto. Produto_conversao, snapshot do fator no documento e arredondamento das futuras importações/apresentações devem ser especificados no fluxo consumidor antes de integrá-lo; não presumir que grandeza/fator bastam para converter uma embalagem específica. O cadastro não comprova esse motor implementado.
+
+## Verificação e entrega
+
+Banco: zero/negativo/null/precisão e JSON estritos, unicidade normalizada, revisão, status/seleção, vínculo global/exclusão, rollback de auditoria, DML negado e duas conexões para revogação/concorrência. Verificar que produtos, lotes/movimentos/saldos e permissões pessoais não mudam. API/SDK: Auth antes da RPC, DTO sem propriedades internas, IDs/fatores textuais e CSV seguro. UI: busca/edição/reabertura, validação por campo/412 preservando entrada, consulta sem escrita, I distinto de X, confirmações, navegação/descarte, 360/768/1280 e CSV.
+
+Após CI aprovado: preflight/histórico/grants/advisor, aplicar somente a migration nova, publicar no mesmo Worker e executar jornada sintética real API/UI/nova sessão. Guardar capturas/resultados sanitizados, sem senha/email/UUID Auth/token. Conta pessoal não é fixture. Registrar testes executados e limites reais antes de integrar PR/main/branch ativa.
+
+Retorno por desativação das novas rotas/RPC, preservando medidas/auditoria; sem DROP/reset. AMB-001 permanece congelada; skeleton em UX-002 para depois. RF-004/fornecedores é o próximo recorte. Não encerrar issues ou declarar aceite institucional por inferência.
+
+## Resultado executado em 13/11
+
+`npm run check` passou após integrar a main: 83 testes API, bancos locais e build. PGlite omite quatro cenários concorrentes de estoque; [CI 43416870345](https://github.com/larabeatrizs/ERP_Restaurantes_Joinville/actions/runs/43416870345) confirmou os quatro jobs, incluindo 37 testes de estoque e 32 de configurações no PostgreSQL nativo. Após corrigir a espera pelo nome no acesso, lint/tipos, build e 47 testes locais de navegador passaram; [CI 43417617686](https://github.com/larabeatrizs/ERP_Restaurantes_Joinville/actions/runs/43417617686) também concluiu os quatro jobs com sucesso. Build avisa chunk principal de aproximadamente 501 kB; otimização de divisão permanece no aperfeiçoamento de desempenho, sem medição ou garantia adicional de RNF-001.
+
+Preflight: seis migrations, duas medidas, oito produtos, dez vínculos de produto, seis movimentos, 34 eventos de estoque e cinco usuários. Executor restrito e DML de cliente negado. A migration criada pela CLI como `20261111202545_cadastro_medidas.sql` foi registrada pelo conector como `20261113112652`; [arquivo alinhado](../../supabase/migrations/20261113112652_cadastro_medidas.sql), sem alterar o corpo. SHA-256 `3ba88be10c91b5bbfe350fc77f749fc1c643326230ae2256f1841d3b296275d7`; MD5 do arquivo e do statement hospedado coincidem (`7918eafdb030cdfdeabe628eb02bebee`). Aplicada somente a sétima migration; nenhuma anterior reescrita.
+
+O [script de habilitação sintética](../../scripts/staging/habilitar-medidas-sinteticas.sql), separado da migration, confirmou dois gestores e um estoquista pertencentes aos seeds INT-003/EST-001 antes de conceder MEDIDA_EDITAR e ciclo de vida conforme o contrato. Sem concessão ao ADMIN, troca de senha, nova identidade ou alteração de vínculo pessoal.
+
+`npm run test:staging:measures` completou seis cenários reais no runtime `78a4ee8`, versão `1b1b5217-b3ae-4594-800b-e2dd896c93d3`: cadastro compartilhado entre unidades autorizadas, fator zero negado/null/precisão, unicidade/revisão/status, exclusão vinculada negada, exclusão funcional de uma medida nova isolada com trilha, negações por perfil/unidade/DML/payload, estoquista edita sem X, UI responsiva/edição/consulta em nova sessão e CSV. O verificador foi adaptado ao novo login/seleção de unidade e corrigido para testar DML na tabela real `unidade_medida`.
+
+Runtime atual `0ca2e47a01f0e88830289fda54edc87b71305a76`, Cloudflare `50aff6f7-4bc3-4dcb-aaa3-168ee1824dc8`, no [mesmo staging](https://erp-joinville-staging.erp-restaurantes-joinville.workers.dev). Após o ajuste visual de identificação, `verificar-acesso-unidade.mjs` confirmou Auth/API/UI e consulta das medidas persistidas em duas unidades autorizadas, **sem repetir escritas de estoque/medidas ou enviar email**. [Lista móvel](../evidencias/cad-004/medidas-360.png) e [consulta desktop](../evidencias/cad-004/detalhe-1280.png) inspecionadas: nomes/unidades visíveis, dados sintéticos e campos readonly. Sem chave administrativa no Worker.
+
+Pós-condições: quatro medidas (duas anteriores e duas demonstrações mantidas), oito produtos, dez vínculos, quatro categorias, seis recebimentos/lotes/movimentos, 43 eventos de estoque (nove de medidas), cinco usuários, três capacidades ADMIN, sete migrations e 20 tabelas erp com RLS. Zero divergência livro/saldo. Hashes antes/depois da jornada confirmaram produtos, saldos, usuários, vínculos de usuário e capacidades ADMIN idênticos. Funções/grants conferidos: wrapper invoker, executor privado sem login/bypass/CREATE/USAGE auth/membership do cliente, sem DML direto ou execução anônima. Advisor mantém os mesmos 14 INFO do legado contido e um WARN de senhas vazadas, sem achado novo.
+
+Não induzidas falhas de auditoria ou disputas no staging; demonstradas no laboratório/CI. Não executada auditoria integral com leitor de tela nem aceite institucional. Motor RN-019, gestão administrativa completa, exclusão de produtos e relatórios seguem recortes próprios; SMTP geral adiado e importação no final conforme a responsável. Nenhuma limpeza/reset ou novo ambiente permanente.

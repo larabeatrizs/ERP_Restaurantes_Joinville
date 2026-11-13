@@ -12,12 +12,17 @@ import type { CategorySessionFactory } from './repositories/category-repository.
 import { loginController } from './controllers/login-controller.ts';
 import { createLoginRepository } from './repositories/supabase-login.ts';
 import type { LoginFactory } from './repositories/login-repository.ts';
+import { measureController } from './controllers/measure-controller.ts';
+import { createSupabaseMeasureSession } from './repositories/supabase-measures.ts';
+import type { MeasureSessionFactory } from './repositories/measure-repository.ts';
 
-export function createApp(factory: SessionFactory = createSupabaseSession, stockFactory: StockSessionFactory = createSupabaseStockSession, categoryFactory: CategorySessionFactory = createSupabaseCategorySession, loginFactory: LoginFactory = createLoginRepository) {
+export function createApp(factory: SessionFactory = createSupabaseSession, stockFactory: StockSessionFactory = createSupabaseStockSession, categoryFactory: CategorySessionFactory = createSupabaseCategorySession, loginFactory: LoginFactory = createLoginRepository, measureFactory: MeasureSessionFactory = createSupabaseMeasureSession) {
   return {
     async fetch(request: Request, env: RuntimeEnv = {}): Promise<Response> {
       try {
         const path = new URL(request.url).pathname;
+        const measure = /^\/api\/unidades\/([^/]+)\/medidas(?:\/(exportar|[^/]+(?:\/status)?))?$/.exec(path);
+        if (measure?.[1]) return await measureController(request, env, measure[1], measure[2] ?? '', measureFactory);
         if (path === '/api/auth/login') {
           if (request.method !== 'POST') return methodNotAllowed('POST', request.method === 'HEAD');
           return await loginController(request, env, loginFactory);

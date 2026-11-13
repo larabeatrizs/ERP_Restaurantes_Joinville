@@ -4,9 +4,10 @@ import { SettingsApi } from '../services/api.ts';
 export function UnitAccess({ api, onEnter, onSignOut }: { api: SettingsApi; onEnter: (unit: UnitSummary, name: string) => void; onSignOut: () => Promise<void> }) {
   const [units, setUnits] = useState<UnitSummary[]>(), [selected, setSelected] = useState(''), [name, setName] = useState(''), [error, setError] = useState(''), [retry, setRetry] = useState(0);
   useEffect(() => {
-    let active = true; setUnits(undefined); setError('');
-    void api.units().then(value => { if (active) setUnits(value); }).catch(() => { if (active) setError('Não foi possível consultar suas unidades. Tente novamente.'); });
-    void api.identity().then(value => { if (active) setName(value.nome); }).catch(() => { /* Acesso por unidade continua protegido, mesmo sem nome disponível. */ });
+    let active = true; setUnits(undefined); setSelected(''); setName(''); setError('');
+    void Promise.all([api.units(), api.identity()]).then(([value, identity]) => {
+      if (active) { setName(identity.nome); setUnits(value); }
+    }).catch(() => { if (active) setError('Não foi possível consultar seu acesso. Tente novamente.'); });
     return () => { active = false; };
   }, [api, retry]);
   const unit = units?.find(item => item.id === selected);

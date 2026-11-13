@@ -1,0 +1,53 @@
+{
+  "capturedOn": "2026-11-13",
+  "preflight": {
+    "measures": 2,
+    "products": 8,
+    "productUnitLinks": 10,
+    "movements": 6,
+    "stockAuditEvents": 34,
+    "domainUsers": 5,
+    "adminCapabilities": 3,
+    "migrations": 6
+  },
+  "postconditions": {
+    "measures": 4,
+    "products": 8,
+    "productUnitLinks": 10,
+    "categories": 4,
+    "receipts": 6,
+    "lots": 6,
+    "movements": 6,
+    "stockAuditEvents": 43,
+    "measureAuditEvents": 9,
+    "domainUsers": 5,
+    "adminCapabilities": 3,
+    "migrations": 7,
+    "erpRlsTables": 20,
+    "bookBalanceDifferences": 0
+  },
+  "permissions": {
+    "clientDirectWrite": false,
+    "anonymousRpc": false,
+    "authenticatedRpc": true,
+    "privateExecutor": "erp_stock_writer",
+    "executorLoginOrBypassOrSuperuserOrCreateRole": false,
+    "clientMemberOfExecutor": false,
+    "executorAuthUsage": false,
+    "executorPrivateCreate": false
+  },
+  "advisors": [
+    {
+      "name": "rls_enabled_no_policy",
+      "level": "INFO",
+      "count": 14
+    },
+    {
+      "name": "auth_leaked_password_protection",
+      "level": "WARN",
+      "count": 1
+    }
+  ],
+  "advisorNewFinding": false,
+  "preservationComparedByDatabaseHashes": true
+}
