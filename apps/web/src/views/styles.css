@@ -470,6 +470,7 @@ thead {
 .home-metrics strong { display: block; font-size: 28px; overflow-wrap: anywhere; margin: 12px 0; }
 .report-preview { width: min(1200px, calc(100vw - 32px)); max-width: calc(100vw - 32px); max-height: calc(100dvh - 32px); overflow: auto; }
 .report-preview p { overflow-wrap: anywhere; }
+.report-preview table { table-layout: auto; }
 .report-actions { flex-wrap: wrap; margin-bottom: 20px; }
 @media print {
   @page { size: landscape; margin: 12mm; }
@@ -477,7 +478,7 @@ thead {
   .report-layer, .report-preview { position: static !important; width: auto !important; max-width: none !important; height: auto !important; max-height: none !important; margin: 0 !important; padding: 0 !important; overflow: visible !important; border: 0 !important; box-shadow: none !important; color: #000; background: #fff; }
   .report-preview::backdrop, .report-actions { display: none !important; }
   .report-preview .table-wrap { overflow: visible; }
-  .report-preview table { min-width: 0; width: 100%; font-size: 8pt; table-layout: fixed; }
+  .report-preview table { min-width: 0 !important; width: 100%; font-size: 8pt; table-layout: fixed; }
   .report-preview th, .report-preview td { white-space: normal; overflow-wrap: anywhere; padding: 5px; }
   .report-preview thead { display: table-header-group; }
   .report-preview tr { break-inside: avoid; }

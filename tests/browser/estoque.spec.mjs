@@ -138,7 +138,7 @@ test('relatório de produtos exporta todas as páginas do filtro e mantém preci
   const pending=page.waitForEvent('download'); await dialog.getByRole('button',{name:'Exportar relatório em CSV',exact:true}).click();
   const download=await pending; expect(download.suggestedFilename()).toBe('produtos.csv'); const csv=await readFile(await download.path(),'utf8');
   expect(csv.split('\r\n').filter(Boolean)).toHaveLength(52); expect(csv).toContain('900000000001,123456'); expect(csv).toContain('"\'=Arroz especial"'); expect(csv).toContain('Busca: Arroz'); expect(csv).not.toContain('Não aplicado');
-  for(const width of [360,768,1280]){await page.setViewportSize({width,height:900}); expect(await page.locator('html').evaluate(el=>el.scrollWidth)).toBe(width);}
+  for(const width of [360,768,1280]){await page.setViewportSize({width,height:900}); expect(await page.locator('html').evaluate(el=>el.scrollWidth)).toBe(width); if(width===360){const table=dialog.getByLabel('Dados do relatório',{exact:true});expect(await table.evaluate(el=>el.scrollWidth>el.clientWidth)).toBe(true);}}
   await page.emulateMedia({media:'print'}); await expect(page.locator('#root')).toBeHidden(); await expect(dialog.getByRole('button',{name:'Fechar relatório'})).toBeHidden(); await expect(dialog.getByRole('heading')).toBeVisible();
   await page.emulateMedia({media:'screen'}); await page.keyboard.press('Escape'); await expect(dialog).toHaveCount(0); expect(state.writes).toHaveLength(0);
 });

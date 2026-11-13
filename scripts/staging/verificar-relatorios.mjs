@@ -38,12 +38,12 @@ try{
     const count=await dialog.locator('tbody tr').count();assert.ok(count>0);
     const pending=page.waitForEvent('download');await dialog.getByRole('button',{name:'Exportar relatório em CSV',exact:true}).click();
     const download=await pending,csv=await fs.readFile(await download.path(),'utf8');assert.equal(download.suggestedFilename(),title+'.csv');assert.ok(csv.startsWith('\uFEFF'));assert.ok(csv.includes('America/Sao_Paulo'));assert.equal(csv.split('\r\n').filter(Boolean).length,count+1);
-    for(const width of [360,768,1280]){await page.setViewportSize({width,height:900});assert.equal(await page.locator('html').evaluate(el=>el.scrollWidth),width);}
-    if(nav==='Produtos')await page.screenshot({path:path.join(root,'rel001-produtos-1280.png'),fullPage:true});
+    for(const width of [360,768,1280]){await page.setViewportSize({width,height:900});assert.equal(await page.locator('html').evaluate(el=>el.scrollWidth),width);if(width===360)assert.equal(await dialog.getByLabel('Dados do relatório',{exact:true}).evaluate(el=>el.scrollWidth>el.clientWidth),true);}
+    if(nav==='Produtos')await page.screenshot({path:path.join(root,'rel001-produtos-1280.png')});
     await page.emulateMedia({media:'print'});await expect(page.locator('#root')).toBeHidden();await expect(dialog.getByRole('button',{name:'Fechar relatório'})).toBeHidden();await expect(dialog.getByRole('heading')).toBeVisible();
     const pdf=await page.pdf({format:'A4',landscape:true});assert.ok(pdf.length>1000);
     await page.emulateMedia({media:'screen'});
-    if(nav==='Saldo'){await page.setViewportSize({width:360,height:900});await page.screenshot({path:path.join(root,'rel001-saldos-360.png'),fullPage:true});}
+    if(nav==='Saldo'){await page.setViewportSize({width:360,height:900});await page.screenshot({path:path.join(root,'rel001-saldos-360.png')});}
     await page.keyboard.press('Escape');await expect(dialog).toHaveCount(0);
     proof.scenarios.push({name:nav,passed:true,rows:count,csv:true,printMedia:true,pdfGenerated:true,responsive:[360,768,1280]});
   }
