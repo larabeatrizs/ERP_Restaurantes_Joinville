@@ -14,7 +14,7 @@ Fonte: mensagem explícita da responsável, com prints de Início, Produtos e Mo
 | Perfil e unidades permitidas | Cadastro administrativo com login/nome/email, perfil e filiais autorizadas; controles de backend/RLS e convite por email | ADM-001/ADM-002, sem escalada automática de privilégios |
 | Saldos: pesquisa e CSV | Buscar produto/lote/local nos saldos da unidade e exportar os resultados filtrados, preservando precisão e protegendo fórmulas | Publicado/verificado em UX-003/A |
 | Relatórios e filtros | Produtos/Recebimentos/Saldos: relatórios; filtros por data, produto e categoria em incremento posterior, conforme pedido | REL-001/A/PR #36 publicou prévia, impressão/PDF e CSV por unidade; Produtos até 10 mil do filtro, Recebimentos até 50 recentes, Saldos pesquisados. Filtros avançados e relatórios gerenciais integrais permanecem pendentes |
-| Produtos editar/excluir | Edição já existe para perfis autorizados. Exclusão física somente sem vínculos; oferecer inativação e explicar impedimento conforme RN-002 | Exclusão a implementar |
+| Produtos editar/excluir | Edição já existe. Em 16/11 a responsável confirmou exclusão somente nunca usado e vinculado apenas à unidade atual, removendo os parâmetros locais junto. Outra filial ou histórico bloqueiam; oferecer inativação global | CAD-006/issue #37 em implementação; X separado de I, preservando RN-002 |
 | Planilhas do cliente | Importação no final (RF-036): inventário de arquivos, mapa de colunas, validação/duplicidades, prévia e autorização de abertura de saldo | Adiada explicitamente; não importar dados reais agora |
 
 ## Limites de implementação

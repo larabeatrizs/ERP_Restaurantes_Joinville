@@ -27,7 +27,7 @@ before(async () => {
     insert into erp.perfil(codigo) values ('ESTOQUISTA'),('GESTOR_UNIDADE'),('AUDITOR'),('NUTRICIONISTA');
     insert into erp.perfil_permissao(perfil_id,permissao) values
       (1,'PRODUTO_LER'),(1,'PRODUTO_GERIR'),(1,'ESTOQUE_LER'),(1,'RECEBIMENTO_GERIR'),
-      (2,'PRODUTO_LER'),(2,'PRODUTO_GERIR'),(2,'ESTOQUE_LER'),(2,'RECEBIMENTO_APROVAR_DIVERGENCIA'),
+      (2,'PRODUTO_LER'),(2,'PRODUTO_GERIR'),(2,'PRODUTO_CICLO_VIDA'),(2,'ESTOQUE_LER'),(2,'RECEBIMENTO_APROVAR_DIVERGENCIA'),
       (1,'FORNECEDOR_EDITAR'),(2,'FORNECEDOR_EDITAR'),(2,'FORNECEDOR_CICLO_VIDA'),(1,'MEDIDA_EDITAR'),(2,'MEDIDA_EDITAR'),(2,'MEDIDA_CICLO_VIDA'),(1,'CATEGORIA_EDITAR'),(2,'CATEGORIA_EDITAR'),(2,'CATEGORIA_CICLO_VIDA'),(3,'PRODUTO_LER'),(3,'ESTOQUE_LER'),(4,'CONFIGURACAO_EDITAR');
     insert into erp.usuario(id,perfil_id,nome,status) values
       ('${uid(1)}',1,'Estoquista sintético A','ATIVO'),('${uid(2)}',1,'Estoquista sintético B','ATIVO'),
@@ -186,6 +186,38 @@ test('categorias: falha de auditoria desfaz edição/exclusão e DML direto é n
 
 const linkInput = (p, extra = {}) => ({ id: p.id, revisao: p.revisao, estoque_minimo: '5.000001', estoque_maximo: '20', ponto_reposicao: null, ...extra });
 
+async function cycle(action,data,unit=1,client=db){return(await client.query('select erp.produto_ciclo_operacao($1,$2,$3::jsonb) result',[unit,action,JSON.stringify(data)])).rows[0].result;}
+async function cycleRejects(action,data,code,unit=1){await db.exec('savepoint cycle_error');await assert.rejects(()=>cycle(action,data,unit),{code});await db.exec('rollback to savepoint cycle_error');}
+test('produto ciclo: elegível remove apenas parâmetros locais/produto e conserva auditoria',async()=>actor(4,async()=>{
+ const p=await create();assert.equal(p.pode_excluir,true);assert.equal(p.motivo_exclusao,null);
+ assert.deepEqual(await cycle('excluir',{id:p.id,revisao:p.revisao}),{excluida:true});assert.equal((await rpc('produtos')).total,0);
+ await db.exec('reset role');assert.equal((await db.query('select count(*)::int n from erp.produto_unidade where produto_id=$1',[p.id])).rows[0].n,0);
+ const audit=(await db.query("select antes,depois from erp.auditoria_estoque where acao='produto_excluir'")).rows[0];assert.equal(audit.antes.id,p.id);assert.equal(audit.antes.estoque_minimo,p.estoque_minimo);assert.equal(audit.depois,null);
+}));
+test('produto ciclo: I não concede X e edição/criação antigas não contornam status',async()=>actor(1,async()=>{
+ const p=await create();await cycleRejects('excluir',{id:p.id,revisao:p.revisao},'PT403');await cycleRejects('status',{id:p.id,revisao:p.revisao,status:'INATIVO'},'PT403');
+ await rejects('produto_salvar',product({id:p.id,revisao:p.revisao,status:'INATIVO'}),'PT403');await rejects('produto_salvar',product({descricao:'Inativo indevido',status:'INATIVO'}),'PT403');
+ await become(3);await cycleRejects('excluir',{id:p.id,revisao:p.revisao},'PT403');await cycleRejects('excluir',{id:p.id,revisao:p.revisao},'PT404',2);
+ await sqlRejects('delete from erp.produto');await sqlRejects('delete from erp.produto_unidade');await sqlRejects('select erp_private.produto_exclusao_motivo(1,1)');assert.equal((await db.query("select pg_has_role('authenticated','erp_product_reference_reader','MEMBER') member")).rows[0].member,false);
+}));
+test('produto ciclo: filial alheia bloqueia sem revelar seus dados e inativação é global',async()=>actor(1,async()=>{
+ const p=await create();await become(2);await catalog('vincular',linkInput(p),2);await become(4);
+ const listed=(await rpc('produtos')).produtos[0];assert.equal(listed.pode_excluir,false);assert.equal(listed.motivo_exclusao,'OUTRA_UNIDADE');assert.equal(JSON.stringify(listed).includes('Unidade sintética B'),false);
+ await cycleRejects('excluir',{id:p.id,revisao:p.revisao},'PT409');let current=(await cycle('status',{id:p.id,revisao:p.revisao,status:'INATIVO'})).produto;assert.equal((await rpc('produtos')).total,0);
+ await become(2);assert.equal((await rpc('produtos',{},2)).total,0);assert.equal((await rpc('produtos',{status:'INATIVO'},2)).produtos[0].status,'INATIVO');await become(4);
+ await cycleRejects('status',{id:p.id,revisao:p.revisao,status:'ATIVO'},'PT412');current=(await cycle('status',{id:p.id,revisao:current.revisao,status:'ATIVO'})).produto;assert.equal(current.status,'ATIVO');
+}));
+test('produto ciclo: rascunho/recusa bloqueia antes de movimentar e histórico persiste inativo',async()=>actor(1,async()=>{
+ const p=await create();const e=(await rpc('entrada_criar',receipt(p.id,{itens:[line(p.id,{conformidade:'RECUSADO',motivo:'Avaria'})]}))).entrada;await become(4);
+ assert.equal((await rpc('produtos')).produtos[0].motivo_exclusao,'VINCULADO');await cycleRejects('excluir',{id:p.id,revisao:p.revisao},'PT409');await cycle('status',{id:p.id,revisao:p.revisao,status:'INATIVO'});
+ assert.equal((await rpc('entradas')).entradas[0].id,e.id);assert.equal((await rpc('saldos')).saldos.length,0);
+ for(const bad of [{id:p.id,revisao:1},{id:p.id,revisao:'2',ator_id:uid(1)},{id:p.id,revisao:'2',status:null}])await cycleRejects('status',bad,'PT422');
+}));
+test('produto ciclo: falha de auditoria reverte exclusão e status integralmente',async()=>actor(4,async()=>{
+ const p=await create();await db.exec('reset role');await db.exec("create function erp_private.falha_ciclo() returns trigger language plpgsql as $$ begin if new.acao in ('produto_status','produto_excluir') then raise exception 'Falha induzida'; end if; return new; end $$; create trigger falha_ciclo before insert on erp.auditoria_estoque for each row execute function erp_private.falha_ciclo()");await become(4);
+ await cycleRejects('excluir',{id:p.id,revisao:p.revisao},'P0001');await cycleRejects('status',{id:p.id,revisao:p.revisao,status:'INATIVO'},'P0001');assert.equal((await rpc('produtos')).produtos[0].revisao,p.revisao);assert.equal((await rpc('produtos')).produtos[0].pode_excluir,true);
+}));
+
 async function become(n) { await db.exec('reset role'); await db.query("select set_config('request.jwt.claim.sub',$1,true)",[uid(n)]); await db.exec('set local role authenticated'); }
 async function catalogRejects(action, data, code, unit = 2) {
  await db.exec('savepoint catalog_error');await assert.rejects(()=>catalog(action,data,unit),{code});await db.exec('rollback to savepoint catalog_error');
@@ -234,7 +266,7 @@ test('estoquista sem CONFIGURACAO_LER seleciona unidade e contexto autorizado', 
   assert.deepEqual((await db.query('select id::text from erp.unidade')).rows, [{ id: '1' }]);
   assert.deepEqual((await db.query('select * from erp.parametro_unidade')).rows, []);
   const ctx = await rpc('contexto'); assert.equal(ctx.medidas.length, 2); assert.equal(ctx.locais.length, 2);
-  assert.deepEqual(ctx.capacidades, { produto_escrever: true, recebimento_escrever: true, divergencia_aprovar: false });
+  assert.deepEqual(ctx.capacidades, { produto_escrever: true, produto_ciclo_vida: false, recebimento_escrever: true, divergencia_aprovar: false });
 }));
 
 test('produto persiste, busca normalizada, parâmetros locais e revisão otimista', async () => actor(1, async () => {
@@ -546,6 +578,19 @@ test('medidas: duas conexões revalidam revogação e vínculo concorrente imped
  }
 });
 
+test('produto ciclo: concorrência revalida X e impede exclusão diante de novo vínculo/recebimento', {skip:!process.env.DATABASE_STOCK_TEST_URL,timeout:25000},async()=>{
+ const a=new pg.Client({connectionString:process.env.DATABASE_STOCK_TEST_URL}),b=new pg.Client({connectionString:process.env.DATABASE_STOCK_TEST_URL});await Promise.all([a.connect(),b.connect()]);let pending;
+ const pid=(await b.query('select pg_backend_pid() pid')).rows[0].pid;
+ async function waitLock(){for(let i=0;i<200;i++){if((await db.query('select wait_event_type from pg_stat_activity where pid=$1',[pid])).rows[0]?.wait_event_type==='Lock')return;await new Promise(resolve=>setTimeout(resolve,25));}throw Error('Expected blocked product operation');}
+ async function committedProduct(name){await db.exec('begin');await db.query("select set_config('request.jwt.claim.sub',$1,true)",[uid(1)]);await db.exec('set local role authenticated');const p=(await rpc('produto_salvar',product({descricao:name}))).produto;await db.exec('commit;reset role');return p;}
+ async function waitDelete(p){await b.query('begin');await b.query("select set_config('request.jwt.claim.sub',$1,true)",[uid(4)]);await b.query('set local role authenticated');pending=cycle('excluir',{id:p.id,revisao:p.revisao},1,b).then(value=>({value}),error=>({error}));await waitLock();}
+ try{
+  const p=await committedProduct('CAD006 concorrente X');await a.query('begin');await a.query('select id from erp.produto where id=$1 for update',[p.id]);await waitDelete(p);
+  await db.exec("delete from erp.perfil_permissao where perfil_id=2 and permissao='PRODUTO_CICLO_VIDA'");await a.query('commit');assert.equal((await pending).error?.code,'PT403');await b.query('rollback');await db.exec("insert into erp.perfil_permissao values(2,'PRODUTO_CICLO_VIDA')");
+  await a.query('begin');await a.query('select id from erp.produto where id=$1 for update',[p.id]);await waitDelete(p);await a.query("select set_config('request.jwt.claim.sub',$1,true)",[uid(2)]);await a.query('set local role authenticated');await catalog('vincular',linkInput(p),2,a);await a.query('commit');assert.equal((await pending).error?.code,'PT409');await b.query('rollback');
+  const q=await committedProduct('CAD006 concorrente entrada');await a.query('begin');await a.query('select id from erp.produto where id=$1 for share',[q.id]);await waitDelete(q);await a.query("select set_config('request.jwt.claim.sub',$1,true)",[uid(1)]);await a.query('set local role authenticated');await rpc('entrada_criar',receipt(q.id,{numero_nf:'CAD006-CONCORRENTE'}),1,a);await a.query('commit');assert.equal((await pending).error?.code,'PT409');await b.query('rollback');
+ }finally{await a.query('rollback').catch(()=>{});if(pending)await pending;await b.query('rollback').catch(()=>{});await db.exec('reset role');await db.exec("insert into erp.perfil_permissao values(2,'PRODUTO_CICLO_VIDA') on conflict do nothing");await Promise.all([a.end(),b.end()]);}
+});
 test('fornecedor: concorrência revalida revogação, recebimento vinculado e documento único', {skip:!process.env.DATABASE_STOCK_TEST_URL,timeout:20000},async()=>{
  const a=new pg.Client({connectionString:process.env.DATABASE_STOCK_TEST_URL}),b=new pg.Client({connectionString:process.env.DATABASE_STOCK_TEST_URL});await Promise.all([a.connect(),b.connect()]);let pending;
  const pid=(await b.query('select pg_backend_pid() pid')).rows[0].pid;

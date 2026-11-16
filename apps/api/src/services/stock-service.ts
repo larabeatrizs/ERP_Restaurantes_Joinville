@@ -12,6 +12,8 @@ export class StockService {
   saveProduct(unit: string, input: ProdutoInput, id?: string, revision?: string) {
     return this.repository.saveProduct(unit, input, id, revision);
   }
+  setProductStatus(unit: string, id: string, revision: string, status: 'ATIVO' | 'INATIVO') { return this.repository.setProductStatus(unit, id, revision, status); }
+  deleteProduct(unit: string, id: string, revision: string) { return this.repository.deleteProduct(unit, id, revision); }
   receipts(unit: string) { return this.repository.receipts(unit); }
   createReceipt(unit: string, input: EntradaInput) { return this.repository.createReceipt(unit, input); }
   confirmReceipt(unit: string, id: string, key: string) { return this.repository.confirmReceipt(unit, id, key); }

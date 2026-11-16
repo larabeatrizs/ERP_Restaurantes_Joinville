@@ -88,6 +88,8 @@ test('verificador da fundação confere RLS, grants e escritor restrito no labor
     ['erp_private', 'estoque_operacao', 'erp_stock_writer'],
     ['erp_private', 'fornecedor_operacao', 'erp_stock_writer'],
     ['erp_private', 'medida_operacao', 'erp_stock_writer'],
+    ['erp_private', 'produto_ciclo_operacao', 'erp_stock_writer'],
+    ['erp_private', 'produto_exclusao_motivo', 'erp_product_reference_reader'],
   ]);
 });
 
@@ -114,9 +116,13 @@ test('RLS nas tabelas e somente funções privilegiadas conhecidas com executore
   assert.ok(tables.rows.every((row) => row.relrowsecurity));
   const functions = await db.query("select proname,pg_get_userbyid(proowner) as owner,proconfig from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname in ('erp','erp_private') and prosecdef");
   assert.deepEqual(functions.rows.map(row => [row.proname, row.owner]).sort(), [
-    ['atualizar_configuracao', 'erp_config_writer'], ['catalogo_unidade', 'erp_stock_writer'], ['categoria_operacao', 'erp_stock_writer'], ['estoque_operacao', 'erp_stock_writer'], ['fornecedor_operacao', 'erp_stock_writer'], ['medida_operacao', 'erp_stock_writer'],
+    ['atualizar_configuracao', 'erp_config_writer'], ['catalogo_unidade', 'erp_stock_writer'], ['categoria_operacao', 'erp_stock_writer'], ['estoque_operacao', 'erp_stock_writer'], ['fornecedor_operacao', 'erp_stock_writer'], ['medida_operacao', 'erp_stock_writer'], ['produto_ciclo_operacao','erp_stock_writer'], ['produto_exclusao_motivo','erp_product_reference_reader'],
   ]);
   assert.ok(functions.rows.every(row => row.proconfig.includes('search_path=""')));
+  const referenceRole=(await db.query("select rolcanlogin,rolsuper,rolbypassrls,rolcreaterole,rolcreatedb from pg_roles where rolname='erp_product_reference_reader'")).rows[0];
+  assert.ok(Object.values(referenceRole).every(value=>value===false));
+  assert.equal((await db.query("select has_schema_privilege('erp_product_reference_reader','erp_private','CREATE') allowed")).rows[0].allowed,false);
+  assert.deepEqual((await db.query("select table_name from information_schema.role_table_grants where grantee='erp_product_reference_reader' and privilege_type='SELECT' order by table_name")).rows.map(r=>r.table_name),['entrada_item','lote','produto_unidade']);
   const role = (await db.query("select rolcanlogin,rolsuper,rolbypassrls,rolcreaterole,rolcreatedb from pg_roles where rolname='erp_config_writer'")).rows[0];
   assert.ok(Object.values(role).every((value) => value === false));
   const grants = (await db.query("select pg_has_role('authenticated','erp_config_writer','MEMBER') as member,has_schema_privilege('erp_config_writer','erp_private','CREATE') as can_create,has_column_privilege('erp_config_writer','erp.parametro_unidade','alterado_por','UPDATE') as actor_write")).rows[0];

@@ -42,6 +42,15 @@ export class StockApi {
     if (!isRecord(data.produto) || typeof data.produto.id !== 'string' || typeof data.produto.revisao !== 'string') throw new RequestError(503);
     return data.produto as unknown as Product;
   }
+  async setProductStatus(unit: string, product: Product, status: 'ATIVO' | 'INATIVO'): Promise<Product> {
+    const data = await this.request(unit, `/produtos/${product.id}/status`, { revisao: product.revisao, status });
+    if (!isRecord(data.produto) || data.produto.id !== product.id || typeof data.produto.revisao !== 'string') throw new RequestError(503);
+    return data.produto as unknown as Product;
+  }
+  async deleteProduct(unit: string, product: Product): Promise<void> {
+    const data = await this.request(unit, `/produtos/${product.id}`, { revisao: product.revisao }, 'DELETE');
+    if (data.excluida !== true) throw new RequestError(503);
+  }
   async availableProducts(unit: string, query = '', offset = 0): Promise<AvailableProductList> {
     const data = await this.request(unit, `/produtos/disponiveis?${new URLSearchParams({ q: query, offset: String(offset) })}`);
     if (!Array.isArray(data.produtos) || !Number.isSafeInteger(data.total)) throw new RequestError(503);

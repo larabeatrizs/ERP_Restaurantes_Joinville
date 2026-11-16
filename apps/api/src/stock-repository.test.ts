@@ -7,13 +7,13 @@ import { createApp } from './index.ts';
 
 const env = { SUPABASE_URL: 'https://staging-ficticio.supabase.co', SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_ficticia' };
 const input: ProdutoInput = { descricao: 'Arroz', complemento: '', unidade_medida_id: '1', categoria_id: '1', perecivel: false, armazenamento: 'SECO', fator_correcao: '1', apresentacao_compra: 'Saco', quantidade_apresentacao: '5', estoque_minimo: '0', estoque_maximo: null, ponto_reposicao: null, status: 'ATIVO' };
-const product: Product = { ...input, id: '9007199254740993', revisao: '2', unidade_sigla: 'kg', categoria_descricao: 'Cereais' };
+const product: Product = { ...input, id: '9007199254740993', revisao: '2', unidade_sigla: 'kg', categoria_descricao: 'Cereais', pode_excluir: true, motivo_exclusao: null };
 const entry: EntradaInput = { data_entrada: '2026-11-09', fornecedor_id: '1', numero_nf: '001', total_nota: null, observacoes: '', itens: [{ produto_id: product.id, quantidade: '0.000001', valor_unitario: '0.000001', numero_lote: null, validade: null, camara_id: '1', temperatura: '-18.5', aspecto_embalagem: 'Íntegra', conformidade: 'CONFORME', motivo: '' }] };
 const receipt: Receipt = { ...entry, id: '9007199254740994', unidade_id: '1', fornecedor: 'Fornecedor sintético', total_itens: '0.000000000001', estado: 'RASCUNHO', divergencia_aprovada: false, itens: [{ ...entry.itens[0]!, id: '4', produto: 'Arroz', unidade_medida: 'kg', local: 'Depósito' }] };
 const context: StockContext = {
   medidas: [{ id: '1', sigla: 'kg', descricao: 'Quilograma' }], categorias: [{ id: '1', descricao: 'Cereais', armazenamento_padrao: 'SECO' }],
   fornecedores: [{ id: '1', razao_social: 'Fornecedor sintético' }], locais: [{ id: '1', nome: 'Depósito', tipo: 'SECO' }],
-  capacidades: { produto_escrever: true, recebimento_escrever: true, divergencia_aprovar: false },
+  capacidades: { produto_escrever: true, produto_ciclo_vida: false, recebimento_escrever: true, divergencia_aprovar: false },
 };
 const user = { id: '00000000-0000-4000-8000-000000000001', aud: 'authenticated', role: 'authenticated', created_at: '2026-11-09T00:00:00Z', app_metadata: {}, user_metadata: {} };
 function transport(options: { authStatus?: number; anonymous?: boolean; code?: string; status?: number; result?: unknown } = {}) {
@@ -131,4 +131,11 @@ test('clientes por requisição não compartilham Bearer', async () => {
   const { fetcher, requests } = transport();
   await Promise.all(['usuario-a', 'usuario-b'].map(token => createSupabaseStockSession(env, token, fetcher).authenticate()));
   assert.deepEqual(requests.map(row => row.headers.get('Authorization')).sort(), ['Bearer usuario-a', 'Bearer usuario-b']);
+});
+test('produto ciclo SDK usa RPC restrita, payload exato e remove campos internos',async()=>{
+ const {fetcher,requests}=transport({result:{produto:{...product,status:'INATIVO',privado:'oculto'}}});
+ const session=createSupabaseStockSession(env,'usuario',fetcher);await session.authenticate();const result=await session.repository.setProductStatus('1',product.id,product.revisao,'INATIVO');
+ assert.equal(result.produto.pode_excluir,true);assert.equal(Object.hasOwn(result.produto,'privado'),false);assert.equal(requests[1]!.path,'/rest/v1/rpc/produto_ciclo_operacao');assert.deepEqual(requests[1]!.body,{p_unidade:'1',p_acao:'status',p_dados:{id:product.id,revisao:'2',status:'INATIVO'}});
+ const deletion=transport({result:{excluida:true,interno:'oculto'}});assert.deepEqual(await createSupabaseStockSession(env,'usuario',deletion.fetcher).repository.deleteProduct('1',product.id,'2'),{excluida:true});
+ const invalid=transport({result:{produto:{...product,pode_excluir:true,motivo_exclusao:'OUTRA_UNIDADE'}}});await assert.rejects(()=>createSupabaseStockSession(env,'usuario',invalid.fetcher).repository.setProductStatus('1',product.id,'2','INATIVO'),e=>e instanceof ApiError&&e.status===503);
 });

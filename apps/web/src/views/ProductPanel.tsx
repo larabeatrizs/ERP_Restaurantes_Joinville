@@ -42,6 +42,7 @@ export function ProductPanel({ api, unit, unitName = '', context, onDirty, onBus
   const [message, setMessage] = useState('');
   const [linking, setLinking] = useState(false);
   const editable = context.capacidades.produto_escrever;
+  const lifecycle = context.capacidades.produto_ciclo_vida;
   useEffect(() => { onDirty(dirty); return () => onDirty(false); }, [dirty, onDirty]);
   useEffect(() => { onBusy(saving); return () => onBusy(false); }, [saving, onBusy]);
   useEffect(() => {
@@ -75,12 +76,27 @@ export function ProductPanel({ api, unit, unitName = '', context, onDirty, onBus
     let input: ProdutoInput;
     try { input = normalize(draft); } catch (err) { setError((err as Error).message); return; }
     if (selected?.status === 'ATIVO' && input.status === 'INATIVO'
-      && !window.confirm('Inativar este produto? Ele deixará de aparecer em novos lançamentos e continuará disponível no histórico.')) return;
+      && !window.confirm('Inativar este produto no catálogo compartilhado de todas as unidades? Ele deixará de aparecer em novos lançamentos e continuará disponível no histórico.')) return;
     setSaving(true); setError(''); setMessage('');
     try {
       const product = await api.saveProduct(unit, input, selected);
       setSelected(product); setDraft(localDraft(product)); setDirty(false); setMessage('Produto salvo com sucesso.'); setReload(value => value + 1);
     } catch (err) { setError(stockError(err)); } finally { setSaving(false); }
+  }
+  async function changeLifecycle(product: Product, remove = false) {
+    if (!lifecycle || saving || (remove && !product.pode_excluir) || !discard()) return;
+    const next = product.status === 'ATIVO' ? 'INATIVO' : 'ATIVO';
+    if (!window.confirm(remove
+      ? `Excluir definitivamente ${product.descricao}? Seus parâmetros da unidade serão removidos. Esta ação não pode ser desfeita.`
+      : `${next === 'INATIVO' ? 'Inativar' : 'Ativar'} ${product.descricao} no catálogo compartilhado? A alteração afeta todas as unidades e preserva o histórico.`)) return;
+    setSaving(true); setError(''); setMessage('');
+    try {
+      if (remove) await api.deleteProduct(unit, product); else await api.setProductStatus(unit, product, next);
+      setSelected(undefined); setDraft(undefined); setDirty(false); setReload(value => value + 1);
+      setMessage(remove ? 'Produto excluído com sucesso.' : 'Situação do produto atualizada no catálogo compartilhado.');
+    } catch (err) {
+      setError(err instanceof RequestError && err.status === 409 ? 'O produto possui vínculos ou histórico e não pode ser excluído. Atualize a lista e utilize a inativação para preservá-lo.' : stockError(err));
+    } finally { setSaving(false); }
   }
   if (linking) return <Suspense fallback={<p role="status">Carregando catálogo…</p>}><ProductLinkPanel key={unit} api={api} unit={unit} context={context} onDirty={onDirty} onBusy={onBusy}
     onCancel={() => setLinking(false)} onDone={product => { setLinking(false); setQuery(product.descricao); setSearch(product.descricao); setStatus('ATIVO'); setOffset(0); setReload(v => v + 1); setMessage('Produto vinculado à unidade com sucesso.'); }} /></Suspense>;
@@ -108,7 +124,7 @@ export function ProductPanel({ api, unit, unitName = '', context, onDirty, onBus
             <label className="field">Estoque máximo<input inputMode="decimal" value={draft.estoque_maximo ?? ''} onChange={e => edit('estoque_maximo', e.target.value)} /></label>
             <label className="field">Ponto de reposição<input inputMode="decimal" value={draft.ponto_reposicao ?? ''} onChange={e => edit('ponto_reposicao', e.target.value)} /></label></div>
           <div className="row"><label className="field">Fator de correção *<input required inputMode="decimal" value={draft.fator_correcao} onChange={e => edit('fator_correcao', e.target.value)} /></label>
-            <label className="field">Situação<select value={draft.status} onChange={e => edit('status', e.target.value as ProdutoInput['status'])}><option value="ATIVO">Ativo</option><option value="INATIVO">Inativo</option></select></label></div>
+            <label className="field">Situação<select aria-label="Situação" disabled={!lifecycle} value={draft.status} onChange={e => edit('status', e.target.value as ProdutoInput['status'])}><option value="ATIVO">Ativo</option><option value="INATIVO">Inativo</option></select><span className="hint">Ativação e inativação afetam todas as unidades e exigem permissão própria.</span></label></div>
         </section>
       </fieldset>
       <div className="actions footer-actions"><button type="button" disabled={saving} onClick={() => { if (discard()) { setDraft(undefined); setSelected(undefined); setDirty(false); setError(''); setReload(value => value + 1); } }}>Voltar aos produtos</button>
@@ -122,7 +138,11 @@ export function ProductPanel({ api, unit, unitName = '', context, onDirty, onBus
         </form>
         {loading ? <p role="status">Carregando produtos…</p> : rows.length ? <div className="table-wrap" tabIndex={0} aria-label="Lista de produtos"><table>
           <thead><tr><th>Produto</th><th>Categoria</th><th>Armazenamento</th><th>Unidade</th><th>Estoque mínimo</th><th>Situação</th><th>Ações</th></tr></thead>
-          <tbody>{rows.map(product => <tr key={product.id}><th scope="row">{product.descricao}<span className="table-secondary">{product.complemento}</span></th><td>{product.categoria_descricao}</td><td>{storage[product.armazenamento]}</td><td>{product.unidade_sigla}</td><td className="numeric">{decimalLabel(product.estoque_minimo)}</td><td><span className="badge">{product.status === 'ATIVO' ? 'Ativo' : 'Inativo'}</span></td><td><button className="table-action" disabled={saving} onClick={() => open(product)}>{editable ? 'Editar' : 'Visualizar'}<span className="sr-only"> {product.descricao}</span></button></td></tr>)}</tbody>
+          <tbody>{rows.map(product => <tr key={product.id}><th scope="row">{product.descricao}<span className="table-secondary">{product.complemento}</span></th><td>{product.categoria_descricao}</td><td>{storage[product.armazenamento]}</td><td>{product.unidade_sigla}</td><td className="numeric">{decimalLabel(product.estoque_minimo)}</td><td><span className="badge">{product.status === 'ATIVO' ? 'Ativo' : 'Inativo'}</span></td><td><button className="table-action" disabled={saving} onClick={() => open(product)}>{editable ? 'Editar' : 'Visualizar'}<span className="sr-only"> {product.descricao}</span></button>
+            <button className="table-action" disabled={!lifecycle || saving} onClick={() => void changeLifecycle(product)}>{product.status === 'ATIVO' ? 'Inativar' : 'Ativar'}<span className="sr-only"> {product.descricao}</span></button>
+            <button className="table-action" disabled={!lifecycle || saving || !product.pode_excluir} onClick={() => void changeLifecycle(product, true)}>Excluir<span className="sr-only"> {product.descricao}</span></button>
+            {!product.pode_excluir && <span className="table-secondary">{product.motivo_exclusao === 'OUTRA_UNIDADE' ? 'Vinculado a outra unidade; use a inativação.' : 'Possui vínculos ou histórico; use a inativação.'}</span>}
+          </td></tr>)}</tbody>
         </table></div> : <p className="empty">Nenhum produto encontrado para esta consulta.</p>}
         <div className="pagination"><p className="hint">{total ? `${offset + 1} a ${Math.min(offset + rows.length, total)} de ${total} produtos` : '0 produtos'}</p><div className="actions"><button disabled={loading || saving || offset === 0} onClick={() => setOffset(value => Math.max(0, value - 50))}>Anterior</button><button disabled={loading || saving || offset + rows.length >= total} onClick={() => setOffset(value => value + 50)}>Próxima</button></div></div>
       </section>
