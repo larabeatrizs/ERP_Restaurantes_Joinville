@@ -1,0 +1,85 @@
+{
+  "checkedOn": "2026-11-16",
+  "projectAlias": "staging-compartilhado",
+  "before": {
+    "audit": 64,
+    "users": 5,
+    "products": 9,
+    "profiles": 4,
+    "receipts": 6,
+    "movements": 6,
+    "migrations": 9
+  },
+  "after": {
+    "audit": 67,
+    "users": 5,
+    "products": 9,
+    "profiles": 5,
+    "receipts": 6,
+    "movements": 6,
+    "migrations": 11
+  },
+  "preserved": {
+    "product": true,
+    "balance": true,
+    "receipt": true,
+    "user": true,
+    "links": true,
+    "unit": true,
+    "admin": true
+  },
+  "calendarRows": {
+    "calendars": 2,
+    "weekdays": 12,
+    "regularMeals": 4,
+    "exceptions": 4,
+    "specialMeals": 1
+  },
+  "migrations": [
+    {
+      "version": "20261116193620",
+      "name": "calendario_unidade",
+      "md5": "2493eb9ad495cb80ca06eefe9bad6e1d",
+      "sha256": "1ae65ab7c8ee6242cabd19ed01b9be8de3f9af4f405cf2e93781ddc92ca46c8a",
+      "historyBodyMatches": true
+    },
+    {
+      "version": "20261116194249",
+      "name": "calendario_textos_validos",
+      "md5": "3bb05d40ebdeb493b48b705e36f98598",
+      "sha256": "065f4ba7af7ef3e7adbda85b7bd2f7060bda6d529ded24371419677ecb19d639",
+      "historyBodyMatches": true
+    }
+  ],
+  "security": {
+    "rlsTables": 25,
+    "directClientWrite": false,
+    "directClientHelper": false,
+    "calendarRoleCodes": [
+      "GESTOR_UNIDADE",
+      "NUTRICIONISTA"
+    ],
+    "nutritionistProfilePrepared": true,
+    "nutritionistAuthUsers": 0,
+    "personalAdminCapabilitiesUnchanged": true
+  },
+  "advisors": [
+    {
+      "name": "rls_enabled_no_policy",
+      "level": "INFO",
+      "scope": "legado public contido",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy"
+    },
+    {
+      "name": "auth_leaked_password_protection",
+      "level": "WARN",
+      "scope": "aviso anterior mantido",
+      "remediation": "https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection"
+    }
+  ],
+  "limits": [
+    "Nutricionista com identidade sintética foi validada no PostgreSQL local/CI; no hospedado só o perfil foi preparado, sem criar usuário Auth.",
+    "Calendário não é cadastro completo de unidades nem módulo de planejamento implantado.",
+    "Verificação não substitui backup/restauração."
+  ]
+}
