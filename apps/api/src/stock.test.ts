@@ -10,7 +10,7 @@ const input: ProdutoInput = {
   armazenamento: 'SECO', fator_correcao: '1', apresentacao_compra: 'Saco', quantidade_apresentacao: '5',
   estoque_minimo: '0', estoque_maximo: null, ponto_reposicao: null, status: 'ATIVO',
 };
-const product: Product = { ...input, id: '9007199254740993', revisao: '2', unidade_sigla: 'kg', categoria_descricao: 'Cereais' };
+const product: Product = { ...input, id: '9007199254740993', revisao: '2', unidade_sigla: 'kg', categoria_descricao: 'Cereais', pode_excluir: true, motivo_exclusao: null };
 const entry: EntradaInput = {
   data_entrada: '2026-11-09', fornecedor_id: '1', numero_nf: '000123', total_nota: '20', observacoes: '',
   itens: [{ produto_id: product.id, quantidade: '20', valor_unitario: '1', numero_lote: null, validade: null,
@@ -22,7 +22,7 @@ const receipt: Receipt = {
   itens: [{ ...entry.itens[0]!, id: '3', produto: product.descricao, unidade_medida: 'kg', local: 'Depósito' }],
 };
 const context: StockContext = { medidas: [], categorias: [], fornecedores: [], locais: [], capacidades: {
-  produto_escrever: true, recebimento_escrever: true, divergencia_aprovar: false,
+  produto_escrever: true, produto_ciclo_vida: false, recebimento_escrever: true, divergencia_aprovar: false,
 } };
 const base = 'https://erp.test/api/unidades/1';
 const key = '00000000-0000-4000-8000-000000000001';
@@ -44,6 +44,8 @@ function fixture(options: { authError?: Error; repositoryError?: Error } = {}) {
     async availableProducts(unit, query) { collect('availableProducts', unit, query); return { produtos: [product], total: 1 }; },
     async linkProduct(unit, id, value) { collect('linkProduct', unit, id, value); return { produto: product }; },
     async saveProduct(unit, value, id, revision) { collect('saveProduct', unit, value, id, revision); return { produto: product }; },
+    async setProductStatus(unit, id, revision, status) { collect('setProductStatus', unit, id, revision, status); return { produto: { ...product, status } }; },
+    async deleteProduct(unit, id, revision) { collect('deleteProduct', unit, id, revision); return { excluida: true }; },
     async receipts(unit) { collect('receipts', unit); return { entradas: [receipt] }; },
     async createReceipt(unit, value) { collect('createReceipt', unit, value); return { entrada: receipt }; },
     async confirmReceipt(unit, id, confirmation) { collect('confirmReceipt', unit, id, confirmation); return { entrada: { ...receipt, estado: 'CONFIRMADA' } }; },
@@ -198,4 +200,14 @@ test('erros inesperados do adaptador não expõem SQL ou detalhes internos', asy
   const response = await app.fetch(request('/produtos'));
   assert.equal(response.status, 503);
   assert.doesNotMatch(await response.text(), /segredo|SQL|interno/);
+});
+test('produto ciclo HTTP exige revisão e payload estrito, autentica e separa métodos',async()=>{
+ const {app,calls}=fixture();
+ assert.equal((await app.fetch(request('/produtos/9007199254740993/status','POST',{revisao:'2',status:'INATIVO'}))).status,200);
+ assert.equal((await app.fetch(request('/produtos/9007199254740993','DELETE',{revisao:'2'}))).status,200);
+ assert.deepEqual(calls.map(c=>c.name),['setProductStatus','deleteProduct']);
+ for(const data of [{revisao:2},{revisao:'2',ator_id:'qualquer'},{revisao:'0'},{}])assert.equal((await app.fetch(request('/produtos/1','DELETE',data))).status,422);
+ assert.equal((await app.fetch(request('/produtos/1/status','POST',{revisao:'2',status:['INATIVO']}))).status,422);
+ assert.equal((await app.fetch(new Request(base+'/produtos/1',{method:'DELETE',body:JSON.stringify({revisao:'2'})}))).status,401);
+ assert.equal((await app.fetch(request('/produtos/1/status','GET'))).status,405);
 });

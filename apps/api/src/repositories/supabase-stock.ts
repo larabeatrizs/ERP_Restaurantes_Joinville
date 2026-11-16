@@ -34,8 +34,10 @@ function product(value: unknown): Product {
   if (!isRecord(value)) unavailable();
   const input = Object.fromEntries(productInputFields.map(field => [field, value[field]]));
   if (!isProdutoInput(input) || !isStockId(value.id) || !isStockId(value.revisao)
-    || !isText(value.unidade_sigla, 100) || !isText(value.categoria_descricao, 200)) unavailable();
-  return { ...input, id: value.id, revisao: value.revisao, unidade_sigla: value.unidade_sigla, categoria_descricao: value.categoria_descricao };
+    || !isText(value.unidade_sigla, 100) || !isText(value.categoria_descricao, 200)
+    || typeof value.pode_excluir !== 'boolean' || (value.motivo_exclusao !== null && value.motivo_exclusao !== 'VINCULADO' && value.motivo_exclusao !== 'OUTRA_UNIDADE')
+    || value.pode_excluir !== (value.motivo_exclusao === null)) unavailable();
+  return { ...input, id: value.id, revisao: value.revisao, unidade_sigla: value.unidade_sigla, categoria_descricao: value.categoria_descricao, pode_excluir: value.pode_excluir, motivo_exclusao: value.motivo_exclusao };
 }
 function item(value: unknown): ReceiptItem {
   if (!isRecord(value)) unavailable();
@@ -81,7 +83,7 @@ function context(value: unknown): StockContext {
   if (!isRecord(value) || !Array.isArray(value.medidas) || !Array.isArray(value.categorias)
     || !Array.isArray(value.fornecedores) || !Array.isArray(value.locais) || !isRecord(value.capacidades)) unavailable();
   const capabilities = value.capacidades;
-  if (typeof capabilities.produto_escrever !== 'boolean' || typeof capabilities.recebimento_escrever !== 'boolean' || typeof capabilities.divergencia_aprovar !== 'boolean') unavailable();
+  if (typeof capabilities.produto_escrever !== 'boolean' || typeof capabilities.produto_ciclo_vida !== 'boolean' || typeof capabilities.recebimento_escrever !== 'boolean' || typeof capabilities.divergencia_aprovar !== 'boolean') unavailable();
   return {
     medidas: value.medidas.map((row: unknown) => {
       if (!isRecord(row) || !isStockId(row.id) || !isText(row.sigla, 100) || !isText(row.descricao, 200)) unavailable();
@@ -99,7 +101,7 @@ function context(value: unknown): StockContext {
       if (!isRecord(row) || !isStockId(row.id) || !isText(row.nome, 200) || !isStorageType(row.tipo)) unavailable();
       return { id: row.id, nome: row.nome, tipo: row.tipo };
     }),
-    capacidades: { produto_escrever: capabilities.produto_escrever, recebimento_escrever: capabilities.recebimento_escrever, divergencia_aprovar: capabilities.divergencia_aprovar },
+    capacidades: { produto_escrever: capabilities.produto_escrever, produto_ciclo_vida: capabilities.produto_ciclo_vida, recebimento_escrever: capabilities.recebimento_escrever, divergencia_aprovar: capabilities.divergencia_aprovar },
   };
 }
 
@@ -156,6 +158,17 @@ export function createSupabaseStockSession(env: StockRuntimeEnv, token: string, 
         const result = await operation(unit, 'entradas', {});
         if (!Array.isArray(result.entradas) || result.entradas.length > 50) unavailable();
         return { entradas: result.entradas.map(row => receipt(row, unit)) };
+      },
+      async setProductStatus(unit, id, revision, status) {
+        const result = await operation(unit, 'status', { id, revisao: revision, status }, 'produto_ciclo_operacao');
+        const saved = product(result.produto);
+        if (saved.id !== id) unavailable();
+        return { produto: saved };
+      },
+      async deleteProduct(unit, id, revision) {
+        const result = await operation(unit, 'excluir', { id, revisao: revision }, 'produto_ciclo_operacao');
+        if (result.excluida !== true) unavailable();
+        return { excluida: true };
       },
       async createReceipt(unit, input) {
         const result = await operation(unit, 'entrada_criar', input);

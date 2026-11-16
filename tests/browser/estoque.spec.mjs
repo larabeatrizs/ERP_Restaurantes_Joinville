@@ -9,6 +9,7 @@ const product = {
   id: productId, revisao: '9007199254741003', descricao: 'Arroz branco', complemento: '', unidade_medida_id: '11', categoria_id: '12',
   perecivel: true, armazenamento: 'SECO', fator_correcao: '1', apresentacao_compra: 'Pacote de 5 kg', quantidade_apresentacao: '5',
   estoque_minimo: '2.5', estoque_maximo: null, ponto_reposicao: null, status: 'ATIVO', unidade_sigla: 'kg', categoria_descricao: 'Grãos e secos',
+  pode_excluir: true, motivo_exclusao: null,
 };
 const measureRow = {id:'51',revisao:'1',sigla:'G',descricao:'Grama teste',grandeza:'MASSA',fator_base:'0.001',status:'ATIVO',pode_excluir:true};
 const categoryRow = {id:'12',revisao:'1',descricao:'Categoria teste',tipo_item:'ALIMENTO',armazenamento_padrao:'SECO',dias_alerta_validade:null,status:'ATIVO',pode_excluir:true};
@@ -17,7 +18,7 @@ const context = {
   categorias: [{ id: '12', descricao: 'Grãos e secos', armazenamento_padrao: 'SECO' }],
   fornecedores: [{ id: '13', razao_social: 'Fornecedor de demonstração' }],
   locais: [{ id: '14', nome: 'Almoxarifado seco', tipo: 'SECO' }],
-  capacidades: { produto_escrever: true, recebimento_escrever: true, divergencia_aprovar: false },
+  capacidades: { produto_escrever: true, produto_ciclo_vida: false, recebimento_escrever: true, divergencia_aprovar: false },
 };
 function receipt(extra = {}) {
   return {
@@ -92,6 +93,8 @@ async function setup(page, options = {}) {
     if (url.pathname.includes('/produtos') && request.method() !== 'GET') {
       const body = request.postDataJSON(); state.writes.push({ path: url.pathname, method: request.method(), body });
       if (state.productFailure) { const status = state.productFailure; state.productFailure = 0; return route.fulfill({ status, json: { error: { code: 'TEST' } } }); }
+      if(request.method()==='DELETE'){state.products=state.products.filter(p=>p.id!==url.pathname.split('/').at(-1));return respond({excluida:true});}
+      if(url.pathname.endsWith('/status')){const saved={...state.products[0],status:body.status,revisao:String(BigInt(body.revisao)+1n)};state.products=[saved];return respond({produto:saved});}
       const saved = { ...body, id: productId, revisao: request.method() === 'PATCH' ? String(BigInt(body.revisao) + 1n) : '1', unidade_sigla: 'kg', categoria_descricao: 'Grãos e secos' };
       state.products = [saved]; return respond({ produto: saved });
     }
@@ -124,6 +127,21 @@ async function setup(page, options = {}) {
   return state;
 }
 async function navigate(page, name) { await page.getByRole('navigation', { name: 'Principal' }).getByRole('link', { name, exact: true }).click(); }
+test('produto ciclo confirma/cancela inativação global e exclui elegível com revisão',async({page})=>{
+ const state=await setup(page,{capabilities:{produto_ciclo_vida:true}});await navigate(page,'Produtos');
+ page.once('dialog',d=>d.dismiss());await page.getByRole('button',{name:'Inativar Arroz branco',exact:true}).click();expect(state.writes).toHaveLength(0);
+ page.once('dialog',d=>{expect(d.message()).toContain('todas as unidades');return d.accept();});await page.getByRole('button',{name:'Inativar Arroz branco',exact:true}).click();await expect(page.getByText('Nenhum produto encontrado para esta consulta.',{exact:true})).toBeVisible();
+ await page.getByRole('combobox',{name:'Situação',exact:true}).selectOption('INATIVO');await expect(page.getByRole('button',{name:'Ativar Arroz branco',exact:true})).toBeVisible();page.once('dialog',d=>d.accept());await page.getByRole('button',{name:'Excluir Arroz branco',exact:true}).click();await expect(page.getByText('Produto excluído com sucesso.',{exact:true})).toBeVisible();expect(state.writes.at(-1).body).toEqual({revisao:String(BigInt(product.revisao)+1n)});expect(state.writes.at(-1).method).toBe('DELETE');
+});
+test('produto ciclo explica bloqueios e I sem X não oferece inativação pela edição',async({page})=>{
+ const state=await setup(page,{products:[{...product,pode_excluir:false,motivo_exclusao:'OUTRA_UNIDADE'}]});await navigate(page,'Produtos');await expect(page.getByRole('button',{name:'Excluir Arroz branco',exact:true})).toBeDisabled();await expect(page.getByText('Vinculado a outra unidade; use a inativação.',{exact:true})).toBeVisible();await expect(page.getByRole('button',{name:'Inativar Arroz branco',exact:true})).toBeDisabled();
+ await page.getByRole('button',{name:'Editar Arroz branco',exact:true}).click();await expect(page.getByRole('combobox',{name:'Situação',exact:true})).toBeDisabled();expect(state.writes).toHaveLength(0);
+});
+test('produto ciclo conflito não remove registro nem altera saldo e mantém interface responsiva',async({page})=>{
+ const state=await setup(page,{capabilities:{produto_ciclo_vida:true}});await navigate(page,'Produtos');for(const width of [360,768,1280]){await page.setViewportSize({width,height:900});expect(await page.locator('html').evaluate(el=>el.scrollWidth)).toBe(width);}
+ state.productFailure=409;page.once('dialog',d=>d.accept());await page.getByRole('button',{name:'Excluir Arroz branco',exact:true}).click();await expect(page.getByRole('alert')).toContainText('vínculos ou histórico');await expect(page.getByRole('button',{name:'Editar Arroz branco',exact:true})).toBeVisible();expect(state.products).toHaveLength(1);expect(state.balances).toEqual([]);
+ state.productFailure=412;page.once('dialog',d=>d.accept());await page.getByRole('button',{name:'Inativar Arroz branco',exact:true}).click();await expect(page.getByRole('alert')).toContainText('Outra pessoa alterou');expect(state.products[0].status).toBe('ATIVO');
+});
 test('relatório de produtos exporta todas as páginas do filtro e mantém precisão para leitor', async ({page}) => {
   const products=Array.from({length:51},(_,i)=>({...product,id:String(200+i),descricao:i===50?'=Arroz especial':'Arroz '+String(i).padStart(2,'0'),estoque_minimo:'900000000001.123456'}));
   const state=await setup(page,{products,capabilities:{produto_escrever:false}}); await navigate(page,'Produtos');
@@ -295,7 +313,7 @@ test('cadastrar produto envia somente o contrato de cadastro e reabre dados pers
 });
 
 test('inativação exige confirmação, preservando a edição ao cancelar', async ({ page }) => {
-  const state = await setup(page);
+  const state = await setup(page, { capabilities: { produto_ciclo_vida: true } });
   await navigate(page, 'Produtos');
   await page.getByRole('button', { name: 'Editar Arroz branco', exact: true }).click();
   await page.getByRole('combobox', { name: 'Situação', exact: true }).selectOption('INATIVO');

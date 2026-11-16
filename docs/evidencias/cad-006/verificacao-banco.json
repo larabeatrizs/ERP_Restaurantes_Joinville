@@ -1,0 +1,67 @@
+{
+  "checkedOn": "2026-11-16",
+  "projectAlias": "staging-compartilhado",
+  "before": {
+    "audit": 52,
+    "users": 5,
+    "products": 8,
+    "receipts": 6,
+    "movements": 6,
+    "migrations": 8,
+    "product_links": 10
+  },
+  "after": {
+    "audit": 64,
+    "users": 5,
+    "products": 9,
+    "receipts": 6,
+    "movements": 6,
+    "migrations": 9,
+    "product_links": 12
+  },
+  "preserved": {
+    "product": true,
+    "balance": true,
+    "receipt": true,
+    "user": true,
+    "links": true,
+    "admin_capabilities": true
+  },
+  "scope": "Hash de produtos compara somente os oito IDs anteriores; um novo produto sintético retido com vínculos em duas unidades. Auditoria dos testes preservada.",
+  "migration": {
+    "version": "20261116170836",
+    "name": "ciclo_vida_produtos",
+    "sha256": "38eb392e3dbc0d2f0f096ff1a56de0569128b26dda78e002a59137f5d2d382c7",
+    "md5": "78a2c9e9b613296ba5fb789c39fba70c",
+    "historyBodyMatches": true
+  },
+  "security": {
+    "rlsTables": 20,
+    "referenceRoleLogin": false,
+    "referenceRoleBypassRls": false,
+    "clientCanDeleteDirectly": false,
+    "clientCanExecuteReferenceHelper": false,
+    "clientIsReferenceRoleMember": false,
+    "adminCapabilitiesUnchanged": true,
+    "grantFixture": "Somente perfis GESTOR_UNIDADE ligados exclusivamente a duas identidades sintéticas reservadas, guard SQL validado."
+  },
+  "advisors": [
+    {
+      "name": "rls_enabled_no_policy",
+      "level": "INFO",
+      "scope": "legado public contido",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy"
+    },
+    {
+      "name": "auth_leaked_password_protection",
+      "level": "WARN",
+      "scope": "aviso anterior mantido",
+      "remediation": "https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection"
+    }
+  ],
+  "limits": [
+    "Não é backup ou restauração.",
+    "Conta pessoal não autenticada, redefinida ou usada como fixture.",
+    "Somente dois produtos novos isolados foram excluídos; registros anteriores preservados."
+  ]
+}

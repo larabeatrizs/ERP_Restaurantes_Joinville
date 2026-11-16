@@ -7,6 +7,8 @@ export interface StockRepository {
   availableProducts(unit: string, query: Pick<ProductQuery, 'q' | 'offset'>): Promise<AvailableProductList>;
   linkProduct(unit: string, id: string, input: ProductLinkInput): Promise<ProductResult>;
   saveProduct(unit: string, input: ProdutoInput, id?: string, revision?: string): Promise<ProductResult>;
+  setProductStatus(unit: string, id: string, revision: string, status: 'ATIVO' | 'INATIVO'): Promise<ProductResult>;
+  deleteProduct(unit: string, id: string, revision: string): Promise<{ excluida: true }>;
   receipts(unit: string): Promise<ReceiptList>;
   createReceipt(unit: string, input: EntradaInput): Promise<ReceiptResult>;
   confirmReceipt(unit: string, id: string, key: string): Promise<ReceiptResult>;

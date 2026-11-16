@@ -31,12 +31,13 @@ function productQuery(url: URL): ProductQuery {
 export async function stockController(request: Request, env: StockRuntimeEnv, unit: string, route: string, factory: StockSessionFactory): Promise<Response> {
   const productEdit = route === 'produtos/disponiveis' ? null : /^produtos\/([^/]+)$/.exec(route);
   const productLink = /^produtos\/([^/]+)\/vinculo$/.exec(route);
+  const productStatus = /^produtos\/([^/]+)\/status$/.exec(route);
   const confirmation = /^entradas\/([^/]+)\/(confirmar|aprovar-divergencia)$/.exec(route);
-  const allow = productEdit ? 'PATCH' : confirmation || productLink ? 'POST' : route === 'produtos' || route === 'entradas' ? 'GET, POST' : 'GET';
+  const allow = productEdit ? 'PATCH, DELETE' : confirmation || productLink || productStatus ? 'POST' : route === 'produtos' || route === 'entradas' ? 'GET, POST' : 'GET';
   if (!allow.split(', ').includes(request.method)) return methodDenied(allow, request.method === 'HEAD');
   const token = /^Bearer\s+(\S+)$/i.exec(request.headers.get('Authorization') ?? '')?.[1];
   if (!token) throw new ApiError(401, 'UNAUTHORIZED', 'Informe uma sessão válida.');
-  if (!isStockId(unit) || (productEdit && !isStockId(productEdit[1])) || (productLink && !isStockId(productLink[1])) || (confirmation && !isStockId(confirmation[1]))) throw new ApiError(400, 'INVALID_ID', 'Identificador inválido.');
+  if (!isStockId(unit) || (productEdit && !isStockId(productEdit[1])) || (productLink && !isStockId(productLink[1])) || (productStatus && !isStockId(productStatus[1])) || (confirmation && !isStockId(confirmation[1]))) throw new ApiError(400, 'INVALID_ID', 'Identificador inválido.');
   const session = factory(env, token);
   await session.authenticate();
   const service = new StockService(session.repository);
@@ -51,6 +52,14 @@ export async function stockController(request: Request, env: StockRuntimeEnv, un
   if (route === 'produtos' && request.method === 'GET') return reply(await service.products(unit, productQuery(new URL(request.url))));
   if (route === 'entradas' && request.method === 'GET') return reply(await service.receipts(unit));
   const data = await readJson(request);
+  if (productStatus?.[1]) {
+    if (!isRecord(data) || !hasExactFields(data, ['revisao', 'status']) || !isStockId(data.revisao) || (data.status !== 'ATIVO' && data.status !== 'INATIVO')) invalid();
+    return productReply(await service.setProductStatus(unit, productStatus[1], data.revisao, data.status));
+  }
+  if (productEdit?.[1] && request.method === 'DELETE') {
+    if (!isRecord(data) || !hasExactFields(data, ['revisao']) || !isStockId(data.revisao)) invalid();
+    return reply(await service.deleteProduct(unit, productEdit[1], data.revisao));
+  }
   if (productLink?.[1]) {
     if (!isProductLinkInput(data)) invalid();
     return productReply(await service.linkProduct(unit, productLink[1], data));
