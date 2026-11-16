@@ -34,6 +34,10 @@ API-001/PR #8 e WEB-001/PR #10 integradas à main. Depois de INT-001/002, SEC-00
 
 Próxima dependência: publicação controlada de View/Worker na Cloudflare do **mesmo staging compartilhado**, com smoke no endereço hospedado, seguida pelas jornadas de cadastros/estoque D1. Os demais controles de Auth, recuperação, modelagem integral e políticas CONFIG-001/DOM-001 continuam sujeitos aos seus contratos/gates; advisor atual contém WARN de proteção contra senhas vazadas e INFO do legado intencionalmente contido. AMB-001/issue #9 permanece congelada até o encerramento, sem reset ou ambientes permanentes adicionais. [Estimativa inicial de 09/11](ESTIMATIVA-2026-11-09.md) registrada sob premissas explícitas, para recalibrar após duas jornadas de negócio.
 
+## Continuidade em 16/11/2026
+
+Após CAD-007/PR #41, retomar administração RF-008 nas issues #19/#31. [ADM-002/B](../fundacao/ADM-002-CONTRATO-USUARIOS.md) prepara o contrato compartilhado dos campos solicitados antes de migrations e endpoints privilegiados; não libera administração nem modifica contas. [Avanço estimado](STATUS-2026-11-16.md): cerca de 25% do ERP completo, faixa de 20%–30%, incluindo trabalho adiado no denominador. Próxima etapa é C2 de identidade persistida/autorização administrativa, seguida de C3/C4 e jornada sintética. SMTP geral, importação real final, skeleton e AMB-001 mantêm suas decisões vigentes.
+
 ## Momento da reconstrução do banco
 
 ### Administração e usuário inicial — atualização de 10/11/2026
