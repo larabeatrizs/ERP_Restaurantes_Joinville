@@ -210,6 +210,13 @@ test('calendário: auditoria falha e reverte o agregado; estoque e usuários per
  const p=await create();await calendar('salvar',calendarInput());await db.exec('reset role');await db.exec("create function erp_private.falha_calendario() returns trigger language plpgsql as $$ begin if new.acao='calendario_salvar' then raise exception 'Falha induzida';end if;return new;end $$;create trigger falha_calendario before insert on erp.auditoria_estoque for each row execute function erp_private.falha_calendario()");await become(4);
  await calendarRejects('salvar',calendarInput({revisao:'1',dias_semana:[],refeicoes:[]}),'P0001');assert.equal((await calendar('ler')).calendario.revisao,'1');assert.equal((await rpc('produtos')).produtos[0].id,p.id);assert.equal((await rpc('saldos')).saldos.length,0);
 }));
+test('calendário: RPC direta rejeita motivo/descrição de espaços ou tabulações sem criar agregado',async()=>actor(4,async()=>{
+ for(const value of ['\t \t','\uFEFF\u00A0\t','\u2000\u2028\u3000']){
+  await calendarRejects('salvar',calendarInput({motivo:value}));
+  await calendarRejects('salvar',calendarInput({excecoes:[{data:'2027-01-01',tipo:'FECHADO',descricao:value,refeicoes:[]}]}));
+ }
+ assert.equal((await calendar('ler')).calendario,null);
+}));
 
 async function cycle(action,data,unit=1,client=db){return(await client.query('select erp.produto_ciclo_operacao($1,$2,$3::jsonb) result',[unit,action,JSON.stringify(data)])).rows[0].result;}
 async function cycleRejects(action,data,code,unit=1){await db.exec('savepoint cycle_error');await assert.rejects(()=>cycle(action,data,unit),{code});await db.exec('rollback to savepoint cycle_error');}
