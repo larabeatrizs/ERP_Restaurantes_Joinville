@@ -1,6 +1,7 @@
 import { CategoryApi } from '../services/category-api.ts';
 import { MeasureApi } from '../services/measure-api.ts';
 import { SupplierApi } from '../services/supplier-api.ts';
+import { CalendarApi } from '../services/calendar-api.ts';
 import { lazy, Suspense, useEffect, useState } from 'react';
 import type { StockContext, StockBalance, UnitSummary } from '@erp/contracts';
 import { filterBalances, balancesCsv } from '@erp/contracts';
@@ -18,12 +19,14 @@ import type { ConsultationReport } from '../services/stock-reports.ts';
 const CategoryPanel = lazy(() => import('./CategoryPanel.tsx').then(module => ({ default: module.CategoryPanel })));
 const MeasurePanel = lazy(() => import('./MeasurePanel.tsx').then(module => ({ default: module.MeasurePanel })));
 const SupplierPanel = lazy(() => import('./SupplierPanel.tsx').then(module => ({ default: module.SupplierPanel })));
+const CalendarPanel = lazy(() => import('./CalendarPanel.tsx').then(module => ({ default: module.CalendarPanel })));
 
 export type StockPageProps = { api: StockApi; unit: string; unitName?: string; context: StockContext; onDirty: (dirty: boolean) => void; onBusy: (busy: boolean) => void };
-const title = { fornecedores: 'Fornecedores', medidas: 'Unidades de medida', inicio: 'Início', conta: 'Meu acesso', categorias: 'Categorias de produtos', produtos: 'Produtos e alimentos', recebimentos: 'Entrada de materiais', saldo: 'Saldo de estoque' };
-const subtitle = { fornecedores: 'Mantenha os fornecedores do cadastro compartilhado.', medidas: 'Mantenha as unidades do catálogo compartilhado.', inicio: 'Resumo do estoque da sua unidade.', conta: 'Identificação e recuperação da sua senha.', categorias: 'Organize o catálogo compartilhado de produtos.', produtos: 'Cadastro do estoque seco, resfriado e congelado.', recebimentos: 'Registre o recebimento de uma nota fiscal.', saldo: 'Consulte os lotes e os locais da unidade selecionada.' };
+const title = { calendario: 'Calendário e refeições', fornecedores: 'Fornecedores', medidas: 'Unidades de medida', inicio: 'Início', conta: 'Meu acesso', categorias: 'Categorias de produtos', produtos: 'Produtos e alimentos', recebimentos: 'Entrada de materiais', saldo: 'Saldo de estoque' };
+const subtitle = { calendario: 'Dias de funcionamento, refeições e datas especiais da unidade.', fornecedores: 'Mantenha os fornecedores do cadastro compartilhado.', medidas: 'Mantenha as unidades do catálogo compartilhado.', inicio: 'Resumo do estoque da sua unidade.', conta: 'Identificação e recuperação da sua senha.', categorias: 'Organize o catálogo compartilhado de produtos.', produtos: 'Cadastro do estoque seco, resfriado e congelado.', recebimentos: 'Registre o recebimento de uma nota fiscal.', saldo: 'Consulte os lotes e os locais da unidade selecionada.' };
 
-export function StockPanel({ api, stock, categories, measures, suppliers, page, onNavigate, initialUnit, onUnitChange, onSignOut, userName }: {
+export function StockPanel({ api, stock, categories, measures, suppliers, calendar, page, onNavigate, initialUnit, onUnitChange, onSignOut, userName }: {
+  calendar: CalendarApi;
   suppliers: SupplierApi;
   measures: MeasureApi;
   userName: string;
@@ -51,7 +54,7 @@ export function StockPanel({ api, stock, categories, measures, suppliers, page, 
     let active = true;
     onUnitChange(unit);
     setContext(undefined); setLoading(true); setError('');
-    if (page === 'inicio' || page === 'conta') { setLoading(false); return; }
+    if (page === 'inicio' || page === 'conta' || page === 'calendario') { setLoading(false); return; }
     void stock.context(unit).then(data => { if (active) { setContext(data); setLoading(false); } })
       .catch(err => { if (active) { setError(stockError(err)); setLoading(false); } });
     return () => { active = false; };
@@ -85,6 +88,7 @@ export function StockPanel({ api, stock, categories, measures, suppliers, page, 
       {!loading && !context && error && <button onClick={() => setRetry(value => value + 1)}>Tentar novamente</button>}
       {unitsLoaded && !loading && units.some(item => item.id === unit) && page === 'inicio' && <HomePanel key={unit} api={stock} unit={unit} name={userName} onNavigate={onNavigate} />}
       {unitsLoaded && !loading && units.some(item => item.id === unit) && page === 'conta' && <AccountPanel name={userName} />}
+      {unitsLoaded && !loading && units.some(item => item.id === unit) && page === 'calendario' && <Suspense fallback={<p role="status">Carregando calendário…</p>}><CalendarPanel key={unit} api={calendar} unit={unit} onDirty={setDirty} onBusy={setBusy} /></Suspense>}
       {context && !loading && <>
         {page === 'fornecedores' && <Suspense fallback={<p role="status">Carregando fornecedores…</p>}><SupplierPanel key={unit} api={suppliers} unit={unit} onDirty={setDirty} onBusy={setBusy} /></Suspense>}
         {page === 'medidas' && <Suspense fallback={<p role="status">Carregando medidas…</p>}><MeasurePanel key={unit} api={measures} unit={unit} onDirty={setDirty} onBusy={setBusy} /></Suspense>}

@@ -27,7 +27,7 @@ before(async () => {
     insert into erp.perfil(codigo) values ('ESTOQUISTA'),('GESTOR_UNIDADE'),('AUDITOR'),('NUTRICIONISTA');
     insert into erp.perfil_permissao(perfil_id,permissao) values
       (1,'PRODUTO_LER'),(1,'PRODUTO_GERIR'),(1,'ESTOQUE_LER'),(1,'RECEBIMENTO_GERIR'),
-      (2,'PRODUTO_LER'),(2,'PRODUTO_GERIR'),(2,'PRODUTO_CICLO_VIDA'),(2,'ESTOQUE_LER'),(2,'RECEBIMENTO_APROVAR_DIVERGENCIA'),
+      (2,'PRODUTO_LER'),(2,'PRODUTO_GERIR'),(2,'PRODUTO_CICLO_VIDA'),(2,'CALENDARIO_EDITAR'),(4,'CALENDARIO_EDITAR'),(3,'CONFIGURACAO_LER'),(2,'ESTOQUE_LER'),(2,'RECEBIMENTO_APROVAR_DIVERGENCIA'),
       (1,'FORNECEDOR_EDITAR'),(2,'FORNECEDOR_EDITAR'),(2,'FORNECEDOR_CICLO_VIDA'),(1,'MEDIDA_EDITAR'),(2,'MEDIDA_EDITAR'),(2,'MEDIDA_CICLO_VIDA'),(1,'CATEGORIA_EDITAR'),(2,'CATEGORIA_EDITAR'),(2,'CATEGORIA_CICLO_VIDA'),(3,'PRODUTO_LER'),(3,'ESTOQUE_LER'),(4,'CONFIGURACAO_EDITAR');
     insert into erp.usuario(id,perfil_id,nome,status) values
       ('${uid(1)}',1,'Estoquista sintético A','ATIVO'),('${uid(2)}',1,'Estoquista sintético B','ATIVO'),
@@ -185,6 +185,38 @@ test('categorias: falha de auditoria desfaz edição/exclusão e DML direto é n
 }));
 
 const linkInput = (p, extra = {}) => ({ id: p.id, revisao: p.revisao, estoque_minimo: '5.000001', estoque_maximo: '20', ponto_reposicao: null, ...extra });
+const calendarMeal=(extra={})=>({tipo:'ALMOCO',inicio:'11:00',fim:'14:00',capacidade:null,...extra});
+const calendarInput=(extra={})=>({dias_semana:[1,2,3,4,5],atende_feriados:false,refeicoes:[calendarMeal()],excecoes:[],revisao:null,motivo:'Configuração sintética do calendário',...extra});
+async function calendar(action,data={},unit=1,client=db){return(await client.query('select erp.calendario_operacao($1,$2,$3::jsonb) result',[unit,action,JSON.stringify(data)])).rows[0].result;}
+async function calendarRejects(action,data,code='PT422',unit=1){await db.exec('savepoint calendar_error');await assert.rejects(()=>calendar(action,data,unit),{code});await db.exec('rollback to savepoint calendar_error');}
+test('calendário: ausente é null, gestor/nutricionista salvam com revisão e auditoria',async()=>actor(4,async()=>{
+ assert.equal((await calendar('ler')).calendario,null);const first=(await calendar('salvar',calendarInput())).calendario;assert.equal(first.revisao,'1');assert.deepEqual(first.dias_semana,[1,2,3,4,5]);assert.equal(first.refeicoes[0].capacidade,null);
+ await become(7);const second=(await calendar('salvar',calendarInput({revisao:'1',atende_feriados:true}))).calendario;assert.equal(second.revisao,'2');await calendarRejects('salvar',calendarInput(),'PT412');await calendarRejects('salvar',calendarInput({revisao:'1'}),'PT412');
+ await db.exec('reset role');const audit=(await db.query("select antes,depois from erp.auditoria_estoque where acao='calendario_salvar' order by id")).rows;assert.equal(audit.length,2);assert.equal(audit[0].antes,null);assert.equal(audit[1].depois.configuracao.revisao,'2');assert.ok(audit[1].depois.motivo);
+}));
+test('calendário: datas especiais estruturadas e normalizadas sem perder capacidade',async()=>actor(4,async()=>{
+ const exceptions=[{data:'2027-01-01',tipo:'FERIADO',descricao:'Feriado sintético',refeicoes:[]},{data:'2027-01-02',tipo:'FECHADO',descricao:'Fechamento sintético',refeicoes:[]},{data:'2027-01-03',tipo:'ESPECIAL',descricao:'Evento sintético',refeicoes:[calendarMeal({inicio:'08:00',fim:'10:00',capacidade:2147483647})]}];
+ const s=await calendar('salvar',calendarInput({excecoes:exceptions}));assert.deepEqual(s.calendario.excecoes,exceptions);assert.equal((await calendar('ler')).calendario.excecoes[2].refeicoes[0].capacidade,2147483647);
+ await calendar('salvar',calendarInput({revisao:'1',excecoes:[]}));await db.exec('reset role');assert.equal((await db.query('select count(*)::int n from erp.calendario_refeicao_especial')).rows[0].n,0);
+}));
+test('calendário: leitor sem escrita, unidade alheia, estoque sem leitura e DML/helpers negados',async()=>actor(3,async()=>{
+ assert.equal((await calendar('ler')).pode_editar,false);await calendarRejects('salvar',calendarInput(),'PT403');await calendarRejects('ler',{},'PT404',2);await become(1);await calendarRejects('ler',{},'PT403');
+ await sqlRejects('insert into erp.calendario_unidade values(1,1,false)');await sqlRejects('delete from erp.calendario_excecao');await sqlRejects('select erp_private.calendario_json(1)');
+}));
+test('calendário: validação estrita, duplicidades e filhos inválidos não deixam estado parcial',async()=>actor(4,async()=>{
+ for(const extra of [{atende_feriados:'false'},{dias_semana:[1,1]},{dias_semana:['1']},{dias_semana:[7]},{revisao:1},{motivo:'x'},{ator_id:uid(1)},{refeicoes:[calendarMeal({inicio:'14:00',fim:'11:00'})]},{refeicoes:[calendarMeal({inicio:'24:00'})]},{refeicoes:[calendarMeal({capacidade:'100'})]},{refeicoes:[calendarMeal({capacidade:0})]},{refeicoes:[calendarMeal(),calendarMeal()]},{excecoes:[{data:'2027-02-30',tipo:'FECHADO',descricao:'Inválida',refeicoes:[]}]},{excecoes:[{data:'2027-01-01',tipo:'ESPECIAL',descricao:'Vazia',refeicoes:[]}]}]){await calendarRejects('salvar',calendarInput(extra));assert.equal((await calendar('ler')).calendario,null);}
+}));
+test('calendário: auditoria falha e reverte o agregado; estoque e usuários permanecem iguais',async()=>actor(4,async()=>{
+ const p=await create();await calendar('salvar',calendarInput());await db.exec('reset role');await db.exec("create function erp_private.falha_calendario() returns trigger language plpgsql as $$ begin if new.acao='calendario_salvar' then raise exception 'Falha induzida';end if;return new;end $$;create trigger falha_calendario before insert on erp.auditoria_estoque for each row execute function erp_private.falha_calendario()");await become(4);
+ await calendarRejects('salvar',calendarInput({revisao:'1',dias_semana:[],refeicoes:[]}),'P0001');assert.equal((await calendar('ler')).calendario.revisao,'1');assert.equal((await rpc('produtos')).produtos[0].id,p.id);assert.equal((await rpc('saldos')).saldos.length,0);
+}));
+test('calendário: RPC direta rejeita motivo/descrição de espaços ou tabulações sem criar agregado',async()=>actor(4,async()=>{
+ for(const value of ['\t \t','\uFEFF\u00A0\t','\u2000\u2028\u3000']){
+  await calendarRejects('salvar',calendarInput({motivo:value}));
+  await calendarRejects('salvar',calendarInput({excecoes:[{data:'2027-01-01',tipo:'FECHADO',descricao:value,refeicoes:[]}]}));
+ }
+ assert.equal((await calendar('ler')).calendario,null);
+}));
 
 async function cycle(action,data,unit=1,client=db){return(await client.query('select erp.produto_ciclo_operacao($1,$2,$3::jsonb) result',[unit,action,JSON.stringify(data)])).rows[0].result;}
 async function cycleRejects(action,data,code,unit=1){await db.exec('savepoint cycle_error');await assert.rejects(()=>cycle(action,data,unit),{code});await db.exec('rollback to savepoint cycle_error');}
@@ -251,7 +283,7 @@ async function confirm(id, n = 1) { return (await rpc('entrada_confirmar', { id,
 
 test('schema novo tem RLS, executor restrito e nenhum DML cliente ou USAGE auth', async () => {
   const rows = (await db.query("select relname,relrowsecurity from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname='erp' and c.relkind='r'")).rows;
-  assert.equal(rows.length, 20); assert.ok(rows.every((r) => r.relrowsecurity));
+  assert.equal(rows.length, 25); assert.ok(rows.every((r) => r.relrowsecurity));
   const role = (await db.query("select rolcanlogin,rolsuper,rolbypassrls,rolcreatedb,rolcreaterole from pg_roles where rolname='erp_stock_writer'")).rows[0];
   assert.ok(Object.values(role).every((v) => v === false));
   const grants = (await db.query("select has_schema_privilege('erp_stock_writer','auth','USAGE') as auth_usage,pg_has_role('authenticated','erp_stock_writer','MEMBER') as member,has_schema_privilege('erp_stock_writer','erp_private','CREATE') as can_create")).rows[0];
@@ -578,6 +610,14 @@ test('medidas: duas conexões revalidam revogação e vínculo concorrente imped
  }
 });
 
+test('calendário: duas conexões revalidam permissão/revisão após lock e não sobrescrevem', {skip:!process.env.DATABASE_STOCK_TEST_URL,timeout:20000},async()=>{
+ const a=new pg.Client({connectionString:process.env.DATABASE_STOCK_TEST_URL}),b=new pg.Client({connectionString:process.env.DATABASE_STOCK_TEST_URL});await Promise.all([a.connect(),b.connect()]);let pending;const pid=(await b.query('select pg_backend_pid() pid')).rows[0].pid;
+ async function waitLock(){for(let i=0;i<200;i++){if((await db.query('select wait_event_type from pg_stat_activity where pid=$1',[pid])).rows[0]?.wait_event_type==='Lock')return;await new Promise(resolve=>setTimeout(resolve,25));}throw Error('Expected calendar lock');}
+ async function start(){await a.query('begin');await a.query("select pg_advisory_xact_lock(hashtextextended('erp.calendario:1',0))");await b.query('begin');await b.query("select set_config('request.jwt.claim.sub',$1,true)",[uid(4)]);await b.query('set local role authenticated');pending=calendar('salvar',calendarInput(),1,b).then(value=>({value}),error=>({error}));await waitLock();}
+ try{await start();await db.exec("delete from erp.perfil_permissao where perfil_id=2 and permissao='CALENDARIO_EDITAR'");await a.query('commit');assert.equal((await pending).error?.code,'PT403');await b.query('rollback');await db.exec("insert into erp.perfil_permissao values(2,'CALENDARIO_EDITAR')");
+ await start();await a.query("select set_config('request.jwt.claim.sub',$1,true)",[uid(7)]);await a.query('set local role authenticated');await calendar('salvar',calendarInput({atende_feriados:true}),1,a);await a.query('commit');assert.equal((await pending).error?.code,'PT412');await b.query('rollback');
+ }finally{await a.query('rollback').catch(()=>{});if(pending)await pending;await b.query('rollback').catch(()=>{});await db.exec('reset role');await db.exec("insert into erp.perfil_permissao values(2,'CALENDARIO_EDITAR') on conflict do nothing");await Promise.all([a.end(),b.end()]);}
+});
 test('produto ciclo: concorrência revalida X e impede exclusão diante de novo vínculo/recebimento', {skip:!process.env.DATABASE_STOCK_TEST_URL,timeout:25000},async()=>{
  const a=new pg.Client({connectionString:process.env.DATABASE_STOCK_TEST_URL}),b=new pg.Client({connectionString:process.env.DATABASE_STOCK_TEST_URL});await Promise.all([a.connect(),b.connect()]);let pending;
  const pid=(await b.query('select pg_backend_pid() pid')).rows[0].pid;

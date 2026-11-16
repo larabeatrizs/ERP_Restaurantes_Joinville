@@ -1,0 +1,28 @@
+{
+  "executedAt": "2026-11-16T19:36:43.528Z",
+  "origin": "https://erp-joinville-staging.erp-restaurantes-joinville.workers.dev",
+  "mocked": false,
+  "completed": true,
+  "phase": "complete",
+  "scenarios": [
+    {
+      "name": "API two independent calendars, weekday/holiday/closure/special resolution and negative HTTP/RLS/revision/payload cases",
+      "passed": true
+    },
+    {
+      "name": "UI revision/reason/cancel/save, fresh readonly session, date lookup, filtered formula-safe CSV and 360/768/1280",
+      "passed": true
+    }
+  ],
+  "journeyRuntimeCommit": "111b2742056e468fbf3c3a01b75861b69e24c91c",
+  "journeyCloudflareVersion": "f8d53caa-08cb-4e40-9dcd-9f8673f95829",
+  "publishedRuntimeCommit": "7e0a69e172d08de009b6593f1e6a56b633a5dd12",
+  "publishedCloudflareVersion": "80b033cb-5f9a-4933-adb9-480512c3f810",
+  "additionalChecks": {
+    "directRpcWhitespaceDenied": true,
+    "calendarUnchangedAfterNegativeRpc": true,
+    "readOnlyCaptureNoPut": true,
+    "readerCapacityStill75": true
+  },
+  "captures": "Capturas finais recolhidas em leitura; a prévia de capacidade 80 não foi salva. A jornada principal havia confirmado capacidade 75."
+}

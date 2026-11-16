@@ -18,12 +18,17 @@ import type { MeasureSessionFactory } from './repositories/measure-repository.ts
 import { supplierController } from './controllers/supplier-controller.ts';
 import { createSupabaseSupplierSession } from './repositories/supabase-suppliers.ts';
 import type { SupplierSessionFactory } from './repositories/supplier-repository.ts';
+import { calendarController } from './controllers/calendar-controller.ts';
+import { createCalendarSession } from './repositories/supabase-calendar.ts';
+import type { CalendarSessionFactory } from './repositories/calendar-repository.ts';
 
-export function createApp(factory: SessionFactory = createSupabaseSession, stockFactory: StockSessionFactory = createSupabaseStockSession, categoryFactory: CategorySessionFactory = createSupabaseCategorySession, loginFactory: LoginFactory = createLoginRepository, measureFactory: MeasureSessionFactory = createSupabaseMeasureSession, supplierFactory: SupplierSessionFactory = createSupabaseSupplierSession) {
+export function createApp(factory: SessionFactory = createSupabaseSession, stockFactory: StockSessionFactory = createSupabaseStockSession, categoryFactory: CategorySessionFactory = createSupabaseCategorySession, loginFactory: LoginFactory = createLoginRepository, measureFactory: MeasureSessionFactory = createSupabaseMeasureSession, supplierFactory: SupplierSessionFactory = createSupabaseSupplierSession, calendarFactory: CalendarSessionFactory = createCalendarSession) {
   return {
     async fetch(request: Request, env: RuntimeEnv = {}): Promise<Response> {
       try {
         const path = new URL(request.url).pathname;
+        const calendar = /^\/api\/unidades\/([^/]+)\/calendario(?:\/(funcionamento))?$/.exec(path);
+        if (calendar?.[1]) return await calendarController(request, env, calendar[1], !!calendar[2], calendarFactory);
         const supplier = /^\/api\/unidades\/([^/]+)\/fornecedores(?:\/(exportar|[^/]+(?:\/status)?))?$/.exec(path);
         if (supplier?.[1]) return await supplierController(request, env, supplier[1], supplier[2] ?? '', supplierFactory);
         const measure = /^\/api\/unidades\/([^/]+)\/medidas(?:\/(exportar|[^/]+(?:\/status)?))?$/.exec(path);
