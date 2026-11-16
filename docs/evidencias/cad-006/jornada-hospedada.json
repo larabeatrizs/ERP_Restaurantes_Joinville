@@ -1,0 +1,24 @@
+{
+  "executedAt": "2026-11-16T17:10:27.724Z",
+  "origin": "https://erp-joinville-staging.erp-restaurantes-joinville.workers.dev",
+  "mocked": false,
+  "completed": true,
+  "phase": "complete",
+  "scenarios": [
+    {
+      "name": "API eligible lifecycle, revision, permission/bypass/unit/payload denials",
+      "passed": true
+    },
+    {
+      "name": "Prior history and another unit block deletion; global inactive/active visible in both units",
+      "passed": true
+    },
+    {
+      "name": "Real UI create/cancel/status/delete, blocked shared record, fresh readonly session and 360/768/1280",
+      "passed": true
+    }
+  ],
+  "runtimeCommit": "752307dec201cadbc6743fc50c0b4a5b5dacd081",
+  "cloudflareVersion": "92d3cc5c-70e8-452e-a88f-7b1f12c5370c",
+  "captures": "Recolhidas em consulta readonly após aguardar listagem filtrada; sem repetir fixtures."
+}
