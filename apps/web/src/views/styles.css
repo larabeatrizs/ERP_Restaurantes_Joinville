@@ -471,6 +471,12 @@ thead {
 .report-preview { width: min(1200px, calc(100vw - 32px)); max-width: calc(100vw - 32px); max-height: calc(100dvh - 32px); overflow: auto; }
 .report-preview p { overflow-wrap: anywhere; }
 .report-preview table { table-layout: auto; }
+.calendar-editor { border: 0; padding: 0; margin: 0; min-width: 0; }
+.calendar-days { display: flex; flex-wrap: wrap; gap: 14px; margin: 24px 0; }
+.calendar-meal { margin: 16px 0; }
+.calendar-meal .row { margin-top: 12px; }
+.calendar-comparison { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; }
+.calendar-comparison p { white-space: pre-line; overflow-wrap: anywhere; }
 .report-actions { flex-wrap: wrap; margin-bottom: 20px; }
 @media print {
   @page { size: landscape; margin: 12mm; }

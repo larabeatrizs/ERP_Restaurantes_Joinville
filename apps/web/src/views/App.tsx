@@ -1,6 +1,7 @@
 import { CategoryApi } from '../services/category-api.ts';
 import { MeasureApi } from '../services/measure-api.ts';
 import { SupplierApi } from '../services/supplier-api.ts';
+import { CalendarApi } from '../services/calendar-api.ts';
 import { useEffect, useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
 import type { Session } from '@supabase/supabase-js';
@@ -36,6 +37,7 @@ export function App() {
   const categories = useMemo(() => new CategoryApi(async () => (await auth?.getSession())?.data.session?.access_token), []);
   const measures = useMemo(() => new MeasureApi(async () => (await auth?.getSession())?.data.session?.access_token), []);
   const suppliers = useMemo(() => new SupplierApi(async () => (await auth?.getSession())?.data.session?.access_token), []);
+  const calendar = useMemo(() => new CalendarApi(async () => (await auth?.getSession())?.data.session?.access_token), []);
   const stock = useMemo(() => new StockApi(async () => (await auth?.getSession())?.data.session?.access_token), []);
   useEffect(() => {
     if (!auth) return;
@@ -91,6 +93,7 @@ export function App() {
   if (session)
     return (
       <Workspace
+        calendar={calendar}
         suppliers={suppliers}
         measures={measures}
         initialUnit={unit!.id}
