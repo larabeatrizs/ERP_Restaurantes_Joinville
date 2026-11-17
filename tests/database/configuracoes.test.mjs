@@ -115,6 +115,7 @@ test('identidade: migration não cadastra login nem concede administração aos 
   assert.equal((await db.query("select count(*)::int n from erp.perfil_permissao where permissao like 'USUARIO_%'")).rows[0].n, 0);
   const role = (await db.query("select rolcanlogin,rolsuper,rolbypassrls,rolcreaterole,rolcreatedb,pg_has_role('authenticated',oid,'MEMBER') member from pg_roles where rolname='erp_identity_writer'")).rows[0];
   assert.ok(Object.values(role).every(v => v === false));
+  assert.equal((await db.query("select has_schema_privilege('erp_identity_writer','erp_private','CREATE') value")).rows[0].value, false);
   assert.equal((await db.query("select has_table_privilege('erp_identity_writer','auth.users','SELECT') value")).rows[0].value, false);
 });
 test('identidade: criação/alteração auditadas, reexecução sem mudança e revisão obsoleta sem escrita', async () => identityTransaction(async () => {

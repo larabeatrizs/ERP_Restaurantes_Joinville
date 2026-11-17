@@ -75,7 +75,10 @@ begin
  return (select jsonb_build_object('login',login,'revisao',revisao::text,'alterado',true) from erp_private.usuario_login where usuario_id=p_usuario);
 exception when unique_violation then raise exception 'Nome de login indisponível' using errcode='PT409';
 end $$;
+-- Hosted postgres is not a superuser: the future owner temporarily needs CREATE for ownership transfer.
+grant create on schema erp_private to erp_identity_writer;
 alter function erp_private.usuario_login_salvar(uuid,text,bigint,text) owner to erp_identity_writer;
+revoke create on schema erp_private from erp_identity_writer;
 revoke all on function erp_private.usuario_login_salvar(uuid,text,bigint,text) from public,anon,authenticated;
 revoke erp_identity_writer from current_user;
 notify pgrst,'reload schema';
