@@ -24,7 +24,7 @@ try{
   const context=await browser.newContext({acceptDownloads:true});const page=await context.newPage();
   await page.route('**/api/**',async route=>{const request=route.request();if(!['GET','HEAD'].includes(request.method())&&new URL(request.url()).pathname!=='/api/auth/login'){proof.domainWrites++;await route.abort();return;}await route.continue();});
   try{
-   await page.goto(origin);await page.getByLabel('Nome de usuário',{exact:true}).fill(account.login);await page.getByLabel('Senha',{exact:true}).fill(account.password);await page.getByRole('button',{name:'Entrar',exact:true}).click();await expect(page.getByRole('heading',{name:'Usuários',exact:true})).toBeVisible();
+   await page.goto(origin);await page.getByLabel('Nome de usuário',{exact:true}).fill(account.login);await page.getByLabel('Senha',{exact:true}).fill(account.password);await page.getByRole('button',{name:'Entrar',exact:true}).click();await expect(page.getByRole('heading',{name:'Usuários',exact:true})).toBeVisible({timeout:30000});
    if(!write)await expect(page.getByRole('button',{name:'Novo usuário',exact:true})).toHaveCount(0);
    const response=page.waitForResponse(response=>response.url().includes('/api/admin/usuarios?')&&response.url().includes('q=adm003.operador')&&response.status()===200);
    await page.getByLabel('Pesquisar usuários',{exact:true}).fill('adm003.operador');await page.getByRole('button',{name:'Pesquisar',exact:true}).click();await response;

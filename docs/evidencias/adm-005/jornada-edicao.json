@@ -1,0 +1,27 @@
+{
+  "executedAt": "2026-11-17T17:27:02.470Z",
+  "origin": "https://erp-joinville-configurador.erp-restaurantes-joinville.workers.dev",
+  "mocked": false,
+  "completed": true,
+  "fixtureRestored": true,
+  "scenarios": [
+    {
+      "name": "ADMIN altera somente fixture; token anterior vê novos vínculos e perde a unidade removida; revisão obsoleta e operador negados",
+      "passed": true
+    },
+    {
+      "name": "Próprio ADMIN sintético não rebaixa seu perfil",
+      "passed": true
+    },
+    {
+      "name": "View real restaura nome/perfil/vínculos da fixture com auditoria; foco/360/768/1280 e confirmação preservados",
+      "passed": true
+    },
+    {
+      "name": "Identidade/email e senha sintéticas anteriores continuam válidas; nenhum reset/criação/convite",
+      "passed": true
+    }
+  ],
+  "removedUnitStatus": 404,
+  "forgedRpcStatus": 403
+}
