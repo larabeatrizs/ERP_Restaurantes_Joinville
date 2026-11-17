@@ -36,6 +36,8 @@ Próxima dependência: publicação controlada de View/Worker na Cloudflare do *
 
 ## Continuidade em 16/11/2026
 
+Continuidade ADM-006/issue #50: [ativação/inativação](../fundacao/ADM-006-SITUACAO-USUARIOS.md) para contas com primeiro acesso concluído, com capacidade X separada de I, revisão/motivo/auditoria e o mesmo lock administrativo da edição. Proteger próprio acesso/último ADMIN e comprovar negação com token anterior; não liberar BLOQUEADO/convite nem alterar identidade. Sem exclusão/reset/novo ambiente. Demais controles RF-008, SMTP/rede e carga final seguem próprios.
+
 Próxima continuidade ADM-005/issue #48: [edição e CSV administrativo](../fundacao/ADM-005-CONSULTA-E-EDICAO.md). A responsável confirmou regras de proteção de autogestão/último ADMIN. Seguir C2/C3/C4 com revisão, motivo, revalidação após locks, auditoria e concorrência antes de publicar mudanças de perfil/vínculos. CSV reutiliza leitura atual e não entrega arquivo parcial após falha/revogação. Preservar login/email/senha/status e conta pessoal; inativação/identidade e demais gates seguem recortes próprios.
 
 Continuidade administrativa autorizada em 17/11: [ADM-004/issue #46](../fundacao/ADM-004-CONFIGURADOR.md), Configurador em outra origem Cloudflare do mesmo staging. Entrada global sem selecionar unidade operacional, APIs administrativas removidas da origem ERP e operações ausentes da origem Configurador. Preservar Auth/contas/permissões existentes, sem banco/ambiente adicional. RF-008 integral, SMTP e proteção de rede seguem seus gates; não confundir noindex com autorização nem origem separada com VPN.

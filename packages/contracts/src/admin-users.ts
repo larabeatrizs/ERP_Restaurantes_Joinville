@@ -109,3 +109,18 @@ export function isAdminUserDetail(value: unknown): value is AdminUserDetail {
     ||!['ATIVO','INATIVO','BLOQUEADO'].includes(String(value.status))||typeof value.primeiro_acesso!=='boolean'||typeof value.proprio!=='boolean'||typeof value.pode_editar!=='boolean')return false;
   return validateAdminUserEdit({nome:value.nome,perfil:value.perfil,unidades:value.unidades,revisao:value.revisao,motivo:'Validar resposta'}).ok;
 }
+export interface AdminUserSituationChange { status:'ATIVO'|'INATIVO'; revisao:string; motivo:string; }
+export type AdminUserSituationValidation={ok:true;value:AdminUserSituationChange}|{ok:false;field:keyof AdminUserSituationChange|'formulario';message:string};
+export function validateAdminUserSituation(value:unknown):AdminUserSituationValidation{
+  if(!isRecord(value)||!hasExactFields(value,['status','revisao','motivo']))return{ok:false,field:'formulario',message:'Informe somente situação, revisão e motivo.'};
+  if(value.status!=='ATIVO'&&value.status!=='INATIVO')return{ok:false,field:'status',message:'Selecione ativar ou inativar.'};
+  if(!isStockId(value.revisao))return{ok:false,field:'revisao',message:'Recarregue o cadastro antes de alterar a situação.'};
+  if(!text(value.motivo,500)||value.motivo.trim().length<3)return{ok:false,field:'motivo',message:'Informe um motivo de 3 a 500 caracteres.'};
+  return{ok:true,value:{status:value.status,revisao:value.revisao,motivo:value.motivo.trim()}};
+}
+export interface AdminUserSituation {id:string;nome:string;status:AdminUserStatus;revisao:string;primeiro_acesso:boolean;proprio:boolean;pode_alterar:boolean;}
+export function isAdminUserSituation(value:unknown):value is AdminUserSituation{
+  return isRecord(value)&&hasExactFields(value,['id','nome','status','revisao','primeiro_acesso','proprio','pode_alterar'])&&text(value.nome,200)
+    &&typeof value.id==='string'&&/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(value.id)
+    &&['ATIVO','INATIVO','BLOQUEADO'].includes(String(value.status))&&isStockId(value.revisao)&&typeof value.primeiro_acesso==='boolean'&&typeof value.proprio==='boolean'&&typeof value.pode_alterar==='boolean';
+}

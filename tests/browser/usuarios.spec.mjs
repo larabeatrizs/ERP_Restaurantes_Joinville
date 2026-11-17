@@ -3,9 +3,9 @@ import { readFile } from 'node:fs/promises';
 const user={id:'00000000-0000-4000-8000-000000000001',aud:'authenticated',role:'authenticated',email:'admin@example.invalid'};
 const session={access_token:'eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ0ZXN0ZSJ9.ficticio',refresh_token:'ficticio',token_type:'bearer',expires_in:3600,user};
 const units=[{id:'1',codigo:'RP1',nome:'Unidade A'},{id:'2',codigo:'RP2',nome:'Unidade B'}];
-async function setup(page,{allowed=true,write=true,conflict=false,seed=[],failPage=false,editConflict=false}={}){
+async function setup(page,{allowed=true,write=true,conflict=false,seed=[],failPage=false,editConflict=false,cycle=write,statusConflict=false}={}){
  await page.addInitScript(()=>Object.defineProperty(navigator,'clipboard',{configurable:true,value:{writeText:async()=>{}}}));
- const submissions=[],requests=[],reissues=[],edits=[];const rows=structuredClone(seed);const revisions=new Map();
+ const submissions=[],requests=[],reissues=[],edits=[],situations=[];const rows=structuredClone(seed);const revisions=new Map();
  await page.route('https://auth-ficticio.supabase.co/**',route=>route.fulfill({json:route.request().url().includes('/token')?session:user}));
  await page.route('**/api/**',async route=>{
   const req=route.request(),url=new URL(req.url());requests.push(url.pathname);
@@ -14,6 +14,11 @@ async function setup(page,{allowed=true,write=true,conflict=false,seed=[],failPa
   if(url.pathname==='/api/me')return route.fulfill({json:{nome:'Administrador sintético',...(allowed?{administracao:true}:{})}});
   if(url.pathname==='/api/unidades')return route.fulfill({json:{unidades:units}});
   if(url.pathname.endsWith('/primeiro-acesso')){reissues.push(url.pathname);return route.fulfill({json:{criado:false,acesso:'https://erp-joinville-staging.erp-restaurantes-joinville.workers.dev/#definir-senha=token-reemitido-12345678901234567890'}});}
+  const situation=/^\/api\/admin\/usuarios\/([a-f0-9-]{36})\/situacao$/.exec(url.pathname);
+  if(situation){const selected=rows.find(row=>row.id===situation[1]);if(!selected)return route.fulfill({status:404,json:{error:{code:'NOT_FOUND'}}});
+   if(req.method()==='PATCH'){const value=req.postDataJSON();situations.push(value);if(statusConflict)return route.fulfill({status:412,json:{error:{code:'CONFLICT'}}});Object.assign(selected,{status:value.status});revisions.set(selected.id,String(Number(revisions.get(selected.id)??'1')+1));}
+   return route.fulfill({json:{id:selected.id,nome:selected.nome,status:selected.status,primeiro_acesso:selected.primeiro_acesso,revisao:revisions.get(selected.id)??'1',proprio:selected.id===user.id,pode_alterar:cycle&&selected.id!==user.id&&!selected.primeiro_acesso&&selected.status!=='BLOQUEADO'}});
+  }
   const edit=/^\/api\/admin\/usuarios\/([a-f0-9-]{36})$/.exec(url.pathname);
   if(edit){const selected=rows.find(row=>row.id===edit[1]);if(!selected)return route.fulfill({status:404,json:{error:{code:'NOT_FOUND'}}});
    if(req.method()==='PATCH'){const value=req.postDataJSON();edits.push(value);if(editConflict)return route.fulfill({status:412,json:{error:{code:'CONFLICT'}}});if(!write)return route.fulfill({status:403,json:{error:{code:'DENIED'}}});Object.assign(selected,{nome:value.nome,perfil:value.perfil,unidades:value.unidades});revisions.set(selected.id,String(Number(revisions.get(selected.id)??'1')+1));}
@@ -39,7 +44,7 @@ async function setup(page,{allowed=true,write=true,conflict=false,seed=[],failPa
  if(allowed){await expect(page.getByRole('heading',{name:'Usuários',exact:true})).toBeVisible();}
  await expect(page.getByLabel('Unidade de acesso',{exact:true})).toHaveCount(0);
  expect(requests.includes('/api/unidades')).toBe(false);
- return {submissions,requests,reissues,edits};
+ return {submissions,requests,reissues,edits,situations};
 }
 async function fill(page){await page.getByRole('button',{name:'Novo usuário',exact:true}).click();await page.getByLabel('Nome de login *',{exact:true}).fill(' NOVO.USUARIO ');await page.getByLabel('Nome de identificação *',{exact:true}).fill(' Pessoa sintética ');await page.getByLabel('Email *',{exact:true}).fill('NOVO@EXAMPLE.INVALID');await page.getByRole('checkbox',{name:'RP2 — Unidade B',exact:true}).check();await page.getByLabel('Motivo do cadastro *',{exact:true}).fill(' Cadastro sintético ');}
 test('usuários: administrador inclui com filiais e recebe link protegido; tabela mostra primeiro acesso',async({page})=>{
@@ -102,4 +107,17 @@ test('usuários edição: consultor visualiza sem salvar',async({page})=>{
 });
 test('usuários edição: próprio ADMIN corrige nome mantendo perfil e vínculos protegidos',async({page})=>{
  const state=await setup(page,{seed:[{...reportRows()[0],id:user.id,perfil:'ADMIN'}]});await page.getByRole('button',{name:'Abrir cadastro de Pessoa 1',exact:true}).click();await expect(page.getByLabel('Perfil *',{exact:true})).toBeDisabled();await expect(page.getByRole('checkbox',{name:'RP2 — Unidade B',exact:true})).toBeDisabled();await page.getByLabel('Nome de identificação *',{exact:true}).fill('Nome próprio');await page.getByLabel('Motivo da alteração *',{exact:true}).fill('Corrigir identificação');page.once('dialog',dialog=>dialog.accept());await page.getByRole('button',{name:'Salvar alterações',exact:true}).click();await expect(page.getByRole('status').filter({hasText:'Cadastro atualizado'})).toBeVisible();expect(state.edits[0].perfil).toBe('ADMIN');expect(state.edits[0].unidades).toEqual(['2']);
+});
+
+test('usuários situação: confirma inativação/reativação com revisão e motivo sem editar outros campos',async({page})=>{
+ const state=await setup(page,{seed:[reportRows()[0]]});await page.getByRole('button',{name:'Situação de Pessoa 1',exact:true}).click();await expect(page.getByLabel('Motivo da alteração de situação *',{exact:true})).toBeFocused();await page.getByLabel('Motivo da alteração de situação *',{exact:true}).fill('Inativação solicitada');page.once('dialog',dialog=>dialog.accept());await page.getByRole('button',{name:'Inativar usuário',exact:true}).click();await expect(page.getByRole('status').filter({hasText:'Situação atualizada'})).toBeVisible();await expect(page.getByRole('cell',{name:'Inativo',exact:true})).toBeVisible();await page.getByRole('button',{name:'Situação de Pessoa 1',exact:true}).click();await page.getByLabel('Motivo da alteração de situação *',{exact:true}).fill('Reativação solicitada');page.once('dialog',dialog=>dialog.accept());await page.getByRole('button',{name:'Reativar usuário',exact:true}).click();await expect(page.getByRole('cell',{name:'Ativo',exact:true})).toBeVisible();expect(state.situations).toEqual([{status:'INATIVO',revisao:'1',motivo:'Inativação solicitada'},{status:'ATIVO',revisao:'2',motivo:'Reativação solicitada'}]);
+});
+test('usuários situação: conflito mantém motivo e fechamento exige descarte confirmado',async({page})=>{
+ await setup(page,{seed:[reportRows()[0]],statusConflict:true});await page.getByRole('button',{name:'Situação de Pessoa 1',exact:true}).click();await page.getByLabel('Motivo da alteração de situação *',{exact:true}).fill('Motivo preservado');page.once('dialog',dialog=>dialog.accept());await page.getByRole('button',{name:'Inativar usuário',exact:true}).click();await expect(page.getByRole('alert')).toContainText('motivo foi preservado');page.once('dialog',dialog=>dialog.dismiss());await page.getByRole('button',{name:'Fechar situação',exact:true}).click();await expect(page.getByLabel('Motivo da alteração de situação *',{exact:true})).toHaveValue('Motivo preservado');page.once('dialog',dialog=>dialog.accept());await page.getByRole('button',{name:'Recarregar situação',exact:true}).click();await expect(page.getByLabel('Motivo da alteração de situação *',{exact:true})).toHaveValue('');
+});
+test('usuários situação: edição I sem X mantém somente consulta',async({page})=>{
+ await setup(page,{seed:[reportRows()[0]],cycle:false});await page.getByRole('button',{name:'Situação de Pessoa 1',exact:true}).click();await expect(page.getByText('Seu acesso permite apenas consultar esta situação.',{exact:true})).toBeVisible();await expect(page.getByRole('button',{name:'Inativar usuário',exact:true})).toHaveCount(0);
+});
+for(const variant of['proprio','pendente','bloqueado'])test(`usuários situação: ${variant} não oferece liberação indevida`,async({page})=>{
+ const seed={...reportRows()[0],...(variant==='proprio'?{id:user.id,perfil:'ADMIN'}:{status:'BLOQUEADO',primeiro_acesso:variant==='pendente'})};await setup(page,{seed:[seed]});await page.getByRole('button',{name:'Situação de Pessoa 1',exact:true}).click();await expect(page.getByText(variant==='proprio'?'Outro administrador deve alterar a situação da sua conta.':'Primeiro acesso e desbloqueio exigem um fluxo próprio. Esta ação não libera uma conta pendente ou bloqueada.',{exact:true})).toBeVisible();await expect(page.getByRole('button',{name:/^(Inativar|Reativar) usuário$/})).toHaveCount(0);
 });

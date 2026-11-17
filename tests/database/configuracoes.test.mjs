@@ -84,6 +84,7 @@ test('verificador da fundação confere RLS, grants e escritor restrito no labor
   const privileged = report.functions.filter(fn => fn.definer);
   assert.deepEqual(privileged.map(fn => [fn.schema, fn.name, fn.owner]).sort(), [
     ['erp_private', 'admin_usuario_edicao', 'erp_user_admin'],
+    ['erp_private', 'admin_usuario_situacao', 'erp_user_admin'],
     ['erp_private', 'admin_usuarios_servico', 'erp_user_admin'],
     ['erp_private', 'atualizar_configuracao', 'erp_config_writer'],
     ['erp_private', 'calendario_operacao', 'erp_stock_writer'],
@@ -105,6 +106,50 @@ const adminRpc = async (action, data={}, actor=uid(1), client=db) => (await clie
 const editRpc=async(target,data=null,actor=uid(1),client=db)=>(await client.query('select erp.admin_usuario_edicao($1,$2,$3::jsonb) result',[actor,uid(target),data===null?null:JSON.stringify(data)])).rows[0].result;
 const editDraft=(extra={})=>({nome:'Nome corrigido sintético',perfil:'ESTOQUISTA',unidades:['2'],revisao:'1',motivo:'Correção sintética',...extra});
 async function editError(target,data,code,actor=uid(1)){await db.exec('savepoint edit_error');await assert.rejects(()=>editRpc(target,data,actor),{code});await db.exec('rollback to savepoint edit_error');}
+const statusRpc=async(target,data=null,actor=uid(1),client=db)=>(await client.query('select erp.admin_usuario_situacao($1,$2,$3::jsonb) result',[actor,uid(target),data===null?null:JSON.stringify(data)])).rows[0].result;
+const statusDraft=(extra={})=>({status:'INATIVO',revisao:'1',motivo:'Inativação sintética',...extra});
+async function statusError(target,data,code,actor=uid(1)){await db.exec('savepoint status_error');await assert.rejects(()=>statusRpc(target,data,actor),{code});await db.exec('rollback to savepoint status_error');}
+async function statusTransaction(callback){await adminTransaction(async()=>{await db.exec("insert into erp.perfil_permissao select id,'USUARIO_CICLO_VIDA' from erp.perfil where codigo='ADMIN' on conflict do nothing");await callback();});}
+test('situação: seed real concede X somente ao ADMIN e é idempotente',async()=>adminTransaction(async()=>{
+ const files=await readdir(new URL('../../supabase/migrations/',import.meta.url));const file=files.find(file=>file.endsWith('_situacao_administrativa_usuarios.sql'));assert.ok(file);const source=await readFile(new URL(`../../supabase/migrations/${file}`,import.meta.url),'utf8');const seed=source.split('-- BEGIN CAPABILITY SEED')[1]?.split('-- END CAPABILITY SEED')[0];assert.ok(seed);await db.exec(seed);await db.exec(seed);assert.deepEqual((await db.query("select p.codigo from erp.perfil_permissao pp join erp.perfil p on p.id=pp.perfil_id where pp.permissao='USUARIO_CICLO_VIDA'")).rows,[{codigo:'ADMIN'}]);
+}));
+test('situação: I não concede X e clientes comuns não executam RPC',async()=>{
+ for(const role of['anon','authenticated'])await transaction(1,async()=>{await expectSqlError(`select erp.admin_usuario_situacao('${uid(1)}','${uid(3)}',null)`,'42501');},role);
+ await adminTransaction(async()=>{assert.equal((await statusRpc(3)).pode_alterar,false);await statusError(3,statusDraft(),'PT403');});
+ await statusTransaction(async()=>{await db.exec("delete from erp.perfil_permissao where permissao='USUARIO_GERIR'");assert.equal((await statusRpc(3,statusDraft())).status,'INATIVO');});
+});
+test('situação: inativa/reativa sem mudar perfil/vínculos; revisão e auditoria são coerentes',async()=>statusTransaction(async()=>{
+ const before=(await db.query('select (to_jsonb(u)-array[\'status\',\'revisao\']) data from erp.usuario u where id=$1',[uid(3)])).rows[0].data;
+ const inactive=await statusRpc(3,statusDraft());assert.equal(inactive.status,'INATIVO');assert.equal(inactive.revisao,'2');await statusError(3,statusDraft(),'PT412');
+ await adminError('validar_login',{usuario_id:uid(3),login:'legado.teste',email:'legacy@example.invalid'},'PT403',null);
+ await db.query("select set_config('request.jwt.claim.sub',$1,true)",[uid(3)]);await db.exec('set local role authenticated');assert.equal((await db.query('select count(*)::int n from erp.unidade')).rows[0].n,0);await db.exec('reset role');
+ await statusRpc(3,statusDraft({revisao:'2'}));assert.equal((await db.query("select count(*)::int n from erp_private.auditoria_usuario where acao='ALTERAR_SITUACAO'")).rows[0].n,1);
+ const active=await statusRpc(3,statusDraft({status:'ATIVO',revisao:'2'}));assert.equal(active.status,'ATIVO');assert.equal(active.revisao,'3');assert.deepEqual((await db.query('select (to_jsonb(u)-array[\'status\',\'revisao\']) data from erp.usuario u where id=$1',[uid(3)])).rows[0].data,before);
+ assert.deepEqual((await db.query('select unidade_id::text id from erp.usuario_unidade where usuario_id=$1',[uid(3)])).rows,[{id:'1'}]);
+}));
+test('situação: autogestão, pendências, bloqueio e mass assignment não mudam a conta',async()=>statusTransaction(async()=>{
+ assert.equal((await statusRpc(1)).pode_alterar,false);await statusError(1,statusDraft(),'PT403');await statusError(7,statusDraft({status:'ATIVO'}),'PT409');
+ await db.query("insert into erp_private.usuario_contato values($1,'pending@example.invalid',true)",[uid(3)]);assert.equal((await statusRpc(3)).pode_alterar,false);await statusError(3,statusDraft(),'PT409');
+ for(const extra of[{nome:'Alterado'},{perfil:'ADMIN'},{password:'segredo'},{status:'BLOQUEADO'},{status:null},{revisao:null},{revisao:1},{motivo:'a'}])await statusError(2,statusDraft(extra),'PT422');
+ assert.equal((await statusRpc(3)).status,'ATIVO');
+}));
+test('situação: falha da auditoria reverte status/revisão',async()=>statusTransaction(async()=>{
+ await db.exec("create function pg_temp.fail_status_audit() returns trigger language plpgsql as $$begin raise exception 'audit failure';end$$;create trigger fail_status_audit before insert on erp_private.auditoria_usuario for each row execute function pg_temp.fail_status_audit()");const before=await statusRpc(3);await statusError(3,statusDraft(),'P0001');assert.deepEqual(await statusRpc(3),before);
+}));
+test('situação: concorrência com inativação/edição preserva ADMIN e revogação durante espera nega', {skip:!process.env.DATABASE_TEST_URL},async()=>{
+ for(const mode of['ciclo','misto','revogacao']){
+  const first=new pg.Client({connectionString:process.env.DATABASE_TEST_URL}),second=new pg.Client({connectionString:process.env.DATABASE_TEST_URL});let pending;const original=(await db.query('select * from erp.usuario where id=$1',[uid(2)])).rows[0];await Promise.all([first.connect(),second.connect()]);
+  try{
+   await db.exec("insert into erp.perfil_permissao select id,p from erp.perfil cross join(values('USUARIO_LER'),('USUARIO_GERIR'),('USUARIO_CICLO_VIDA'))x(p) where codigo='ADMIN' on conflict do nothing");
+   await first.query('begin');await second.query('begin');await second.query('set local role service_role');const pid=(await second.query('select pg_backend_pid() pid')).rows[0].pid;
+   if(mode==='revogacao'){await first.query('select id from erp.usuario where id=$1 for update',[uid(3)]);pending=statusRpc(3,statusDraft(),uid(1),second).then(value=>({value}),error=>({error}));}
+   else{await first.query('set local role service_role');if(mode==='misto')await editRpc(2,editDraft(),uid(1),first);else await statusRpc(2,statusDraft(),uid(1),first);pending=statusRpc(1,statusDraft(),uid(2),second).then(value=>({value}),error=>({error}));}
+   let blocked=false;for(let i=0;i<150;i++){blocked=(await db.query('select cardinality(pg_blocking_pids($1))>0 blocked',[pid])).rows[0].blocked;if(blocked)break;await new Promise(resolve=>setTimeout(resolve,20));}assert.equal(blocked,true);
+   if(mode==='revogacao')await first.query("delete from erp.perfil_permissao where permissao='USUARIO_CICLO_VIDA'");await first.query('commit');assert.equal((await pending).error?.code,'PT403');pending=undefined;await second.query('rollback');
+   assert.equal((await db.query("select count(*)::int n from erp.usuario u join erp.perfil p on p.id=u.perfil_id where u.status='ATIVO' and p.codigo='ADMIN'")).rows[0].n,mode==='revogacao'?2:1);
+  }finally{await first.query('rollback').catch(()=>{});if(pending)await pending;await second.query('rollback').catch(()=>{});await db.query('update erp.usuario set nome=$2,perfil_id=$3,status=$4,revisao=$5 where id=$1',[uid(2),original.nome,original.perfil_id,original.status,original.revisao]);await db.exec("delete from erp_private.auditoria_usuario where acao in('EDITAR','ALTERAR_SITUACAO');delete from erp.perfil_permissao where permissao in('USUARIO_LER','USUARIO_GERIR','USUARIO_CICLO_VIDA')");await Promise.all([first.end(),second.end()]);}
+ }
+});
 test('edição: detalhe e alteração restritos; authenticated não chama RPC nem remove vínculos',async()=>{
  for(const role of ['anon','authenticated'])await transaction(1,async()=>{await expectSqlError(`select erp.admin_usuario_edicao('${uid(1)}','${uid(3)}',null)`,'42501');await expectSqlError(`delete from erp.usuario_unidade where usuario_id='${uid(3)}'`,'42501');},role);
  await adminTransaction(async()=>{assert.equal((await editRpc(3)).pode_editar,true);await editError(3,editDraft(),'PT403',uid(3));await editError(99,null,'PT404');});
@@ -367,6 +412,7 @@ test('RLS nas tabelas e somente funções privilegiadas conhecidas com executore
   const functions = await db.query("select proname,pg_get_userbyid(proowner) as owner,proconfig from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname in ('erp','erp_private') and prosecdef");
   assert.deepEqual(functions.rows.map(row => [row.proname, row.owner]).sort(), [
     ['admin_usuario_edicao','erp_user_admin'],
+    ['admin_usuario_situacao','erp_user_admin'],
     ['admin_usuarios_servico','erp_user_admin'],
     ['atualizar_configuracao', 'erp_config_writer'], ['calendario_operacao','erp_stock_writer'], ['catalogo_unidade', 'erp_stock_writer'], ['categoria_operacao', 'erp_stock_writer'], ['estoque_operacao', 'erp_stock_writer'], ['fornecedor_operacao', 'erp_stock_writer'], ['medida_operacao', 'erp_stock_writer'], ['produto_ciclo_operacao','erp_stock_writer'], ['produto_exclusao_motivo','erp_product_reference_reader'], ['usuario_login_salvar','erp_identity_writer'],
   ]);

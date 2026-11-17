@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import { hasExactFields, isAdminUserDetail, isRecord, normalizeLogin, validPassword, validateAdminUserEdit, validateAdminUserSave } from '@erp/contracts';
+import { hasExactFields, isAdminUserDetail, isAdminUserSituation, isRecord, normalizeLogin, validPassword, validateAdminUserEdit, validateAdminUserSave, validateAdminUserSituation } from '@erp/contracts';
 
 export interface IdentityEnv {
   SUPABASE_URL: string; SUPABASE_PUBLISHABLE_KEY: string; SUPABASE_ADMIN_KEY: string;
@@ -48,13 +48,20 @@ export function createIdentityApp(fetcher: typeof fetch = fetch) {
       }
       const reissue = /^\/admin\/usuarios\/([a-f0-9-]{36})\/primeiro-acesso$/i.exec(url.pathname);
       const edit = /^\/admin\/usuarios\/([a-f0-9-]{36})$/i.exec(url.pathname);
-      if ((!reissue && !edit && url.pathname !== '/admin/usuarios') || (edit ? !['GET','PATCH'].includes(request.method) : reissue ? request.method !== 'POST' : !['GET', 'POST'].includes(request.method))) throw new Problem(404);
+      const situation = /^\/admin\/usuarios\/([a-f0-9-]{36})\/situacao$/i.exec(url.pathname);
+      if ((!reissue && !edit && !situation && url.pathname !== '/admin/usuarios') || (edit || situation ? !['GET','PATCH'].includes(request.method) : reissue ? request.method !== 'POST' : !['GET', 'POST'].includes(request.method))) throw new Problem(404);
       const authorization = request.headers.get('Authorization');
       if (!authorization?.startsWith('Bearer ')) throw new Problem(401);
       const { data: authenticated, error: authError } = await publicClient.auth.getUser(authorization.slice(7));
       if (authError?.status && authError.status >= 500) throw new Problem(503);
       if (authError || !authenticated.user || authenticated.user.is_anonymous || authenticated.user.aud !== 'authenticated') throw new Problem(401);
       const actor = authenticated.user.id;
+      if(situation?.[1]){
+        let input:object|null=null;if(request.method==='PATCH'){const validated=validateAdminUserSituation(await body());if(!validated.ok)throw new Problem(422);input=validated.value;}
+        const result=await privileged.schema('erp').rpc('admin_usuario_situacao',{p_ator:actor,p_alvo:situation[1],p_dados:input});
+        if(result.error)throw new Problem(({PT403:403,PT404:404,PT409:409,PT412:412,PT422:422}as Record<string,number>)[result.error.code]??503);
+        if(!isAdminUserSituation(result.data)||result.data.id!==situation[1])throw new Problem(503);return Response.json(result.data,{headers});
+      }
       if(edit?.[1]){
         let input:object|null=null;
         if(request.method==='PATCH'){const validated=validateAdminUserEdit(await body());if(!validated.ok)throw new Problem(422);input=validated.value;}
