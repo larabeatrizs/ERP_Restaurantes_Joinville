@@ -19,7 +19,12 @@ const runtime = JSON.parse(await fs.readFile(path.join(path.dirname(file), '../a
 const directory = JSON.parse(runtime.AUTH_LOGIN_DIRECTORY);
 const login = Object.entries(directory).find(([, email]) => email === account.email)?.[0];
 if (!login) throw Error('Synthetic username not mapped.');
-const proof = { executedAt: new Date().toISOString(), origin, mocked: false, completed: false, scenarios: [] };
+const builtIndex = await fs.readFile(path.join(repo, 'apps/web/dist/index.html'), 'utf8');
+const expectedAsset = builtIndex.match(/src="(\/assets\/index-[^"]+)"/)?.[1];
+const freshUrl = `${origin}/?verificacao=adm002-${Date.now()}`;
+const hostedIndex = await (await fetch(freshUrl, { cache: 'no-store', signal: AbortSignal.timeout(30000) })).text();
+if (!expectedAsset || !hostedIndex.includes(expectedAsset)) throw Error('Expected built assets are not yet served by staging.');
+const proof = { executedAt: new Date().toISOString(), origin, asset: expectedAsset, mocked: false, completed: false, scenarios: [] };
 const browser = await chromium.launch({ channel: process.env.PLAYWRIGHT_CHANNEL || 'msedge' });
 const context = await browser.newContext({ viewport: { width: 1280, height: 800 } });
 let writes = 0;
@@ -29,7 +34,7 @@ try {
     if (request.url().startsWith(`${origin}/api/`) && !['GET', 'HEAD'].includes(request.method())
       && new URL(request.url()).pathname !== '/api/auth/login') writes++;
   });
-  await page.goto(origin);
+  await page.goto(freshUrl);
   await page.getByLabel('Nome de usuário', { exact: true }).fill(login);
   await page.getByLabel('Senha', { exact: true }).fill(account.password);
   await page.getByRole('button', { name: 'Entrar', exact: true }).click();
@@ -38,6 +43,7 @@ try {
   await page.getByLabel('Unidade de acesso', { exact: true }).selectOption(String(state.units.A));
   await page.getByRole('button', { name: 'Acessar unidade', exact: true }).click();
   await expect(page.locator('.home-metrics')).toBeVisible();
+  await expect(page.getByRole('main')).toHaveAttribute('tabindex', '-1');
   await page.getByRole('link', { name: 'Ir para o conteúdo', exact: true }).focus();
   await page.keyboard.press('Enter');
   await expect(page.getByRole('main')).toBeFocused();

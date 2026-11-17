@@ -20,6 +20,9 @@
     "produtos": true
   },
   "private": {
+    "tablesRls": true,
+    "anonymousTableAccess": false,
+    "authenticatedTableAccess": false,
     "writerCreate": false,
     "authenticatedExecute": false,
     "anonymousExecute": false
