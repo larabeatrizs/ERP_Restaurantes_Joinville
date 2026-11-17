@@ -36,6 +36,8 @@ Próxima dependência: publicação controlada de View/Worker na Cloudflare do *
 
 ## Continuidade em 16/11/2026
 
+**Incremento EST-002/C2 em 17/11:** migration implementa registro rápido de um produto no dia corrente em POSTERIOR, FEFO/baixa única atômica e conferência distinta com revisão/auditoria. Reconstrução e testes locais; concorrência nativa pertence à CI. Nenhuma execução hospedada neste recorte. Próxima continuidade C3/C4 na issue #52: API/View, seguida de inventário/migration/jornada sintética no mesmo staging. Conciliação depende de refeições reais; fechamento futuro deve integrar o lock de unidade e validação de período antes de sua liberação.
+
 **Continuidade atual em 17/11:** após ADM-003–006 publicados/verificados, retomar a D1 em [EST-002/issue #52](../fundacao/EST-002-REQUISICAO-RAPIDA.md): contrato B/C1 de requisição rápida Posterior, seguido de transação C2, API/View e jornada sintética. Distribuição 1:N por item/refeição confirmada pela responsável, mesma unidade/quantidade limitada/sem segundo débito. Sem refeição fictícia; consumidor de conciliação depende de cardápios reais. [Estimativa atual](STATUS-2026-11-17.md): 30% concluídos, aproximadamente 70% restantes, com o mesmo escopo integral e incerteza explícita. As continuidades abaixo são histórico.
 
 Continuidade ADM-006/issue #50: [ativação/inativação](../fundacao/ADM-006-SITUACAO-USUARIOS.md) para contas com primeiro acesso concluído, com capacidade X separada de I, revisão/motivo/auditoria e o mesmo lock administrativo da edição. Proteger próprio acesso/último ADMIN e comprovar negação com token anterior; não liberar BLOQUEADO/convite nem alterar identidade. Sem exclusão/reset/novo ambiente. Demais controles RF-008, SMTP/rede e carga final seguem próprios.

@@ -43,7 +43,123 @@ before(async () => {
 });
 after(async () => { if (close) await close(); });
 
+async function withdrawal(action, data = {}, unit = 1, client = db) {
+ return (await client.query('select erp.requisicao_operacao($1,$2,$3::jsonb) result', [unit, action, JSON.stringify(data)])).rows[0].result;
+}
+async function withdrawalReject(action, data, code = 'PT422', unit = 1) {
+ await db.exec('savepoint withdrawal_error');
+ await assert.rejects(() => withdrawal(action, data, unit), { code });
+ await db.exec('rollback to savepoint withdrawal_error');
+}
+async function withdrawalSetup() {
+ await db.exec('reset role');
+ await db.exec(`insert into erp.perfil_permissao(perfil_id,permissao) values (1,'REQUISICAO_REGISTRAR'),(2,'REQUISICAO_CONFERIR'),(4,'REQUISICAO_CONFERIR') on conflict do nothing`);
+ await db.exec("insert into erp.parametro_unidade(unidade_id,modo_saida,motivo_alteracao) values (1,'POSTERIOR','Preparação sintética de retirada') on conflict do nothing");
+ await become(1);
+}
+const withdrawalInput = (produto_id, extra = {}) => ({ produto_id, quantidade: '5', retirado_por: 'Pessoa sintética da cozinha', chave: key(800), ...extra });
+const reviewInput = (r, extra = {}) => ({ id: r.id, revisao: r.revisao, estado: 'CONFERIDA', motivo: '', ...extra });
+
+test('EST-002 FEFO divide lotes, ignora vencidos, desempata por ID e preserva entradas', async () => actor(1, async () => {
+ await withdrawalSetup();const p = await create();
+ const dates = (await db.query("select (clock_timestamp() at time zone 'America/Sao_Paulo')::date::text today, ((clock_timestamp() at time zone 'America/Sao_Paulo')::date+1)::text tomorrow")).rows[0];
+ const e = await receive(p.id, { total_nota: null, itens: [line(p.id,{quantidade:'1',validade:dates.tomorrow}),line(p.id,{quantidade:'2',validade:dates.today}),line(p.id,{quantidade:'3',validade:dates.today}),line(p.id,{quantidade:'9',validade:'2026-01-03'}),line(p.id,{quantidade:'8'})] });
+ await confirm(e.id);const before = await rpc('entradas');
+ const r = (await withdrawal('registrar', withdrawalInput(p.id))).requisicao;
+ assert.equal(r.estado,'REGISTRADA');assert.equal(r.data_movimento,dates.today);assert.equal(r.quantidade,'5.000000');
+ const balances = (await rpc('saldos')).saldos;
+ const today = balances.filter(b=>b.validade===dates.today);assert.equal(today.length,2);assert.ok(today.every(b=>b.quantidade==='0.000000'));
+ assert.equal(balances.find(b=>b.validade===dates.tomorrow).quantidade,'1.000000');
+ assert.equal(balances.find(b=>b.validade==='2026-01-03').quantidade,'9.000000');
+ assert.equal(balances.find(b=>b.validade===null).quantidade,'8.000000');
+ assert.equal(r.itens.length,2);assert.equal(r.itens[0].quantidade,'2.000000');assert.equal(r.itens[1].quantidade,'3.000000');
+ assert.deepEqual(await rpc('entradas'),before);
+ await db.exec('reset role');
+ const ledger = (await db.query('select quantidade_delta::text q,entrada_item_id from erp.movimento_estoque where requisicao_item_id is not null order by id')).rows;
+ assert.deepEqual(ledger.map(x=>x.q),['-2.000000','-3.000000']);assert.ok(ledger.every(x=>x.entrada_item_id===null));
+}));
+test('EST-002 soma decimal exata, chave repetida baixa uma vez e chave alterada é conflito', async () => actor(1, async () => {
+ await withdrawalSetup();const p = await create();await confirm((await receive(p.id,{total_nota:null,itens:[line(p.id,{quantidade:'0.3'})]})).id);
+ const body=withdrawalInput(p.id,{quantidade:'0.1'}), first=await withdrawal('registrar',body);
+ assert.deepEqual(await withdrawal('registrar',body),first);
+ await withdrawalReject('registrar',{...body,quantidade:'0.2'},'PT409');
+ await withdrawal('registrar',{...body,quantidade:'0.2',chave:key(801)});
+ assert.equal((await rpc('saldos')).saldos[0].quantidade,'0.000000');
+ await withdrawalReject('registrar',{...body,quantidade:'0.000001',chave:key(802)},'PT409');
+ assert.equal((await withdrawal('listar')).requisicoes.length,2);
+}));
+test('EST-002 insuficiência e falha de auditoria revertem documento, itens, saldo e idempotência', async () => actor(1, async () => {
+ await withdrawalSetup();const p=await create();await confirm((await receive(p.id)).id);
+ const initial=await rpc('saldos');await withdrawalReject('registrar',withdrawalInput(p.id,{quantidade:'21'}),'PT409');
+ assert.deepEqual(await rpc('saldos'),initial);assert.equal((await withdrawal('listar')).requisicoes.length,0);
+ await db.exec('reset role');
+ await db.exec("create function erp_private.falha_requisicao() returns trigger language plpgsql as $$ begin if new.acao like 'requisicao_%' then raise exception 'Falha induzida';end if;return new;end $$;create trigger falha_requisicao before insert on erp.auditoria_estoque for each row execute function erp_private.falha_requisicao()");
+ await become(1);await withdrawalReject('registrar',withdrawalInput(p.id),'P0001');
+ assert.deepEqual(await rpc('saldos'),initial);assert.equal((await withdrawal('listar')).requisicoes.length,0);
+ await db.exec('reset role');assert.equal((await db.query('select count(*)::int n from erp.requisicao_comando')).rows[0].n,0);
+ assert.equal((await db.query('select count(*)::int n from erp.requisicao_item')).rows[0].n,0);
+}));
+test('EST-002 conferência distinta, revisão, contestação sem estorno e snapshot após mudar modo', async () => actor(1, async () => {
+ await withdrawalSetup();const p=await create();await confirm((await receive(p.id)).id);
+ const r=(await withdrawal('registrar',withdrawalInput(p.id))).requisicao, before=await rpc('saldos');
+ await withdrawalReject('conferir',reviewInput(r),'PT403');
+ await db.exec('reset role');await db.exec("insert into erp.perfil_permissao values(1,'REQUISICAO_CONFERIR')");await become(1);
+ await withdrawalReject('conferir',reviewInput(r),'PT403');
+ await db.exec('reset role');await db.exec("update erp.parametro_unidade set modo_saida='PREVIA',motivo_alteracao='Mudança posterior à retirada' where unidade_id=1");await become(1);
+ await withdrawalReject('registrar',withdrawalInput(p.id,{chave:key(801)}),'PT409');
+ await become(7);await withdrawalReject('conferir',reviewInput(r,{estado:'CONTESTADA',motivo:''}));
+ const checked=(await withdrawal('conferir',reviewInput(r,{estado:'CONTESTADA',motivo:'Quantidade a revisar'}))).requisicao;
+ assert.equal(checked.estado,'CONTESTADA');assert.equal(checked.revisao,'2');assert.equal(checked.modo_snapshot,'POSTERIOR');assert.equal(checked.configuracao_revisao,'1');
+ await withdrawalReject('conferir',reviewInput(r),'PT412');await withdrawalReject('conferir',reviewInput(checked),'PT409');
+ await become(1);assert.deepEqual(await rpc('saldos'),before);
+ assert.equal((await withdrawal('registrar',withdrawalInput(p.id))).requisicao.estado,'REGISTRADA');
+}));
+test('EST-002 payload estrito, vínculo, produto/local inativos e leitura direta negados', async () => actor(1, async () => {
+ await withdrawalSetup();const p=await create();await confirm((await receive(p.id)).id);const body=withdrawalInput(p.id);
+ for(const extra of [{quantidade:5},{quantidade:'0'},{quantidade:'0.0000001'},{chave:'inválida'},{retirado_por:'\t\n'},{solicitante_id:uid(4)},{modo_snapshot:'POSTERIOR'},{data_movimento:'2026-01-02'},{unidade_id:'2'}])await withdrawalReject('registrar',{...body,...extra});
+ await withdrawalReject('registrar',body,'PT404',2);
+ await become(3);await withdrawalReject('registrar',body,'PT403');assert.equal((await withdrawal('listar')).requisicoes.length,0);
+ await become(5);await withdrawalReject('listar',{},'PT404');await become(6);await withdrawalReject('listar',{},'PT404');
+ await become(1);for(const table of ['requisicao_rapida','requisicao_item','requisicao_comando'])await sqlRejects(`select * from erp.${table}`);
+ await db.exec('reset role');await db.exec("update erp.camara set status='INATIVO' where id=1");await become(1);await withdrawalReject('registrar',body,'PT409');
+ await db.exec('reset role');await db.exec("update erp.camara set status='ATIVO' where id=1;update erp.produto set status='INATIVO' where id="+p.id);await become(1);await withdrawalReject('registrar',body,'PT422');
+}));
+
 const categoryInput = (extra = {}) => ({ descricao: 'Categoria CAD-003', tipo_item: 'ALIMENTO', armazenamento_padrao: 'SECO', dias_alerta_validade: null, ...extra });
+
+test('EST-002 falha de auditoria na conferência preserva estado, revisão e saldo',async()=>actor(1,async()=>{
+ await withdrawalSetup();const p=await create();await confirm((await receive(p.id)).id);
+ const r=(await withdrawal('registrar',withdrawalInput(p.id))).requisicao,before=await rpc('saldos');
+ await db.exec('reset role');await db.exec("create function erp_private.falha_conferencia() returns trigger language plpgsql as $$ begin if new.acao='requisicao_conferir' then raise exception 'Falha induzida';end if;return new;end $$;create trigger falha_conferencia before insert on erp.auditoria_estoque for each row execute function erp_private.falha_conferencia()");
+ await become(4);await withdrawalReject('conferir',reviewInput(r),'P0001');
+ assert.deepEqual((await withdrawal('listar')).requisicoes[0],r);await become(1);assert.deepEqual(await rpc('saldos'),before);
+}));
+
+test('EST-002 seed é idempotente, Cozinha registra sem estoquista e ADMIN não recebe escrita',async()=>actor(1,async()=>{
+ await db.exec('reset role');
+ await db.exec(`insert into erp.perfil(codigo) values('COZINHA'),('ADMIN');insert into auth.users(id) values('${uid(8)}');
+ insert into erp.usuario(id,perfil_id,nome,status) select '${uid(8)}',id,'Cozinha sintética','ATIVO' from erp.perfil where codigo='COZINHA';insert into erp.usuario_unidade values('${uid(8)}',1)`);
+ const migration=await readFile(new URL('../../supabase/migrations/20261117195030_requisicao_rapida_posterior.sql',import.meta.url),'utf8');
+ const seed=migration.split('-- BEGIN WITHDRAWAL CAPABILITY SEED')[1].split('-- END WITHDRAWAL CAPABILITY SEED')[0];
+ await db.exec(seed);await db.exec(seed);
+ const permissions=(await db.query("select p.codigo,pp.permissao from erp.perfil p join erp.perfil_permissao pp on pp.perfil_id=p.id where pp.permissao like 'REQUISICAO_%' order by p.codigo,pp.permissao")).rows;
+ assert.deepEqual(permissions,[{codigo:'COZINHA',permissao:'REQUISICAO_REGISTRAR'},{codigo:'ESTOQUISTA',permissao:'REQUISICAO_REGISTRAR'},{codigo:'GESTOR_UNIDADE',permissao:'REQUISICAO_CONFERIR'},{codigo:'NUTRICIONISTA',permissao:'REQUISICAO_CONFERIR'}]);
+ await withdrawalSetup();const p=await create();await confirm((await receive(p.id)).id);await become(8);
+ const r=(await withdrawal('registrar',withdrawalInput(p.id))).requisicao;assert.equal(r.solicitante_id,uid(8));assert.equal(r.retirado_por,'Pessoa sintética da cozinha');
+ await withdrawalReject('conferir',reviewInput(r),'PT403');
+}));
+test('EST-002 modo ausente e validade ausente em perecível bloqueiam; documento e livro são imutáveis',async()=>actor(1,async()=>{
+ await db.exec('reset role');await db.exec("insert into erp.perfil_permissao values(1,'REQUISICAO_REGISTRAR') on conflict do nothing");await become(1);
+ const p=await create();await confirm((await receive(p.id)).id);const body=withdrawalInput(p.id);
+ await withdrawalReject('registrar',body,'PT409');await withdrawalSetup();
+ await db.exec('reset role');await db.query('update erp.produto set perecivel=true where id=$1',[p.id]);await become(1);await withdrawalReject('registrar',body,'PT409');
+ await db.exec('reset role');await db.query('update erp.produto set perecivel=false where id=$1',[p.id]);await become(1);
+ const r=(await withdrawal('registrar',body)).requisicao;
+ await db.exec('reset role');
+ for(const sql of [`update erp.requisicao_rapida set quantidade=1 where id=${r.id}`,`delete from erp.requisicao_rapida where id=${r.id}`,`update erp.requisicao_item set quantidade=1 where requisicao_id=${r.id}`,`delete from erp.movimento_estoque where requisicao_item_id is not null`])await sqlRejects(sql);
+ await become(4);const checked=(await withdrawal('conferir',reviewInput(r))).requisicao;assert.equal(checked.estado,'CONFERIDA');
+ await db.exec('reset role');await sqlRejects(`update erp.requisicao_rapida set estado='CONTESTADA',revisao=revisao+1,motivo='Revisão indevida' where id=${r.id}`);
+}));
 const supplierInput=(extra={})=>({razao_social:'Fornecedor CAD005',cnpj_cpf:'12ABC34501DE35',nome_fantasia:null,contato:null,telefone:null,email:null,endereco:null,observacoes:null,tipo_fornecedor:null,condicao_pagamento:null,prazo_entrega_dias:0,pedido_minimo:'0.000001',agricultura_familiar:false,canal_preferido:null,...extra});
 function supplierDocument(base){let result=base;for(let step=0;step<2;step++){let sum=0;for(let i=0;i<result.length;i++)sum+=(result.charCodeAt(i)-48)*(2+(result.length-1-i)%8);const mod=sum%11;result+=mod<2?'0':String(11-mod);}return result;}
 async function supplier(action,data={},unit=1,client=db){return (await client.query('select erp.fornecedor_operacao($1,$2,$3::jsonb) as result',[unit,action,JSON.stringify(data)])).rows[0].result;}
@@ -283,7 +399,7 @@ async function confirm(id, n = 1) { return (await rpc('entrada_confirmar', { id,
 
 test('schema novo tem RLS, executor restrito e nenhum DML cliente ou USAGE auth', async () => {
   const rows = (await db.query("select relname,relrowsecurity from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname='erp' and c.relkind='r'")).rows;
-  assert.equal(rows.length, 25); assert.ok(rows.every((r) => r.relrowsecurity));
+  assert.equal(rows.length, 28); assert.ok(rows.every((r) => r.relrowsecurity));
   const role = (await db.query("select rolcanlogin,rolsuper,rolbypassrls,rolcreatedb,rolcreaterole from pg_roles where rolname='erp_stock_writer'")).rows[0];
   assert.ok(Object.values(role).every((v) => v === false));
   const grants = (await db.query("select has_schema_privilege('erp_stock_writer','auth','USAGE') as auth_usage,pg_has_role('authenticated','erp_stock_writer','MEMBER') as member,has_schema_privilege('erp_stock_writer','erp_private','CREATE') as can_create")).rows[0];
@@ -651,4 +767,27 @@ test('fornecedor: concorrência revalida revogação, recebimento vinculado e do
   await b.query('begin');await b.query("select set_config('request.jwt.claim.sub',$1,true)",[uid(4)]);await b.query('set local role authenticated');
   pending=supplier('criar',supplierInput({razao_social:'FORNECEDOR UNICIDADE CONCORRENTE'}),1,b).then(value=>({value}),error=>({error}));await waitLock();await a.query('commit');assert.equal((await pending).error?.code,'PT409');await b.query('rollback');
  } finally {await a.query('rollback').catch(()=>{});if(pending)await pending;await b.query('rollback').catch(()=>{});await db.exec('reset role');await db.exec("insert into erp.perfil_permissao values(1,'FORNECEDOR_EDITAR') on conflict do nothing");await Promise.all([a.end(),b.end()]);}
+});
+
+test('EST-002 duas conexões: replay único, saldo disputado, revogação após lock e conferência concorrente', {skip:!process.env.DATABASE_STOCK_TEST_URL,timeout:30000}, async()=>{
+ const a=new pg.Client({connectionString:process.env.DATABASE_STOCK_TEST_URL}),b=new pg.Client({connectionString:process.env.DATABASE_STOCK_TEST_URL});let pending;
+ const begin=async(client,n=1)=>{await client.query('begin');await client.query("set local statement_timeout='5s'");await client.query("select set_config('request.jwt.claim.sub',$1,true)",[uid(n)]);await client.query('set local role authenticated');};
+ let pid;
+ const waitLock=async()=>{for(let i=0;i<150;i++){if((await db.query('select cardinality(pg_blocking_pids($1))>0 blocked',[pid])).rows[0].blocked)return;await new Promise(r=>setTimeout(r,20));}assert.fail('Não aguardou lock esperado');};
+ const run=(data,action='registrar')=>{pending=withdrawal(action,data,1,b).then(value=>({value}),error=>({error}));return waitLock();};
+ try {
+  await a.connect();await b.connect();pid=(await b.query('select pg_backend_pid() pid')).rows[0].pid;
+  await db.exec('begin');await db.query("select set_config('request.jwt.claim.sub',$1,true)",[uid(1)]);await withdrawalSetup();
+  const p=await create({descricao:'EST002 produto concorrente'});await confirm((await receive(p.id,{numero_nf:'EST002-CONCORRENTE'})).id,850);await db.exec('commit');
+  const body=withdrawalInput(p.id,{chave:key(851)});
+  await begin(a);await begin(b);const first=await withdrawal('registrar',body,1,a);await run(body);await a.query('commit');const replay=await pending;assert.ifError(replay.error);assert.deepEqual(replay.value,first);await b.query('commit');
+  await begin(a);await begin(b);await withdrawal('registrar',{...body,quantidade:'10',chave:key(852)},1,a);
+  await run({...body,quantidade:'10',chave:key(853)});await a.query('commit');assert.equal((await pending).error?.code,'PT409');await b.query('rollback');
+  assert.equal((await db.query('select sum(s.quantidade)::text q from erp.saldo_lote_local s join erp.lote l on l.id=s.lote_id where l.produto_id=$1',[p.id])).rows[0].q,'5.000000');
+  await a.query('begin');await a.query('select id from erp.produto where id=$1 for no key update',[p.id]);await begin(b);
+  await run({...body,quantidade:'1',chave:key(854)});await db.exec("delete from erp.perfil_permissao where perfil_id=1 and permissao='REQUISICAO_REGISTRAR'");await a.query('commit');assert.equal((await pending).error?.code,'PT403');await b.query('rollback');await db.exec("insert into erp.perfil_permissao values(1,'REQUISICAO_REGISTRAR')");
+  await begin(a,4);await begin(b,4);await withdrawal('conferir',reviewInput(first.requisicao),1,a);await run(reviewInput(first.requisicao),'conferir');await a.query('commit');assert.equal((await pending).error?.code,'PT412');await b.query('rollback');
+  assert.equal((await db.query('select count(*)::int n from erp.requisicao_rapida where produto_id=$1',[p.id])).rows[0].n,2);
+  assert.equal((await db.query('select sum(s.quantidade)::text q from erp.saldo_lote_local s join erp.lote l on l.id=s.lote_id where l.produto_id=$1',[p.id])).rows[0].q,'5.000000');
+ } finally {await a.query('rollback').catch(()=>{});if(pending)await pending;await b.query('rollback').catch(()=>{});await db.exec('reset role');await db.exec("insert into erp.perfil_permissao values(1,'REQUISICAO_REGISTRAR') on conflict do nothing");await Promise.all([a.end(),b.end()]);}
 });
