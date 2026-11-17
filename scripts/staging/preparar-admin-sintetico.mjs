@@ -25,7 +25,10 @@ if (state) {
 } else {
   const password = `${randomBytes(24).toString('base64url')}aA1!`;
   const created = await client.auth.admin.createUser({ email: 'adm003-admin-a@example.invalid', password, email_confirm: true });
-  if (created.error || !created.data.user || created.data.user.email !== 'adm003-admin-a@example.invalid') throw Error('Synthetic fixture creation failed; no existing account reset.');
+  if (created.error || !created.data.user || created.data.user.email !== 'adm003-admin-a@example.invalid') {
+    await fs.writeFile(path.join(root, 'adm003-bootstrap-error-private.json'), JSON.stringify({status:created.error?.status,code:created.error?.code,message:created.error?.message},null,2));
+    throw Error('Synthetic fixture creation failed; inspect private error; no existing account reset.');
+  }
   state = { projectRef: stock.projectRef, url: stock.url, units: stock.units, admin: { id: created.data.user.id, login: 'stg.adm003.admin', email: 'adm003-admin-a@example.invalid', password } };
   await fs.writeFile(stateFile, JSON.stringify(state, null, 2), { mode: 0o600 });
 }
