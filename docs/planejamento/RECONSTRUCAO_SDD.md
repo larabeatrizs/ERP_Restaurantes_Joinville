@@ -36,7 +36,7 @@ Próxima dependência: publicação controlada de View/Worker na Cloudflare do *
 
 ## Continuidade em 16/11/2026
 
-Prioridade posterior de 17/11: [ADM-003/issue #44](../fundacao/ADM-003-BASICO-18-11.md) concentra o próximo recorte C3/C4 em inclusão de usuários e uso dos cadastros, com meta solicitada de 18/11. Serviço privado de identidade permanece componente do staging compartilhado, sem novo ambiente permanente. Melhorias gerais posteriores não substituem autorização/validação do fluxo básico; decisões propostas de primeiro link e alcance operacional são registradas sem aceite presumido.
+Prioridade posterior de 17/11: [ADM-003/issue #44/PR #45](../fundacao/ADM-003-BASICO-18-11.md) publicou/verificou inclusão de usuários e uso dos quatro cadastros pelo ADMIN antes da meta de 18/11, conforme escolhas autorizadas. Serviço privado permanece no staging compartilhado, sem novo ambiente permanente. Primeiro acesso manual provisório ativo, SMTP geral adiado; rever exceção operacional ADMIN antes da produção. Gestão integral de usuários/segurança e demais jornadas D1 seguem seus recortes. Melhorias gerais/skeleton permanecem posteriores ao básico.
 
 Recorte posterior: [ADM-002/C2](../fundacao/ADM-002-IDENTIDADE-PERSISTIDA.md) prepara registro privado de login/revisão/auditoria, sem cadastro automático ou promoção. Alcance administrativo global e consulta de gestor central/auditor confirmados pela responsável; operações por unidades vinculadas preservadas. Melhoria de foco de teclado acompanha a orientação de interface simples/acessível. Próximo C3/C4: endpoints/painel autorizados e adaptação/provisionamento de identidade, respeitando as fronteiras de ADM-001.
 

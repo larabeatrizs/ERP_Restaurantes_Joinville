@@ -1,5 +1,7 @@
 # ADM-002/C2 — Registro privado de login e auditoria
 
+> Continuidade posterior: [ADM-003](ADM-003-BASICO-18-11.md) conectou a base ao serviço privado/painel e publicou o básico em 17/11. Novos logins persistidos/primeiro acesso e gestão foram verificados; as limitações C2 abaixo descrevem aquele recorte histórico. A conta admin recebeu gestão e quatro I temporárias autorizadas, sem alteração de senha, X ou poderes de estoque adicionais.
+
 Iniciado em 16/11/2026, continuidade em 17/11/2026. Continuidade do [contrato de cadastro](ADM-002-CONTRATO-USUARIOS.md), [ADM-001](ADM-001-ADMINISTRACAO.md) e [issues #19](https://github.com/larabeatrizs/ERP_Restaurantes_Joinville/issues/19)/[#31](https://github.com/larabeatrizs/ERP_Restaurantes_Joinville/issues/31). DRS RF-008, seções 4.1/4.2 e 7.1, RN-012/RN-022, RNF-002/003/007/008/009/011. Escopo: estrutura C2 de identidade, rotina interna de escrita testada e melhoria pequena de foco no workspace existente.
 
 ## Decisão confirmada pela responsável

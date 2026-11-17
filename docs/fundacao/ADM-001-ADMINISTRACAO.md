@@ -1,5 +1,7 @@
 # ADM-001 — Administração restrita e primeiro administrador
 
+> **Estado posterior em 17/11:** [ADM-003](ADM-003-BASICO-18-11.md)/[PR #45](https://github.com/larabeatrizs/ERP_Restaurantes_Joinville/pull/45) publicou/verificou inclusão de usuários e primeiro acesso por link manual provisório, além da exceção autorizada de I nos quatro cadastros para ADMIN no staging. A conta anterior e senha foram preservadas; ela passou a gestão + I limitadas após os testes. Os relatos de acompanhamento readonly abaixo são históricos. SMTP, gestão integral e controles operacionais completos continuam próprios.
+
 > Continuidade em 16/11/2026: [ADM-002/B](ADM-002-CONTRATO-USUARIOS.md) prepara contrato executável de login/nome/email, perfil, status, unidades, revisão e motivo. B/C1, sem migration/endpoint/painel ou alteração das permissões de acompanhamento. Persistência/gestão/convite e controles integrais abaixo continuam pendentes nas issues #19/#31.
 
 Data: 10/11/2026. Solicitação expressa da responsável: painel administrativo, gestão de usuários/perfis, parâmetros e primeiro administrador. **Estado atual: ADMIN_INICIAL provisionado para acompanhamento somente de leitura; definição de senha publicada e verificada. Gestão administrativa privilegiada e subdomínio ainda não implementados.** Backlog e critérios restantes: [issue #19](https://github.com/larabeatrizs/ERP_Restaurantes_Joinville/issues/19).

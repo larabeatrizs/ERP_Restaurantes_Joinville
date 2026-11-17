@@ -1,0 +1,40 @@
+{
+  "runtimeSource": "442c259c94465b772e13125f3187de0e0b152760",
+  "applicationVersion": "99ce43ac-d469-4b15-92e3-3fcddbffd38e",
+  "identityVersionDuringJourney": "fbdd71f1-213d-4274-ade5-9344c3b7f7b9",
+  "identityVersionAfterActivation": "0c1d73a8-dede-41ec-9d4b-ae2e5705499c",
+  "manualFirstAccessEnabledAfterJourney": true,
+  "syntheticBypassDisabledAfterJourney": true,
+  "postActivationSnapshotStatus": 200,
+  "postActivationSnapshotContractValid": true,
+  "postActivationCanCreate": true,
+  "runtimeCi": "https://github.com/larabeatrizs/ERP_Restaurantes_Joinville/actions/runs/44094057068",
+  "executedAt": "2026-11-17T13:38:05.287Z",
+  "origin": "https://erp-joinville-staging.erp-restaurantes-joinville.workers.dev",
+  "asset": "/assets/index-Hq8nM1Mh.js",
+  "mocked": false,
+  "completed": true,
+  "phase": "complete",
+  "scenarios": [
+    {
+      "name": "ADMIN temporary catalog I enabled for four registries, without X, receipt write/approval or parameter edit",
+      "passed": true
+    },
+    {
+      "name": "Synthetic admin creates stockkeeper for unit B, explicit pending-only reissue; active account refused and prior link rejected",
+      "passed": true
+    },
+    {
+      "name": "Recipient defines own password, recovery session remains blocked until password login; only unit B, catalog write enabled, other-unit/admin/spoofed RPC denied",
+      "passed": true
+    },
+    {
+      "name": "Existing reserved reader keeps original username/password, readonly catalog and administrative consultation without promotion",
+      "passed": true
+    },
+    {
+      "name": "Administrative page without horizontal overflow at 360/768/1280",
+      "passed": true
+    }
+  ]
+}
