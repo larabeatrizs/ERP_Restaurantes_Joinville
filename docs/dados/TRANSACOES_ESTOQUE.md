@@ -1,5 +1,7 @@
 # Contratos transacionais propostos — estoque
 
+> Revisão explícita em 17/11/2026: a responsável confirmou DOM-05 em [EST-002](../fundacao/EST-002-REQUISICAO-RAPIDA.md). Requisição rápida Posterior pode nascer sem refeição; cada item admite alocações em uma ou mais refeições reais da mesma unidade, soma até o retirado, sem novo débito. A pendência de cardinalidade abaixo é histórica para esse recorte. B/C1 tem invariante pura; não há transação de saída ou consumidor de conciliação implementado.
+
 Parte da fase B / SPEC-001. Fontes: RN-004–011/015/020/022/025–027/033/034/037, RNF-010, RF-012–017 e CA-005–014/021–024/026. **Não implementado.** Operações abaixo não são rotas existentes.
 
 ## Invariantes comuns

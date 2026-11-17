@@ -1,5 +1,7 @@
 # CONFIG-001 — Painel de parâmetros e políticas operacionais
 
+> Atualização de decisão em 17/11/2026: DOM-05 foi confirmado no alcance de [EST-002](EST-002-REQUISICAO-RAPIDA.md): requisição rápida Posterior sem refeição inicial, distribuição posterior 1:N na mesma unidade até a quantidade retirada e sem nova baixa. A cardinalidade deixa de estar pendente para esse recorte. Não aprova outras políticas propostas nem adiciona configuração funcional ao painel; transação/consumidor permanecem a implementar.
+
 Data: 06/11/2026. **Direção definida pela responsável:** reduzir acoplamento por meio de parâmetros e ações configuráveis em um painel simples, inspirado na organização de um ERP, com baixa complexidade. **Estado deste recorte:** mapeamento e especificação; painel, endpoints e persistência ainda não implementados. Não depende de tecnologia ou integração com Protheus.
 
 Continuidade: [DB-001/C2.1](DB-001-CONFIGURACOES.md) inicia persistência e leitura protegida em laboratório isolado. Não significa painel, salvamento autenticado ou aplicação de políticas operacionais prontos. O status original acima descreve a especificação inicial.
