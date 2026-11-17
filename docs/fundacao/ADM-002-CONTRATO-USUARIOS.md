@@ -1,5 +1,7 @@
 # ADM-002/B — Contrato de cadastro administrativo
 
+> **Continuidade posterior ADM-005 em 17/11:** [consulta CSV e rascunho específico de edição](ADM-005-CONSULTA-E-EDICAO.md). `validateAdminUserEdit` exige revisão positiva e rejeita identidade/credenciais/status. É preparação B/C1, sem endpoint/escrita: decisões de autogestão e último administrador continuam pendentes de resposta. Cadastro e consulta existentes estão publicados em ADM-003/004; os estados iniciais descritos abaixo são históricos.
+
 > Continuidade C2 em 16/11: [registro privado de login e auditoria](ADM-002-IDENTIDADE-PERSISTIDA.md), com decisão confirmada sobre alcance global de administração e consulta. A preparação B/C1 abaixo é histórica; painel, gestão privilegiada real e adaptação do login continuam etapas seguintes.
 
 Data: 16/11/2026. Continuidade de [ADM-001](ADM-001-ADMINISTRACAO.md), [DOM-002](../decisoes/DOM-002-AJUSTES-12-11.md), [issue #19](https://github.com/larabeatrizs/ERP_Restaurantes_Joinville/issues/19) e [issue #31](https://github.com/larabeatrizs/ERP_Restaurantes_Joinville/issues/31). Fase B/C1 do [plano SDD](../planejamento/RECONSTRUCAO_SDD.md). Escopo deste incremento: formato de rascunho administrativo e validação pura compartilhada; não publica painel, endpoint, convite ou autorização administrativa.

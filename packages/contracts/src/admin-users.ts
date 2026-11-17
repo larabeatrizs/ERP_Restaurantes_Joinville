@@ -8,6 +8,7 @@ export const adminProfileCodes = [
   'ESTOQUISTA', 'COZINHA', 'ATENDIMENTO_SOCIAL', 'AUDITOR',
 ] as const;
 export type AdminProfileCode = typeof adminProfileCodes[number];
+export const adminProfileLabels: Record<AdminProfileCode, string> = { ADMIN:'Administrador',GESTOR_CENTRAL:'Gestor central',GESTOR_UNIDADE:'Gestor da unidade',NUTRICIONISTA:'Nutricionista',ESTOQUISTA:'Estoquista',COZINHA:'Cozinha',ATENDIMENTO_SOCIAL:'Atendimento social',AUDITOR:'Auditor / consulta' };
 export type AdminUserStatus = 'ATIVO' | 'INATIVO' | 'BLOQUEADO';
 export interface AdminUserInput {
   login: string;
@@ -83,4 +84,20 @@ export function validateAdminUserSave(value: unknown): AdminUserValidation {
     unidades: [...value.unidades], status: value.status, revisao: value.revisao,
     motivo: value.motivo.trim(),
   } };
+}
+
+/** ADM-005/B: draft only; no endpoint or authorization to change access. */
+export interface AdminUserEdit {
+  nome: string; perfil: AdminProfileCode; unidades: string[]; revisao: string; motivo: string;
+}
+export type AdminUserEditValidation = { ok: true; value: AdminUserEdit }
+  | { ok: false; field: keyof AdminUserEdit | 'formulario'; message: string };
+export function validateAdminUserEdit(value: unknown): AdminUserEditValidation {
+  if (!isRecord(value) || !hasExactFields(value,['nome','perfil','unidades','revisao','motivo'])) return {ok:false,field:'formulario',message:'Informe somente os campos da edição.'};
+  if (!text(value.nome,200)) return {ok:false,field:'nome',message:'Informe o nome de identificação com até 200 caracteres.'};
+  if (!adminProfileCodes.some(profile=>profile===value.perfil)) return {ok:false,field:'perfil',message:'Selecione um perfil previsto no sistema.'};
+  if (!Array.isArray(value.unidades) || !value.unidades.length || !value.unidades.every(isStockId) || new Set(value.unidades).size!==value.unidades.length) return {ok:false,field:'unidades',message:'Selecione uma ou mais unidades distintas.'};
+  if (!isStockId(value.revisao)) return {ok:false,field:'revisao',message:'Recarregue a revisão do cadastro antes de editar.'};
+  if (!text(value.motivo,500) || value.motivo.trim().length<3) return {ok:false,field:'motivo',message:'Informe um motivo de 3 a 500 caracteres.'};
+  return {ok:true,value:{nome:value.nome.trim(),perfil:value.perfil as AdminProfileCode,unidades:[...value.unidades],revisao:value.revisao,motivo:value.motivo.trim()}};
 }

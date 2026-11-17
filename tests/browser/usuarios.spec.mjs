@@ -1,10 +1,11 @@
 import { test, expect } from '@playwright/test';
+import { readFile } from 'node:fs/promises';
 const user={id:'00000000-0000-4000-8000-000000000001',aud:'authenticated',role:'authenticated',email:'admin@example.invalid'};
 const session={access_token:'eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ0ZXN0ZSJ9.ficticio',refresh_token:'ficticio',token_type:'bearer',expires_in:3600,user};
 const units=[{id:'1',codigo:'RP1',nome:'Unidade A'},{id:'2',codigo:'RP2',nome:'Unidade B'}];
-async function setup(page,{allowed=true,write=true,conflict=false}={}){
+async function setup(page,{allowed=true,write=true,conflict=false,seed=[],failPage=false}={}){
  await page.addInitScript(()=>Object.defineProperty(navigator,'clipboard',{configurable:true,value:{writeText:async()=>{}}}));
- const submissions=[],requests=[],reissues=[];const rows=[];
+ const submissions=[],requests=[],reissues=[];const rows=structuredClone(seed);
  await page.route('https://auth-ficticio.supabase.co/**',route=>route.fulfill({json:route.request().url().includes('/token')?session:user}));
  await page.route('**/api/**',async route=>{
   const req=route.request(),url=new URL(req.url());requests.push(url.pathname);
@@ -20,7 +21,10 @@ async function setup(page,{allowed=true,write=true,conflict=false}={}){
     rows.push({id:'00000000-0000-4000-8000-000000000090',nome:data.nome,login:data.login,email:data.email,perfil:data.perfil,status:'BLOQUEADO',primeiro_acesso:true,unidades:data.unidades});
     return route.fulfill({status:201,json:{criado:true,acesso:'https://erp-joinville-staging.erp-restaurantes-joinville.workers.dev/#definir-senha=token-fixture-12345678901234567890'}});
    }
-   return route.fulfill({json:{usuarios:rows,total:rows.length,pode_criar:write,unidades:units,perfis:['ADMIN','ESTOQUISTA','GESTOR_UNIDADE','NUTRICIONISTA','AUDITOR']}});
+   const offset=Number(url.searchParams.get('offset')??'0'),query=url.searchParams.get('q')??'';
+   if(failPage&&offset>0)return route.fulfill({status:503,json:{error:{code:'UNAVAILABLE'}}});
+   const filtered=rows.filter(row=>(row.nome+' '+row.login+' '+row.email).toLowerCase().includes(query.toLowerCase()));
+   return route.fulfill({json:{usuarios:filtered.slice(offset,offset+25),total:filtered.length,pode_criar:write,unidades:units,perfis:['ADMIN','ESTOQUISTA','GESTOR_UNIDADE','NUTRICIONISTA','AUDITOR']}});
   }
   if(url.pathname.endsWith('/produtos'))return route.fulfill({json:{produtos:[],total:0}});
   if(url.pathname.endsWith('/estoque/saldos'))return route.fulfill({json:{saldos:[]}});
@@ -68,4 +72,16 @@ test('ERP: administrador continua escolhendo unidade e não recebe navegação p
  await page.goto('http://127.0.0.1:4173/');await page.getByLabel('Nome de usuário',{exact:true}).fill('admin');await page.getByLabel('Senha',{exact:true}).fill('Senha123!');await page.getByRole('button',{name:'Entrar',exact:true}).click();
  await expect(page.getByLabel('Unidade de acesso',{exact:true})).toBeEnabled();await page.getByLabel('Unidade de acesso',{exact:true}).selectOption('1');await page.getByRole('button',{name:'Acessar unidade',exact:true}).click();
  await expect(page.getByRole('heading',{name:'Início',exact:true})).toBeVisible();await expect(page.getByRole('link',{name:'Usuários',exact:true})).toHaveCount(0);await expect(page.locator('a[href*="configurador"]')).toHaveCount(0);expect(state.requests.includes('/api/admin/usuarios')).toBe(false);
+});
+
+const reportRows=()=>Array.from({length:27},(_,n)=>({id:`00000000-0000-4000-8000-${String(n+10).padStart(12,'0')}`,nome:`Pessoa ${n+1}`,login:`pessoa.${n+1}`,email:`pessoa-${n+1}@example.invalid`,perfil:'ESTOQUISTA',status:'ATIVO',primeiro_acesso:false,unidades:['2']}));
+test('usuários CSV: consulta exporta todas as páginas da pesquisa aplicada e mantém o rascunho da busca',async({page})=>{
+ const seed=[...reportRows(),{...reportRows()[0],id:'00000000-0000-4000-8000-000000000099',nome:'Outro cadastro',login:'outro',email:'outro@example.invalid'}];
+ await setup(page,{write:false,seed});await page.getByLabel('Pesquisar usuários',{exact:true}).fill('pessoa');const filtered=page.waitForResponse(response=>response.url().includes('q=pessoa')&&response.status()===200);await page.getByRole('button',{name:'Pesquisar',exact:true}).click();await filtered;await expect(page.getByText('27 usuário(s) · página 1',{exact:true})).toBeVisible();
+ await page.getByLabel('Pesquisar usuários',{exact:true}).fill('pesquisa ainda não aplicada');
+ const download=page.waitForEvent('download');await page.getByRole('button',{name:'Exportar CSV',exact:true}).click();const file=await download;expect(file.suggestedFilename()).toBe('usuarios.csv');const csv=await readFile(await file.path(),'utf8');expect(csv).toContain('pessoa.27');expect(csv).not.toContain('Outro cadastro');expect(csv).toContain('RP2 — Unidade B');expect(csv).toContain('"pessoa"');expect(csv).not.toContain('pesquisa ainda não aplicada');await expect(page.getByLabel('Pesquisar usuários',{exact:true})).toHaveValue('pesquisa ainda não aplicada');
+ await expect(page.getByRole('status')).toContainText('CSV gerado com 27');await expect(page.getByRole('button',{name:'Novo usuário',exact:true})).toHaveCount(0);
+});
+test('usuários CSV: falha da página seguinte não baixa arquivo parcial e libera a interface',async({page})=>{
+ await setup(page,{seed:reportRows(),failPage:true});const downloads=[];page.on('download',file=>downloads.push(file));await page.getByRole('button',{name:'Exportar CSV',exact:true}).click();await expect(page.getByRole('alert')).toContainText('Nenhum arquivo parcial');expect(downloads).toHaveLength(0);await expect(page.getByRole('button',{name:'Exportar CSV',exact:true})).toBeEnabled();await expect(page.getByRole('button',{name:'Sair',exact:true})).toBeEnabled();
 });
