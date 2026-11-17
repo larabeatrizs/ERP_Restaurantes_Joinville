@@ -1,0 +1,18 @@
+{
+  "executedAt": "2026-11-17T18:21:16.110Z",
+  "origin": "https://erp-joinville-configurador.erp-restaurantes-joinville.workers.dev",
+  "mocked": false,
+  "completed": true,
+  "fixtureRestored": true,
+  "scenarios": [
+    {
+      "name": "View inativa só o operador; JWT continua válido no Auth, mas novas operações e login ERP são negados; autogestão/ator sem capacidade/revisão obsoleta recusados",
+      "passed": true
+    },
+    {
+      "name": "View reativa o operador sem alterar nome/perfil/vínculos/identidade/senha; token anterior volta a operar; duas transições auditadas sem reset",
+      "passed": true
+    }
+  ],
+  "oldTokenOperationStatus": 404
+}

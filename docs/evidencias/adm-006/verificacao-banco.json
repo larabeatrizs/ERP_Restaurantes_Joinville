@@ -1,0 +1,70 @@
+{
+  "runtimeSource": "e305421bcaa8c89d807c59ae5e8d2be69a0c98e7",
+  "runtimeCi": "https://github.com/larabeatrizs/ERP_Restaurantes_Joinville/actions/runs/44145088853",
+  "migration": "20261117181642_situacao_administrativa_usuarios",
+  "migrationMd5": "9d0243d3ed23d75b09436e7441f4a806",
+  "identityVersion": "8286fc62-1a19-4af1-a089-dd3b9df9d4cd",
+  "configuratorVersion": "9e44e295-a051-40d2-bdac-cf50ab6c1409",
+  "erpVersion": "297e253a-72b0-499c-b103-100b9633eb7c",
+  "usuariosAntes": 8,
+  "usuariosDepois": 8,
+  "dadosUsuariosPreservadosExcetoRevisao": true,
+  "vinculosPreservados": true,
+  "contatosPreservados": true,
+  "loginsPreservados": true,
+  "concessoes": [
+    [
+      "ADMIN",
+      "USUARIO_CICLO_VIDA"
+    ]
+  ],
+  "remocoes": [],
+  "somenteConcessaoPrevista": true,
+  "auditoriaAntes": 11,
+  "auditoriaDepois": 13,
+  "eventosSituacao": 2,
+  "eventosEdicaoPreservados": 6,
+  "revisaoFixture": "9",
+  "migrationsAntes": 15,
+  "migrationsDepois": 16,
+  "erpRls": 25,
+  "privateRls": 5,
+  "security": {
+    "owner": "erp_user_admin",
+    "owner_role": {
+      "login": false,
+      "createdb": false,
+      "bypassrls": false,
+      "superuser": false,
+      "createrole": false
+    },
+    "anon_execute": false,
+    "owner_create": false,
+    "migration_hash": "9d0243d3ed23d75b09436e7441f4a806",
+    "public_invoker": true,
+    "service_execute": true,
+    "capacidade_ciclo": [
+      "ADMIN"
+    ],
+    "authenticated_execute": false,
+    "authenticated_owner_member": false
+  },
+  "securityAdvisors": [
+    {
+      "name": "rls_enabled_no_policy",
+      "level": "INFO",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy"
+    },
+    {
+      "name": "auth_leaked_password_protection",
+      "level": "WARN",
+      "remediation": "https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection"
+    }
+  ],
+  "notes": [
+    "Only the reserved existing operator was inactivated/reactivated through the hosted View.",
+    "Two ALTERAR_SITUACAO events retained; revision 7 to 9, no audit or revision reset.",
+    "Auth still validates the old JWT; domain operations/login were denied while inactive, then restored.",
+    "No personal account used as fixture; no identity, credential, profile or unit-link change."
+  ]
+}

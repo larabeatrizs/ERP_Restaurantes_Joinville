@@ -1,5 +1,7 @@
 # ADM-005 — Edição e CSV de usuários
 
+> Continuidade posterior [ADM-006](ADM-006-SITUACAO-USUARIOS.md)/PR #51: ativação/inativação de contas com primeiro acesso concluído publicada/verificada, com capacidade X separada. A edição descrita aqui continua preservando status e credenciais; situação tem ação própria. As pendências de inativação neste registro histórico foram parcialmente atendidas por esse recorte, sem liberar BLOQUEADO/convite ou RF-008 integral.
+
 Data: 17/11/2026. [Issue #48](https://github.com/larabeatrizs/ERP_Restaurantes_Joinville/issues/48), continuidade de [ADM-004](ADM-004-CONFIGURADOR.md), #19/#31. Fontes: DRS 4.1/4.2, **7.1 (CSV para RF-001 a RF-008)**, RF-008, RN-012/RN-022 e RNF-003/007/008/009/011; [contrato ADM-002](ADM-002-CONTRATO-USUARIOS.md). Recorte B/C2/C3/C4 de edição e consulta. A responsável confirmou nesta sessão **“Adotar essas regras”** para preservar login/email/senha, impedir a alteração do próprio perfil/unidades e preservar o último administrador ativo. Não declara RF-008 integral nem aceite institucional.
 
 ## Consulta independente das decisões de edição
