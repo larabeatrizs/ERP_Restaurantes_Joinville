@@ -362,6 +362,7 @@ thead {
   height: auto;
   overflow: visible;
 }
+.main:focus-visible { outline: 3px solid #5b0f1a; outline-offset: -3px; }
 .login {
   display: flex;
   flex-wrap: wrap;

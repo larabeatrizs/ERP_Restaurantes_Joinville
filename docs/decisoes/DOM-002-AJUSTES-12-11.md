@@ -19,6 +19,10 @@ Fonte: mensagem explícita da responsável, com prints de Início, Produtos e Mo
 
 ## Limites de implementação
 
+Atualização confirmada em 16/11: administrador gerencia usuários/vínculos de todas as unidades; gestor central/auditor consultam. Operações e estoque continuam limitados às unidades autorizadas. A conta admin de acompanhamento só receberá gestão após os controles testados, sem mudar sua senha. [ADM-002/C2](../fundacao/ADM-002-IDENTIDADE-PERSISTIDA.md) registra a preparação de identidade e os limites.
+
+Diretriz visual reafirmada em 16/11: manter o sistema limpo, fácil de acessar/utilizar e com retorno dinâmico. Usar navegação clara, linguagem simples, estados de carregamento/vazio/erro, foco por teclado e layouts responsivos seguindo o Style Guide. O primeiro ajuste move o foco para o conteúdo novo e torna efetivo o atalho existente; não transforma essa melhoria em conformidade integral nem antecipa skeleton (#24).
+
 Não transformar o formulário simplificado de Movimentações dos prints em lançamento sem lote/local/origem/aprovação ou alteração direta de saldo. Os contratos de integridade, segregação e imutabilidade continuam obrigatórios. Não substituir o Style Guide mestre; registrar composição das novas telas e revisão visual.
 
 CAD-004/PR #30 preservou o catálogo compartilhado confirmado em 12/11 e foi atualizado com a main/UX-003 antes de publicar em 13/11. [Resultado e limites](../fundacao/CAD-004-MEDIDAS.md): cadastro de medidas compartilhado, estoque/operações por unidade, sem motor de conversão automático. [UX-003/A](../fundacao/UX-003-ACESSO-INICIO.md) registra acesso, navegação e consultas. Staging continua compartilhado conforme ADR-002; sem provisão permanente de outros ambientes ou limpeza do banco.

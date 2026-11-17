@@ -77,6 +77,32 @@ test('indicador indisponível não vira zero fictício',async({page})=>{
   await expect(page.getByRole('alert')).toContainText('Alguns indicadores não estão disponíveis');
   await expect(page.locator('.home-metrics strong')).toHaveText(['—','—','—']);
 });
+test('teclado: atalho chega ao conteúdo e mudança de tela transfere o foco para o conteúdo novo', async ({page}) => {
+  await setup(page); await login(page); await enter(page);
+  await expect(page.getByRole('heading',{name:'Início',exact:true})).toBeVisible();
+  await page.getByRole('link',{name:'Ir para o conteúdo',exact:true}).focus();
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('main')).toBeFocused();
+  await page.getByRole('link',{name:'Meu acesso',exact:true}).focus();
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('heading',{name:'Meu acesso',exact:true})).toBeVisible();
+  await expect(page.getByRole('main')).toBeFocused();
+  await expect(page.getByRole('link',{name:'Meu acesso',exact:true})).toHaveAttribute('aria-current','page');
+  await page.getByRole('link',{name:'Configurações',exact:true}).focus();
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('heading',{name:'Configurações',exact:true})).toBeVisible();
+  await expect(page.getByRole('main')).toBeFocused();
+  await page.getByRole('link',{name:'Início',exact:true}).focus();
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('heading',{name:'Início',exact:true})).toBeVisible();
+  await expect(page.getByRole('main')).toBeFocused();
+  await expect(page.locator('.home-metrics')).toBeVisible();
+  await page.screenshot({path:test.info().outputPath('foco-conteudo-1280.png'),fullPage:true});
+  await page.setViewportSize({width:360,height:800});
+  await expect(page.getByRole('main')).toBeFocused();
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);
+  await page.screenshot({path:test.info().outputPath('foco-conteudo-360.png'),fullPage:true});
+});
 test('identificação lenta impede entrar com nome vazio mesmo se os vínculos já chegaram',async({page})=>{
   const state=await setup(page,{delayIdentity:true});
   try {

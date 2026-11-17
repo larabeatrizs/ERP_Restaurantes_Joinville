@@ -75,7 +75,7 @@ export function StockPanel({ api, stock, categories, measures, suppliers, calend
       }}>{item.label}</a>)}</nav>
       <button className="signout" disabled={busy} onClick={() => { if (discard()) void onSignOut().catch(err => setError(stockError(err))); }}>Sair</button>
     </aside>
-    <main id="conteudo" className="main stock-main">
+    <main id="conteudo" tabIndex={-1} className="main stock-main">
       <header><p className="eyebrow">GESTÃO DA UNIDADE</p><h1>{title[page]}</h1><p className="muted">{subtitle[page]}</p></header>
       <section className="card unit-card" aria-label="Unidade">
         <label className="field">Unidade<select value={unit} disabled={busy || loading || !unitsLoaded || !units.length} onChange={event => { if (discard()) setUnit(event.target.value); }}>
