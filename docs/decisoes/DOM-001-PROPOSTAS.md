@@ -8,6 +8,8 @@ Fontes e evidências: [SEC-001](../seguranca/SEC-001.md), [transações](../dado
 
 ## Propostas prioritárias
 
+**Decisão posterior em 17/11/2026 — DOM-05:** a responsável confirmou a requisição rápida no modo Posterior sem vínculo inicial obrigatório, com distribuição posterior em **uma ou mais refeições** da mesma unidade, limitada à quantidade retirada e **sem nova baixa**. [Contrato e alcance EST-002](../fundacao/EST-002-REQUISICAO-RAPIDA.md), issue #52. O texto abaixo conserva a proposta histórica; DOM-01–04 não recebem aprovação por consequência desta decisão. A exceção não remove o vínculo da saída comum de consumo RF-013.
+
 | ID | Recomendação concreta | Alteração/ressalva necessária | Critério a verificar após decisão |
 | --- | --- | --- | --- |
 | DOM-01 | No RP1, nutricionista aprova qualquer perda; gestor da unidade atua como substituto somente se configurado como tal. Quem lança nunca aprova. | Conciliar a célula C da nutricionista na matriz com RN-020/RF-015/CA-022; confirmar formalmente a substituição, sem presumir que Admin ou Central pode aprovar. | Perda pequena fica pendente; autor e usuário não autorizado são negados; titular/substituto configurado aprova uma vez. |

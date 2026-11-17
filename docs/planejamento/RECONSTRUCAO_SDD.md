@@ -36,6 +36,8 @@ Próxima dependência: publicação controlada de View/Worker na Cloudflare do *
 
 ## Continuidade em 16/11/2026
 
+**Continuidade atual em 17/11:** após ADM-003–006 publicados/verificados, retomar a D1 em [EST-002/issue #52](../fundacao/EST-002-REQUISICAO-RAPIDA.md): contrato B/C1 de requisição rápida Posterior, seguido de transação C2, API/View e jornada sintética. Distribuição 1:N por item/refeição confirmada pela responsável, mesma unidade/quantidade limitada/sem segundo débito. Sem refeição fictícia; consumidor de conciliação depende de cardápios reais. [Estimativa atual](STATUS-2026-11-17.md): 30% concluídos, aproximadamente 70% restantes, com o mesmo escopo integral e incerteza explícita. As continuidades abaixo são histórico.
+
 Continuidade ADM-006/issue #50: [ativação/inativação](../fundacao/ADM-006-SITUACAO-USUARIOS.md) para contas com primeiro acesso concluído, com capacidade X separada de I, revisão/motivo/auditoria e o mesmo lock administrativo da edição. Proteger próprio acesso/último ADMIN e comprovar negação com token anterior; não liberar BLOQUEADO/convite nem alterar identidade. Sem exclusão/reset/novo ambiente. Demais controles RF-008, SMTP/rede e carga final seguem próprios.
 
 Próxima continuidade ADM-005/issue #48: [edição e CSV administrativo](../fundacao/ADM-005-CONSULTA-E-EDICAO.md). A responsável confirmou regras de proteção de autogestão/último ADMIN. Seguir C2/C3/C4 com revisão, motivo, revalidação após locks, auditoria e concorrência antes de publicar mudanças de perfil/vínculos. CSV reutiliza leitura atual e não entrega arquivo parcial após falha/revogação. Preservar login/email/senha/status e conta pessoal; inativação/identidade e demais gates seguem recortes próprios.
