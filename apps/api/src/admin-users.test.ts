@@ -1,9 +1,22 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { adminProfileCodes, validateAdminUserSave } from '@erp/contracts';
+import { createApp } from './index.ts';
+import { createLoginRepository } from './repositories/supabase-login.ts';
 
 const draft = () => ({ login: ' OPERADOR.RP1 ', nome: ' Operador sintético ', email: ' OPERADOR@EXAMPLE.INVALID ',
   perfil: 'ESTOQUISTA', unidades: ['1', '2'], status: 'ATIVO', revisao: null, motivo: ' Cadastro sintético ' });
+test('admin API: sem sessão/serviço nega, proxy fixa destino e mantém segredo fora do Worker comum',async()=>{
+ const app=createApp();assert.equal((await app.fetch(new Request('https://erp.test/api/admin/usuarios'))).status,401);
+ const auth={Authorization:'Bearer fixture'};assert.equal((await app.fetch(new Request('https://erp.test/api/admin/usuarios',{headers:auth}))).status,503);
+ let calls=0;const response=await app.fetch(new Request('https://erp.test/api/admin/usuarios?q=teste',{headers:auth}),{IDENTITY_SERVICE:{fetch:async request=>{calls++;assert.equal(request.url,'https://identity.internal/admin/usuarios?q=teste');assert.equal(request.headers.get('Authorization'),'Bearer fixture');return Response.json({usuarios:[]},{headers:{'Cache-Control':'no-store'}});}}});
+ assert.equal(response.status,200);assert.equal(calls,1);assert.equal(response.headers.get('Cache-Control'),'no-store');
+ assert.equal((await app.fetch(new Request('https://erp.test/api/admin/usuarios',{method:'DELETE',headers:auth}))).status,405);
+});
+test('login API: serviço privado recebe credenciais e a resposta pública contém apenas tokens',async()=>{
+ const repo=createLoginRepository({SUPABASE_URL:'https://auth.example.test',SUPABASE_PUBLISHABLE_KEY:'sb_publishable_fixture',AUTH_LOGIN_DIRECTORY:'{"admin":"fixture@example.invalid"}',IDENTITY_SERVICE:{fetch:async request=>{assert.equal(request.url,'https://identity.internal/login');assert.deepEqual(await request.json(),{login:'admin',password:'existente'});return Response.json({access_token:'access',refresh_token:'refresh',email:'nao-expor@example.invalid'});}}});
+ assert.deepEqual(await repo.signIn('admin','existente'),{access_token:'access',refresh_token:'refresh'});
+});
 
 test('admin: cadastro normaliza identidade e copia unidades sem alterar o rascunho', () => {
   const input = draft(), before = structuredClone(input), result = validateAdminUserSave(input);

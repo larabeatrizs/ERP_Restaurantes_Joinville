@@ -19,6 +19,8 @@ Fonte: mensagem explícita da responsável, com prints de Início, Produtos e Mo
 
 ## Limites de implementação
 
+Decisão posterior de 17/11 para [ADM-003/issue #44](../fundacao/ADM-003-BASICO-18-11.md), com meta básica de 18/11: a responsável delegou a escolha do primeiro acesso provisório e foi adotado link privado de uso único entregue pelo administrador, sem envio geral de email ou senha definida por ele. Autorizou também exceção temporária para ADMIN incluir/editar Produtos, Categorias, Medidas e Fornecedores no staging. Somente as quatro capacidades I, sem X, escrita/aprovação de recebimento ou edição de parâmetros. Revisar/formalizar antes da produção; não declarar a matriz do DRS alterada institucionalmente.
+
 Atualização confirmada em 16/11: administrador gerencia usuários/vínculos de todas as unidades; gestor central/auditor consultam. Operações e estoque continuam limitados às unidades autorizadas. A conta admin de acompanhamento só receberá gestão após os controles testados, sem mudar sua senha. [ADM-002/C2](../fundacao/ADM-002-IDENTIDADE-PERSISTIDA.md) registra a preparação de identidade e os limites.
 
 Diretriz visual reafirmada em 16/11: manter o sistema limpo, fácil de acessar/utilizar e com retorno dinâmico. Usar navegação clara, linguagem simples, estados de carregamento/vazio/erro, foco por teclado e layouts responsivos seguindo o Style Guide. O primeiro ajuste move o foco para o conteúdo novo e torna efetivo o atalho existente; não transforma essa melhoria em conformidade integral nem antecipa skeleton (#24).

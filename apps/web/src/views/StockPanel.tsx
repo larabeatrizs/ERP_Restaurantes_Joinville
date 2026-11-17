@@ -20,12 +20,14 @@ const CategoryPanel = lazy(() => import('./CategoryPanel.tsx').then(module => ({
 const MeasurePanel = lazy(() => import('./MeasurePanel.tsx').then(module => ({ default: module.MeasurePanel })));
 const SupplierPanel = lazy(() => import('./SupplierPanel.tsx').then(module => ({ default: module.SupplierPanel })));
 const CalendarPanel = lazy(() => import('./CalendarPanel.tsx').then(module => ({ default: module.CalendarPanel })));
+const UsersPanel = lazy(() => import('./UsersPanel.tsx').then(module => ({ default: module.UsersPanel })));
 
 export type StockPageProps = { api: StockApi; unit: string; unitName?: string; context: StockContext; onDirty: (dirty: boolean) => void; onBusy: (busy: boolean) => void };
 const title = { calendario: 'Calendário e refeições', fornecedores: 'Fornecedores', medidas: 'Unidades de medida', inicio: 'Início', conta: 'Meu acesso', categorias: 'Categorias de produtos', produtos: 'Produtos e alimentos', recebimentos: 'Entrada de materiais', saldo: 'Saldo de estoque' };
 const subtitle = { calendario: 'Dias de funcionamento, refeições e datas especiais da unidade.', fornecedores: 'Mantenha os fornecedores do cadastro compartilhado.', medidas: 'Mantenha as unidades do catálogo compartilhado.', inicio: 'Resumo do estoque da sua unidade.', conta: 'Identificação e recuperação da sua senha.', categorias: 'Organize o catálogo compartilhado de produtos.', produtos: 'Cadastro do estoque seco, resfriado e congelado.', recebimentos: 'Registre o recebimento de uma nota fiscal.', saldo: 'Consulte os lotes e os locais da unidade selecionada.' };
 
-export function StockPanel({ api, stock, categories, measures, suppliers, calendar, page, onNavigate, initialUnit, onUnitChange, onSignOut, userName }: {
+export function StockPanel({ api, stock, categories, measures, suppliers, calendar, page, onNavigate, initialUnit, onUnitChange, onSignOut, userName, canAdmin = false }: {
+  canAdmin?: boolean;
   calendar: CalendarApi;
   suppliers: SupplierApi;
   measures: MeasureApi;
@@ -54,7 +56,7 @@ export function StockPanel({ api, stock, categories, measures, suppliers, calend
     let active = true;
     onUnitChange(unit);
     setContext(undefined); setLoading(true); setError('');
-    if (page === 'inicio' || page === 'conta' || page === 'calendario') { setLoading(false); return; }
+    if (page === 'inicio' || page === 'conta' || page === 'calendario' || page === 'usuarios') { setLoading(false); return; }
     void stock.context(unit).then(data => { if (active) { setContext(data); setLoading(false); } })
       .catch(err => { if (active) { setError(stockError(err)); setLoading(false); } });
     return () => { active = false; };
@@ -70,13 +72,13 @@ export function StockPanel({ api, stock, categories, measures, suppliers, calend
     <a className="skip" href="#conteudo">Ir para o conteúdo</a>
     <aside className="side">
       <div className="brand">Restaurante Popular</div><p className="unit-caption"><strong>{userName || 'Conta conectada'}</strong><br />{units.find(item => item.id === unit)?.nome ?? 'Consultando unidade…'}</p>
-      <nav aria-label="Principal">{workspacePages.map(item => <a key={item.key} href={`#${item.key}`} aria-current={item.key === page ? 'page' : undefined} aria-disabled={busy} onClick={event => {
+      <nav aria-label="Principal">{workspacePages.filter(item => item.key !== 'usuarios' || canAdmin).map(item => <a key={item.key} href={`#${item.key}`} aria-current={item.key === page ? 'page' : undefined} aria-disabled={busy} onClick={event => {
         event.preventDefault(); if (!busy && item.key !== page && discard()) onNavigate(item.key);
       }}>{item.label}</a>)}</nav>
       <button className="signout" disabled={busy} onClick={() => { if (discard()) void onSignOut().catch(err => setError(stockError(err))); }}>Sair</button>
     </aside>
     <main id="conteudo" tabIndex={-1} className="main stock-main">
-      <header><p className="eyebrow">GESTÃO DA UNIDADE</p><h1>{title[page]}</h1><p className="muted">{subtitle[page]}</p></header>
+      <header><p className="eyebrow">{page === 'usuarios' ? 'ADMINISTRAÇÃO' : 'GESTÃO DA UNIDADE'}</p><h1>{page === 'usuarios' ? 'Usuários' : title[page]}</h1><p className="muted">{page === 'usuarios' ? 'Acessos e unidades permitidas para cada pessoa.' : subtitle[page]}</p></header>
       <section className="card unit-card" aria-label="Unidade">
         <label className="field">Unidade<select value={unit} disabled={busy || loading || !unitsLoaded || !units.length} onChange={event => { if (discard()) setUnit(event.target.value); }}>
           {units.map(item => <option key={item.id} value={item.id}>{item.codigo} — {item.nome}</option>)}
@@ -88,6 +90,7 @@ export function StockPanel({ api, stock, categories, measures, suppliers, calend
       {!loading && !context && error && <button onClick={() => setRetry(value => value + 1)}>Tentar novamente</button>}
       {unitsLoaded && !loading && units.some(item => item.id === unit) && page === 'inicio' && <HomePanel key={unit} api={stock} unit={unit} name={userName} onNavigate={onNavigate} />}
       {unitsLoaded && !loading && units.some(item => item.id === unit) && page === 'conta' && <AccountPanel name={userName} />}
+      {unitsLoaded && !loading && canAdmin && page === 'usuarios' && <Suspense fallback={<p role="status">Carregando usuários…</p>}><UsersPanel api={api} unit={unit} onDirty={setDirty} onBusy={setBusy} /></Suspense>}
       {unitsLoaded && !loading && units.some(item => item.id === unit) && page === 'calendario' && <Suspense fallback={<p role="status">Carregando calendário…</p>}><CalendarPanel key={unit} api={calendar} unit={unit} onDirty={setDirty} onBusy={setBusy} /></Suspense>}
       {context && !loading && <>
         {page === 'fornecedores' && <Suspense fallback={<p role="status">Carregando fornecedores…</p>}><SupplierPanel key={unit} api={suppliers} unit={unit} onDirty={setDirty} onBusy={setBusy} /></Suspense>}

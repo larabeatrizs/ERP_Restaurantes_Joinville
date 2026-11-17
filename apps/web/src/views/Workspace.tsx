@@ -8,7 +8,7 @@ import { StockApi } from '../services/stock-api.ts';
 import { SettingsPanel } from './SettingsPanel.tsx';
 import { StockPanel } from './StockPanel.tsx';
 
-export type WorkspacePage = 'inicio' | 'conta' | 'configuracoes' | 'calendario' | 'produtos' | 'recebimentos' | 'saldo' | 'categorias' | 'medidas' | 'fornecedores';
+export type WorkspacePage = 'inicio' | 'conta' | 'configuracoes' | 'calendario' | 'produtos' | 'recebimentos' | 'saldo' | 'categorias' | 'medidas' | 'fornecedores' | 'usuarios';
 export const workspacePages: { key: WorkspacePage; label: string }[] = [
   { key: 'inicio', label: 'Início' },
   { key: 'configuracoes', label: 'Configurações' },
@@ -20,9 +20,10 @@ export const workspacePages: { key: WorkspacePage; label: string }[] = [
   { key: 'recebimentos', label: 'Recebimentos' },
   { key: 'saldo', label: 'Saldo' },
   { key: 'conta', label: 'Meu acesso' },
+  { key: 'usuarios', label: 'Usuários' },
 ];
 
-export function Workspace({ api, stock, categories, measures, suppliers, calendar, onSignOut, initialUnit, userName }: { calendar: CalendarApi; suppliers: SupplierApi; measures: MeasureApi; initialUnit: string; userName: string; categories: CategoryApi; api: SettingsApi; stock: StockApi; onSignOut: () => Promise<void> }) {
+export function Workspace({ api, stock, categories, measures, suppliers, calendar, onSignOut, initialUnit, userName, canAdmin = false }: { canAdmin?: boolean; calendar: CalendarApi; suppliers: SupplierApi; measures: MeasureApi; initialUnit: string; userName: string; categories: CategoryApi; api: SettingsApi; stock: StockApi; onSignOut: () => Promise<void> }) {
   const [page, setPage] = useState<WorkspacePage>('inicio');
   const [unit, setUnit] = useState(initialUnit);
   const previousPage = useRef(page);
@@ -31,6 +32,6 @@ export function Workspace({ api, stock, categories, measures, suppliers, calenda
     previousPage.current = page;
   }, [page]);
   return page === 'configuracoes'
-    ? <SettingsPanel userName={userName} api={api} onSignOut={onSignOut} onNavigate={setPage} initialUnit={unit} onUnitChange={setUnit} />
-    : <StockPanel calendar={calendar} suppliers={suppliers} measures={measures} userName={userName} categories={categories} key={page} api={api} stock={stock} page={page} onNavigate={setPage} initialUnit={unit} onUnitChange={setUnit} onSignOut={onSignOut} />;
+    ? <SettingsPanel canAdmin={canAdmin} userName={userName} api={api} onSignOut={onSignOut} onNavigate={setPage} initialUnit={unit} onUnitChange={setUnit} />
+    : <StockPanel canAdmin={canAdmin} calendar={calendar} suppliers={suppliers} measures={measures} userName={userName} categories={categories} key={page} api={api} stock={stock} page={page} onNavigate={setPage} initialUnit={unit} onUnitChange={setUnit} onSignOut={onSignOut} />;
 }

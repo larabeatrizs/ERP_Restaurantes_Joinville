@@ -27,6 +27,14 @@ export function createApp(factory: SessionFactory = createSupabaseSession, stock
     async fetch(request: Request, env: RuntimeEnv = {}): Promise<Response> {
       try {
         const path = new URL(request.url).pathname;
+        if (path === '/api/admin/usuarios' || /^\/api\/admin\/usuarios\/[a-f0-9-]{36}\/primeiro-acesso$/i.test(path)) {
+          const allowed = path === '/api/admin/usuarios' ? ['GET','POST'] : ['POST'];
+          if (!allowed.includes(request.method)) return methodNotAllowed(allowed.join(', '), request.method === 'HEAD');
+          if (!request.headers.get('Authorization')?.startsWith('Bearer ')) throw new ApiError(401, 'UNAUTHORIZED', 'Entre novamente.');
+          if (!env.IDENTITY_SERVICE) throw new ApiError(503, 'SERVICE_UNAVAILABLE', 'Administração temporariamente indisponível.');
+          const url = new URL(request.url); url.protocol = 'https:'; url.host = 'identity.internal'; url.pathname = path.slice(4);
+          return await env.IDENTITY_SERVICE.fetch(new Request(url, request));
+        }
         const calendar = /^\/api\/unidades\/([^/]+)\/calendario(?:\/(funcionamento))?$/.exec(path);
         if (calendar?.[1]) return await calendarController(request, env, calendar[1], !!calendar[2], calendarFactory);
         const supplier = /^\/api\/unidades\/([^/]+)\/fornecedores(?:\/(exportar|[^/]+(?:\/status)?))?$/.exec(path);

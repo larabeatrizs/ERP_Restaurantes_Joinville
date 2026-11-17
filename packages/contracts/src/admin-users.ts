@@ -21,6 +21,25 @@ export interface AdminUserSave extends AdminUserInput {
   revisao: string | null;
   motivo: string;
 }
+export interface AdminUserRow {
+  id: string; nome: string; login: string | null; email: string | null; perfil: AdminProfileCode;
+  status: AdminUserStatus; primeiro_acesso: boolean; unidades: string[];
+}
+export interface AdminUsersSnapshot {
+  pode_criar: boolean; unidades: { id: string; codigo: string; nome: string }[];
+  perfis: AdminProfileCode[]; usuarios: AdminUserRow[]; total: number;
+}
+export function isAdminUsersSnapshot(value: unknown): value is AdminUsersSnapshot {
+  return isRecord(value) && typeof value.pode_criar === 'boolean' && Array.isArray(value.unidades)
+    && value.unidades.every(u => isRecord(u) && isStockId(u.id) && typeof u.codigo === 'string' && typeof u.nome === 'string')
+    && Array.isArray(value.perfis) && value.perfis.every(p => adminProfileCodes.some(code => code === p))
+    && typeof value.total === 'number' && Number.isSafeInteger(value.total) && value.total >= 0
+    && Array.isArray(value.usuarios) && value.usuarios.length <= 25 && value.usuarios.every(u => isRecord(u)
+      && typeof u.id === 'string' && /^[a-f0-9-]{36}$/i.test(u.id) && typeof u.nome === 'string'
+      && (u.login === null || typeof u.login === 'string') && (u.email === null || typeof u.email === 'string')
+      && adminProfileCodes.some(p => p === u.perfil) && ['ATIVO','INATIVO','BLOQUEADO'].includes(String(u.status))
+      && typeof u.primeiro_acesso === 'boolean' && Array.isArray(u.unidades) && u.unidades.every(isStockId));
+}
 export type AdminUserField = keyof AdminUserSave;
 export type AdminUserValidation =
   | { ok: true; value: AdminUserSave }

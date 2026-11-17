@@ -1,0 +1,73 @@
+{
+  "capturedAt": "2026-11-17 13:47:22 UTC",
+  "project": "vpowsedoajpdbeckimuv",
+  "counts": {
+    "usersTotal": 7,
+    "originalUsers": 5,
+    "products": 9,
+    "receipts": 6,
+    "movements": 6,
+    "stockAudit": 67,
+    "privateContacts": 2,
+    "persistedLogins": 2,
+    "completedProvisionings": 1,
+    "userAudit": 3,
+    "privateTables": 5
+  },
+  "preserved": {
+    "usuarios": true,
+    "vinculos": true,
+    "produtos": true,
+    "recebimentos": true,
+    "saldos": true,
+    "unidades": true
+  },
+  "expectedAddedPermissions": [
+    "ADMIN:CATEGORIA_EDITAR",
+    "ADMIN:FORNECEDOR_EDITAR",
+    "ADMIN:MEDIDA_EDITAR",
+    "ADMIN:PRODUTO_GERIR",
+    "ADMIN:USUARIO_GERIR",
+    "ADMIN:USUARIO_LER",
+    "AUDITOR:USUARIO_LER",
+    "NUTRICIONISTA:CATEGORIA_CICLO_VIDA",
+    "NUTRICIONISTA:CATEGORIA_EDITAR",
+    "NUTRICIONISTA:ESTOQUE_LER",
+    "NUTRICIONISTA:FORNECEDOR_CICLO_VIDA",
+    "NUTRICIONISTA:FORNECEDOR_EDITAR",
+    "NUTRICIONISTA:MEDIDA_CICLO_VIDA",
+    "NUTRICIONISTA:MEDIDA_EDITAR",
+    "NUTRICIONISTA:PRODUTO_CICLO_VIDA",
+    "NUTRICIONISTA:PRODUTO_GERIR",
+    "NUTRICIONISTA:PRODUTO_LER"
+  ],
+  "noRemovedPermissions": true,
+  "privateTablesRls": true,
+  "privilegedRpc": {
+    "anonymousExecute": false,
+    "authenticatedExecute": false
+  },
+  "migrations": [
+    {
+      "md5": "bd3f4d5c4006e3e46418e8ed7b860c2d",
+      "name": "administracao_usuarios_basica",
+      "version": "20261117130253"
+    },
+    {
+      "md5": "79d7cb0e875e04cc7cdfc1a916d84708",
+      "name": "administracao_unidade_nome_qualificado",
+      "version": "20261117132224"
+    }
+  ],
+  "catalogWriteTest": {
+    "fourRegistriesCreatedInRollbackTransaction": true,
+    "cycleDenied": true,
+    "persistedRecords": false
+  },
+  "advisories": [
+    "INFO legacy public RLS without policies (14 contained tables)",
+    "WARN leaked password protection disabled"
+  ],
+  "manualFirstAccessEnabled": true,
+  "syntheticBypassDisabled": true
+}

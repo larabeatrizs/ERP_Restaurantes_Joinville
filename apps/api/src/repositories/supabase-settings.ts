@@ -64,7 +64,10 @@ export function createSupabaseSession(env: RuntimeEnv, token: string, fetcher: t
         const { data, error, status } = await database.from('usuario').select('nome').eq('id', actor).eq('status', 'ATIVO').maybeSingle();
         translateError(error, status);
         if (!isRecord(data) || typeof data.nome !== 'string' || !data.nome.trim() || data.nome.length > 200) throw new ApiError(403, 'ACCESS_DENIED', 'Perfil indisponível.');
-        return { nome: data.nome };
+        const permissions = await database.from('perfil_permissao').select('permissao');
+        translateError(permissions.error, permissions.status);
+        const administration = Array.isArray(permissions.data) && permissions.data.some(p => p.permissao === 'USUARIO_LER');
+        return { nome: data.nome, ...(administration ? { administracao: true } : {}) };
       },
       async listUnits() {
         const { data, error, status } = await database.from('unidade').select('id::text,codigo,nome').eq('status', 'ATIVO').order('nome');
