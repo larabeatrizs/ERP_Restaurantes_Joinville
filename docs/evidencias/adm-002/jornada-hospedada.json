@@ -1,0 +1,20 @@
+{
+  "sourceCommit": "c5f0b47cf6621345cf825934e50910ccbf7227d8",
+  "cloudflareVersion": "2b767fd2-60e3-42ba-b122-c9648d98b8c0",
+  "runtimeCi": "https://github.com/larabeatrizs/ERP_Restaurantes_Joinville/actions/runs/44077607277",
+  "executedAt": "2026-11-17T11:52:11.762Z",
+  "origin": "https://erp-joinville-staging.erp-restaurantes-joinville.workers.dev",
+  "asset": "/assets/index-rz8695sb.js",
+  "mocked": false,
+  "completed": true,
+  "scenarios": [
+    {
+      "name": "Synthetic username login, unit choice, skip link and keyboard navigation across workspace branches",
+      "passed": true
+    },
+    {
+      "name": "No horizontal overflow at 360/768/1280 and no domain API writes",
+      "passed": true
+    }
+  ]
+}

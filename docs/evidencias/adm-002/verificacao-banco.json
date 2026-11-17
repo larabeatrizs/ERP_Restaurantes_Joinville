@@ -1,0 +1,35 @@
+{
+  "capturedAt": "2026-11-17 11:48:51 UTC",
+  "project": "vpowsedoajpdbeckimuv",
+  "migration": "20261117114807_identidade_login_administrativa",
+  "counts": {
+    "users": 5,
+    "products": 9,
+    "receipts": 6,
+    "stockAudit": 67,
+    "logins": 0,
+    "loginAudit": 0,
+    "adminCapabilityGrants": 0
+  },
+  "preserved": {
+    "usuarios": true,
+    "capacidades": true,
+    "vinculos": true,
+    "saldos": true,
+    "entradas": true,
+    "produtos": true
+  },
+  "private": {
+    "tablesRls": true,
+    "anonymousTableAccess": false,
+    "authenticatedTableAccess": false,
+    "writerCreate": false,
+    "authenticatedExecute": false,
+    "anonymousExecute": false
+  },
+  "advisories": [
+    "INFO rls_enabled_no_policy (legacy contained)",
+    "WARN auth_leaked_password_protection"
+  ],
+  "migrationMd5": "e1cda3c24cf7c9cd12d4ad80f706fef9"
+}

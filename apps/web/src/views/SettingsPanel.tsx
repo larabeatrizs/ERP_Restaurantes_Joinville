@@ -250,7 +250,7 @@ export function SettingsPanel({
           Sair
         </button>
       </aside>
-      <main id="conteudo" className="main">
+      <main id="conteudo" tabIndex={-1} className="main">
         <header>
           <p className="eyebrow">GESTÃO DA UNIDADE</p>
           <h1>Configurações</h1>

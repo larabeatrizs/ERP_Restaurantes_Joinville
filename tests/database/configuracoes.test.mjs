@@ -91,7 +91,138 @@ test('verificador da fundação confere RLS, grants e escritor restrito no labor
     ['erp_private', 'medida_operacao', 'erp_stock_writer'],
     ['erp_private', 'produto_ciclo_operacao', 'erp_stock_writer'],
     ['erp_private', 'produto_exclusao_motivo', 'erp_product_reference_reader'],
+    ['erp_private', 'usuario_login_salvar', 'erp_identity_writer'],
   ]);
+});
+
+const loginSave = async (user, login, revision = null, reason = 'Cadastro sintético', client = db) =>
+  (await client.query('select erp_private.usuario_login_salvar($1,$2,$3,$4) as result', [uid(user), login, revision, reason])).rows[0].result;
+async function identityTransaction(callback) {
+  await db.exec('begin');
+  try {
+    await db.exec("insert into erp.perfil_permissao select id,'USUARIO_GERIR' from erp.perfil where codigo='ADMIN'");
+    await db.query("select set_config('request.jwt.claim.sub',$1,true)", [uid(1)]);
+    await callback();
+  } finally { await db.exec('rollback'); }
+}
+async function loginError(user, login, revision, code, reason = 'Cadastro sintético') {
+  await db.exec('savepoint identity_error');
+  await assert.rejects(() => loginSave(user, login, revision, reason), { code });
+  await db.exec('rollback to savepoint identity_error');
+}
+test('identidade: migration não cadastra login nem concede administração aos perfis existentes', async () => {
+  assert.equal((await db.query('select count(*)::int n from erp_private.usuario_login')).rows[0].n, 0);
+  assert.equal((await db.query("select count(*)::int n from erp.perfil_permissao where permissao like 'USUARIO_%'")).rows[0].n, 0);
+  const role = (await db.query("select rolcanlogin,rolsuper,rolbypassrls,rolcreaterole,rolcreatedb,pg_has_role('authenticated',oid,'MEMBER') member from pg_roles where rolname='erp_identity_writer'")).rows[0];
+  assert.ok(Object.values(role).every(v => v === false));
+  assert.equal((await db.query("select has_schema_privilege('erp_identity_writer','erp_private','CREATE') value")).rows[0].value, false);
+  assert.equal((await db.query("select has_table_privilege('erp_identity_writer','auth.users','SELECT') value")).rows[0].value, false);
+});
+test('identidade: criação/alteração auditadas, reexecução sem mudança e revisão obsoleta sem escrita', async () => identityTransaction(async () => {
+  assert.deepEqual(await loginSave(3, 'operador.a'), { login: 'operador.a', revisao: '1', alterado: true });
+  await loginError(3, 'outro.nome', null, 'PT412');
+  assert.deepEqual(await loginSave(3, 'operador.a', '1'), { login: 'operador.a', revisao: '1', alterado: false });
+  assert.deepEqual(await loginSave(3, 'operador.b', '1', '  Revisão sintética  '), { login: 'operador.b', revisao: '2', alterado: true });
+  await loginError(3, 'operador.c', '1', 'PT412');
+  const events = (await db.query('select login_anterior,login_novo,revisao::text,motivo from erp_private.auditoria_login order by id')).rows;
+  assert.deepEqual(events, [
+    { login_anterior: null, login_novo: 'operador.a', revisao: '1', motivo: 'Cadastro sintético' },
+    { login_anterior: 'operador.a', login_novo: 'operador.b', revisao: '2', motivo: 'Revisão sintética' },
+  ]);
+}));
+test('identidade: login único entre unidades, inválidos e alvo inexistente não deixam estado parcial', async () => identityTransaction(async () => {
+  await loginSave(1, 'operador.a');
+  await loginError(2, 'operador.a', null, 'PT409');
+  for (const login of ['ab', 'a'.repeat(41), 'ADMIN', ' nome ', 'nome@example.invalid', 'usuário', 'a\nb', null]) await loginError(3, login, null, 'PT422');
+  for (const reason of [' ', '\u00a0\u00a0\u00a0', 'a', 'a'.repeat(501), 'abc\t', null]) await loginError(3, 'operador.c', null, 'PT422', reason);
+  await loginError(3, 'operador.c', '0', 'PT422');
+  await loginError(3, 'operador.c', '1', 'PT412');
+  await loginError(99, 'operador.c', null, 'PT404');
+  assert.equal((await db.query('select count(*)::int n from erp_private.usuario_login')).rows[0].n, 1);
+  assert.equal((await db.query('select count(*)::int n from erp_private.auditoria_login')).rows[0].n, 1);
+}));
+test('identidade: sem ator, sem capacidade, não ADMIN, inativo e bloqueado são negados', async () => identityTransaction(async () => {
+  for (const actor of ['', uid(3), uid(4)]) {
+    await db.query("select set_config('request.jwt.claim.sub',$1,true)", [actor]);
+    await loginError(2, 'operador.b', null, 'PT403');
+  }
+  await db.exec("insert into erp.perfil_permissao select id,'USUARIO_GERIR' from erp.perfil where codigo='ESTOQUISTA'");
+  await db.query("select set_config('request.jwt.claim.sub',$1,true)", [uid(3)]);
+  await loginError(2, 'operador.b', null, 'PT403');
+  await db.query("select set_config('request.jwt.claim.sub',$1,true)", [uid(1)]);
+  await db.exec(`update erp.usuario set status='BLOQUEADO' where id='${uid(1)}'`);
+  await loginError(2, 'operador.b', null, 'PT403');
+  await db.exec(`update erp.usuario set status='ATIVO' where id='${uid(1)}';delete from erp.perfil_permissao where permissao='USUARIO_GERIR'`);
+  await loginError(2, 'operador.b', null, 'PT403');
+}));
+test('identidade: tabelas/rotina privadas negam leitura e DML direto a anon/autenticado', async () => {
+  for (const role of ['anon', 'authenticated']) await transaction(1, async () => {
+    await expectSqlError('select * from erp_private.usuario_login', '42501');
+    await expectSqlError('select * from erp_private.auditoria_login', '42501');
+    await expectSqlError("select erp_private.usuario_login_salvar(null,'teste',null,'Motivo sintético')", '42501');
+    await expectSqlError(`insert into erp_private.usuario_login(usuario_id,login) values('${uid(1)}','indevido')`, '42501');
+    await expectSqlError("update erp_private.usuario_login set login='indevido'", '42501');
+    await expectSqlError('delete from erp_private.auditoria_login', '42501');
+  }, role);
+});
+test('identidade: escritor não altera identidades Auth/domínio nem remove ou reescreve auditoria', async () => transaction(1, async () => {
+  await db.exec('set local role erp_identity_writer');
+  await expectSqlError('select * from auth.users', '42501');
+  await expectSqlError("update erp.usuario set nome='Indevido'", '42501');
+  await expectSqlError('delete from erp_private.usuario_login', '42501');
+  await expectSqlError("update erp_private.auditoria_login set motivo='Indevido'", '42501');
+  await expectSqlError('delete from erp_private.auditoria_login', '42501');
+}, 'root'));
+test('identidade: falha de auditoria desfaz cadastro e alteração de login', async () => identityTransaction(async () => {
+  await loginSave(1, 'operador.a');
+  await db.exec('revoke insert on erp_private.auditoria_login from erp_identity_writer');
+  await loginError(2, 'operador.b', null, '42501');
+  await loginError(1, 'operador.c', '1', '42501');
+  assert.deepEqual((await db.query('select login,revisao::text from erp_private.usuario_login')).rows, [{ login: 'operador.a', revisao: '1' }]);
+}));
+
+test('identidade: concorrência revalida revisão e capacidade depois de aguardar lock', { skip: !process.env.DATABASE_TEST_URL }, async () => {
+  const first = new pg.Client({ connectionString: process.env.DATABASE_TEST_URL });
+  const second = new pg.Client({ connectionString: process.env.DATABASE_TEST_URL });
+  let pending;
+  await Promise.all([first.connect(), second.connect()]);
+  try {
+    await db.exec("insert into erp.perfil_permissao select id,'USUARIO_GERIR' from erp.perfil where codigo='ADMIN'");
+    await db.exec('begin');
+    await db.query("select set_config('request.jwt.claim.sub',$1,true)", [uid(1)]);
+    await loginSave(3, 'concorrente.a'); await db.exec('commit');
+    const pid = (await second.query('select pg_backend_pid() pid')).rows[0].pid;
+    for (const revoke of [false, true]) {
+      await first.query('begin'); await second.query('begin');
+      await first.query("select set_config('request.jwt.claim.sub',$1,true)", [uid(1)]);
+      await second.query("select set_config('request.jwt.claim.sub',$1,true)", [uid(1)]);
+      if (revoke) await first.query("select pg_advisory_xact_lock(hashtextextended('erp.usuario_login:'||$1,0))", [uid(3)]);
+      else await loginSave(3, 'concorrente.b', '1', 'Primeira revisão', first);
+      pending = loginSave(3, 'concorrente.c', revoke ? '2' : '1', 'Revisão concorrente', second).then(value => ({ value }), error => ({ error }));
+      let blocked = false;
+      for (let i = 0; i < 150; i++) {
+        blocked = (await db.query('select cardinality(pg_blocking_pids($1))>0 blocked', [pid])).rows[0].blocked;
+        if (blocked) break;
+        await new Promise(resolve => setTimeout(resolve, 20));
+      }
+      assert.equal(blocked, true, 'A segunda chamada deve aguardar o lock.');
+      if (revoke) await first.query("delete from erp.perfil_permissao where permissao='USUARIO_GERIR'");
+      await first.query('commit');
+      assert.equal((await pending).error?.code, revoke ? 'PT403' : 'PT412');
+      await second.query('rollback'); pending = undefined;
+    }
+    assert.deepEqual((await db.query('select login,revisao::text from erp_private.usuario_login where usuario_id=$1', [uid(3)])).rows, [{ login: 'concorrente.b', revisao: '2' }]);
+    assert.equal((await db.query('select count(*)::int n from erp_private.auditoria_login where usuario_id=$1', [uid(3)])).rows[0].n, 2);
+  } finally {
+    await first.query('rollback').catch(() => {});
+    if (pending) await pending;
+    await second.query('rollback').catch(() => {});
+    await db.exec('rollback');
+    await db.query('delete from erp_private.auditoria_login where usuario_id=$1', [uid(3)]);
+    await db.query('delete from erp_private.usuario_login where usuario_id=$1', [uid(3)]);
+    await db.exec("delete from erp.perfil_permissao where permissao='USUARIO_GERIR'");
+    await Promise.all([first.end(), second.end()]);
+  }
 });
 
 test('retorno por desativação nega leitura/RPC sem excluir dados', async () => {
@@ -117,7 +248,7 @@ test('RLS nas tabelas e somente funções privilegiadas conhecidas com executore
   assert.ok(tables.rows.every((row) => row.relrowsecurity));
   const functions = await db.query("select proname,pg_get_userbyid(proowner) as owner,proconfig from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname in ('erp','erp_private') and prosecdef");
   assert.deepEqual(functions.rows.map(row => [row.proname, row.owner]).sort(), [
-    ['atualizar_configuracao', 'erp_config_writer'], ['calendario_operacao','erp_stock_writer'], ['catalogo_unidade', 'erp_stock_writer'], ['categoria_operacao', 'erp_stock_writer'], ['estoque_operacao', 'erp_stock_writer'], ['fornecedor_operacao', 'erp_stock_writer'], ['medida_operacao', 'erp_stock_writer'], ['produto_ciclo_operacao','erp_stock_writer'], ['produto_exclusao_motivo','erp_product_reference_reader'],
+    ['atualizar_configuracao', 'erp_config_writer'], ['calendario_operacao','erp_stock_writer'], ['catalogo_unidade', 'erp_stock_writer'], ['categoria_operacao', 'erp_stock_writer'], ['estoque_operacao', 'erp_stock_writer'], ['fornecedor_operacao', 'erp_stock_writer'], ['medida_operacao', 'erp_stock_writer'], ['produto_ciclo_operacao','erp_stock_writer'], ['produto_exclusao_motivo','erp_product_reference_reader'], ['usuario_login_salvar','erp_identity_writer'],
   ]);
   assert.ok(functions.rows.every(row => row.proconfig.includes('search_path=""')));
   const referenceRole=(await db.query("select rolcanlogin,rolsuper,rolbypassrls,rolcreaterole,rolcreatedb from pg_roles where rolname='erp_product_reference_reader'")).rows[0];
