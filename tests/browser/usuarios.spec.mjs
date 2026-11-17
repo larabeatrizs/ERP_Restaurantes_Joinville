@@ -26,9 +26,10 @@ async function setup(page,{allowed=true,write=true,conflict=false}={}){
   if(url.pathname.endsWith('/estoque/saldos'))return route.fulfill({json:{saldos:[]}});
   return route.fulfill({status:404,json:{error:{code:'UNEXPECTED'}}});
  });
- await page.goto('/');await page.getByLabel('Nome de usuário',{exact:true}).fill('admin');await page.getByLabel('Senha',{exact:true}).fill('Senha123!');await page.getByRole('button',{name:'Entrar',exact:true}).click();
- await expect(page.getByLabel('Unidade de acesso',{exact:true})).toBeEnabled();await page.getByLabel('Unidade de acesso',{exact:true}).selectOption('1');await page.getByRole('button',{name:'Acessar unidade',exact:true}).click();
- if(allowed){await page.getByRole('link',{name:'Usuários',exact:true}).click();await expect(page.getByRole('heading',{name:'Usuários',exact:true})).toBeVisible();}
+ await page.goto('http://127.0.0.1:4174/');await page.getByLabel('Nome de usuário',{exact:true}).fill('admin');await page.getByLabel('Senha',{exact:true}).fill('Senha123!');await page.getByRole('button',{name:'Entrar',exact:true}).click();
+ if(allowed){await expect(page.getByRole('heading',{name:'Usuários',exact:true})).toBeVisible();}
+ await expect(page.getByLabel('Unidade de acesso',{exact:true})).toHaveCount(0);
+ expect(requests.includes('/api/unidades')).toBe(false);
  return {submissions,requests,reissues};
 }
 async function fill(page){await page.getByRole('button',{name:'Novo usuário',exact:true}).click();await page.getByLabel('Nome de login *',{exact:true}).fill(' NOVO.USUARIO ');await page.getByLabel('Nome de identificação *',{exact:true}).fill(' Pessoa sintética ');await page.getByLabel('Email *',{exact:true}).fill('NOVO@EXAMPLE.INVALID');await page.getByRole('checkbox',{name:'RP2 — Unidade B',exact:true}).check();await page.getByLabel('Motivo do cadastro *',{exact:true}).fill(' Cadastro sintético ');}
@@ -38,7 +39,7 @@ test('usuários: administrador inclui com filiais e recebe link protegido; tabel
  for(const width of [360,1280]){await page.setViewportSize({width,height:900});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);await page.screenshot({path:test.info().outputPath(`formulario-${width}.png`),fullPage:true});}
  await page.getByRole('button',{name:'Incluir usuário',exact:true}).click();
  await expect(page.getByRole('heading',{name:'Primeiro acesso',exact:true})).toBeVisible();await expect(page.getByRole('cell',{name:'Aguardando primeiro acesso',exact:true})).toBeVisible();
- expect(state.submissions).toEqual([{login:'novo.usuario',nome:'Pessoa sintética',email:'novo@example.invalid',perfil:'ESTOQUISTA',unidades:['1','2'],status:'ATIVO',revisao:null,motivo:'Cadastro sintético'}]);
+ expect(state.submissions).toEqual([{login:'novo.usuario',nome:'Pessoa sintética',email:'novo@example.invalid',perfil:'ESTOQUISTA',unidades:['2'],status:'ATIVO',revisao:null,motivo:'Cadastro sintético'}]);
  await expect(page.getByLabel('Link de primeiro acesso',{exact:true})).toHaveAttribute('type','password');
  await page.getByRole('button',{name:'Copiar link de primeiro acesso',exact:true}).click();await expect(page.getByRole('status')).toContainText('Link copiado.');
  for(const width of [360,1280]){await page.setViewportSize({width,height:900});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);await page.screenshot({path:test.info().outputPath(`usuarios-${width}.png`),fullPage:true});}
@@ -51,5 +52,20 @@ test('usuários: consulta sem escrita e conta comum respeitam a navegação disp
  await setup(page,{write:false});await expect(page.getByRole('button',{name:'Novo usuário',exact:true})).toHaveCount(0);await expect(page.getByText('Nenhum usuário encontrado.',{exact:true})).toBeVisible();
 });
 test('usuários: conta sem capacidade não recebe menu nem solicita listagem administrativa',async({page})=>{
- const state=await setup(page,{allowed:false});await expect(page.getByRole('heading',{name:'Início',exact:true})).toBeVisible();await expect(page.getByRole('link',{name:'Usuários',exact:true})).toHaveCount(0);expect(state.requests.includes('/api/admin/usuarios')).toBe(false);
+ const state=await setup(page,{allowed:false});await expect(page.getByRole('heading',{name:'Acesso restrito',exact:true})).toBeVisible();await expect(page.getByRole('link',{name:'Usuários',exact:true})).toHaveCount(0);expect(state.requests.includes('/api/admin/usuarios')).toBe(false);
+});
+
+test('configurador: sair protege campos não salvos e unidades não são marcadas implicitamente',async({page})=>{
+ await setup(page);await page.getByRole('button',{name:'Novo usuário',exact:true}).click();
+ await expect(page.getByRole('checkbox',{name:'RP1 — Unidade A',exact:true})).not.toBeChecked();await expect(page.getByRole('checkbox',{name:'RP2 — Unidade B',exact:true})).not.toBeChecked();
+ await page.getByLabel('Nome de login *',{exact:true}).fill('rascunho');
+ page.once('dialog',dialog=>dialog.dismiss());await page.getByRole('button',{name:'Sair',exact:true}).click();await expect(page.getByLabel('Nome de login *',{exact:true})).toHaveValue('rascunho');
+ await page.getByRole('link',{name:'Ir para o conteúdo',exact:true}).focus();await page.keyboard.press('Enter');await expect(page.locator('#conteudo')).toBeFocused();
+});
+
+test('ERP: administrador continua escolhendo unidade e não recebe navegação para o Configurador',async({page})=>{
+ const state=await setup(page);state.requests.length=0;
+ await page.goto('http://127.0.0.1:4173/');await page.getByLabel('Nome de usuário',{exact:true}).fill('admin');await page.getByLabel('Senha',{exact:true}).fill('Senha123!');await page.getByRole('button',{name:'Entrar',exact:true}).click();
+ await expect(page.getByLabel('Unidade de acesso',{exact:true})).toBeEnabled();await page.getByLabel('Unidade de acesso',{exact:true}).selectOption('1');await page.getByRole('button',{name:'Acessar unidade',exact:true}).click();
+ await expect(page.getByRole('heading',{name:'Início',exact:true})).toBeVisible();await expect(page.getByRole('link',{name:'Usuários',exact:true})).toHaveCount(0);await expect(page.locator('a[href*="configurador"]')).toHaveCount(0);expect(state.requests.includes('/api/admin/usuarios')).toBe(false);
 });

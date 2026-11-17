@@ -16,6 +16,8 @@ import { PasswordField } from './PasswordField.tsx';
 import { RecoveryPanel } from './RecoveryPanel.tsx';
 import { UnitAccess } from './UnitAccess.tsx';
 import { signIn } from '../services/login-api.ts';
+import { Configurator } from './Configurator.tsx';
+const configurator = import.meta.env.VITE_APP_AREA === 'configurador';
 export function App() {
   const [session, setSession] = useState<Session | null>(null);
   const [ready, setReady] = useState(!auth);
@@ -27,7 +29,6 @@ export function App() {
   const [recovering, setRecovering] = useState(false);
   const [unit, setUnit] = useState<UnitSummary>();
   const [userName, setUserName] = useState('');
-  const [administration, setAdministration] = useState(false);
   const api = useMemo(
     () =>
       new SettingsApi(
@@ -89,12 +90,12 @@ export function App() {
     );
   if (linkState === 'invalid') return <main className="login-form"><h1>Link indisponível</h1><p role="alert">Este link expirou, já foi utilizado ou é inválido. Solicite um novo link à administração.</p><button onClick={() => { void endPasswordSession().catch(() => setError('Não foi possível sair. Tente novamente.')); }}>Voltar ao login</button>{error && <p role="alert">{error}</p>}</main>;
   if (session && passwordMode) return <PasswordPanel onDone={() => endPasswordSession(true)} onCancel={() => endPasswordSession()} />;
-  if (session && !unit) return <UnitAccess api={api} onEnter={(value, name, allowed) => { setUnit(value); setUserName(name); setAdministration(allowed); }} onSignOut={async () => { const result = await auth!.signOut(); if (result.error) throw result.error; }} />;
+  if (session && configurator) return <Configurator api={api} onSignOut={async () => { const result = await auth!.signOut(); if (result.error) throw result.error; }} />;
+  if (session && !unit) return <UnitAccess api={api} onEnter={(value, name) => { setUnit(value); setUserName(name); }} onSignOut={async () => { const result = await auth!.signOut(); if (result.error) throw result.error; }} />;
   if (!session && recovering) return <RecoveryPanel onBack={() => setRecovering(false)} />;
   if (session)
     return (
       <Workspace
-        canAdmin={administration}
         calendar={calendar}
         suppliers={suppliers}
         measures={measures}
@@ -125,7 +126,7 @@ export function App() {
       <main className="login-form">
         <form onSubmit={(event) => void login(event)}>
           <header>
-            <h1>Entrar</h1>
+            <h1>{configurator ? 'Configurador' : 'Entrar'}</h1>
             <p className="muted">Use seu nome de usuário e senha para acessar.</p>
           </header>
           {notice && <p role="status" className="notice">{notice}</p>}

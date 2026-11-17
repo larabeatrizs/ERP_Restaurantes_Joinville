@@ -1,5 +1,7 @@
 # ADM-003 — Básico utilizável até 18/11
 
+> **Continuidade ADM-004:** a gestão de usuários está sendo transferida para o [Configurador separado](ADM-004-CONFIGURADOR.md), conforme confirmação posterior da responsável. O caminho dentro do ERP descrito abaixo registra a entrega ADM-003; consultar o estado e as evidências do recorte posterior para o acesso vigente.
+
 **Publicado e verificado em 17/11/2026**, antes da meta solicitada. [Aplicação](https://erp-joinville-staging.erp-restaurantes-joinville.workers.dev), [PR #45](https://github.com/larabeatrizs/ERP_Restaurantes_Joinville/pull/45), [jornada hospedada](../evidencias/adm-003/jornada-hospedada.json) e [preservação](../evidencias/adm-003/verificacao-banco.json). Conta `admin` anterior e senha preservadas; gestão de usuários e escrita limitada dos quatro cadastros habilitadas.
 
 Uso básico: entrar novamente como admin, escolher unidade e usar Medidas/Categorias/Fornecedores/Produtos para incluir/editar. Em **Usuários → Novo usuário**, informar login, nome, email, perfil e unidades; copiar o link e entregar em canal privado à pessoa, que define sua senha e entra pelo nome de login. A escolha de unidade aparece antes do workspace. Reemitir link está disponível somente enquanto o primeiro acesso estiver pendente; não redefine contas anteriores/ativadas. Email automático continua adiado.

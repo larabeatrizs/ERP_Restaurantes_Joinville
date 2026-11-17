@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
-import { auth } from '../services/auth.ts';
+import { auth, passwordReturnUrl } from '../services/auth.ts';
 export function RecoveryPanel({ onBack }: { onBack: () => void }) {
   const [busy, setBusy] = useState(false), [sent, setSent] = useState(false), [error, setError] = useState('');
   async function send(event: FormEvent<HTMLFormElement>) {
@@ -8,7 +8,7 @@ export function RecoveryPanel({ onBack }: { onBack: () => void }) {
     setBusy(true); setError(''); setSent(false);
     try {
       if (!auth) throw Error('Unavailable');
-      const { error: failed } = await auth.resetPasswordForEmail(email, { redirectTo: window.location.origin });
+      const { error: failed } = await auth.resetPasswordForEmail(email, { redirectTo: passwordReturnUrl });
       if (failed) throw Error('Recovery unavailable');
       setSent(true);
     } catch { setError('Não foi possível solicitar o link agora. Aguarde e tente novamente.'); }

@@ -10,7 +10,7 @@ export default defineConfig({
     screenshot: 'only-on-failure',
     trace: 'retain-on-failure',
   },
-  webServer: {
+  webServer: [{
     command:
       'npm run dev --workspace @erp/web -- --host 127.0.0.1 --port 4173 --strictPort',
     url: 'http://127.0.0.1:4173',
@@ -19,5 +19,10 @@ export default defineConfig({
       VITE_SUPABASE_URL: 'https://auth-ficticio.supabase.co',
       VITE_SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_ficticia',
     },
-  },
+  }, {
+    command: 'npm run dev --workspace @erp/web -- --mode configurador --host 127.0.0.1 --port 4174 --strictPort',
+    url: 'http://127.0.0.1:4174',
+    reuseExistingServer: false,
+    env: { VITE_SUPABASE_URL: 'https://auth-ficticio.supabase.co', VITE_SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_ficticia' },
+  }],
 });
