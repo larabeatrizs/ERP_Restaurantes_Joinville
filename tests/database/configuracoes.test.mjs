@@ -64,7 +64,7 @@ test('inventário de staging lê metadados em transação readonly sem alterar c
   const report = results.find(result => result.rows?.[0]?.inventario)?.rows[0].inventario;
   assert.ok(report);
   assert.equal(report.somente_leitura, 'on');
-  assert.equal(report.relacoes.filter(row => row.schema === 'erp').length, 25);
+  assert.equal(report.relacoes.filter(row => row.schema === 'erp').length, 28);
   assert.ok(report.relacoes.filter(row => row.schema === 'erp').every(row => row.rls));
   assert.equal(report.funcoes.find(row => row.schema === 'erp_private' && row.nome === 'atualizar_configuracao').proprietario, 'erp_config_writer');
   assert.deepEqual((await state()).rows, before);
@@ -74,7 +74,7 @@ test('inventário de staging lê metadados em transação readonly sem alterar c
 test('verificador da fundação confere RLS, grants e escritor restrito no laboratório', async () => {
   const sql = await readFile(new URL('../../scripts/staging/verificar-fundacao.sql', import.meta.url), 'utf8');
   const report = (await db.query(sql)).rows[0].foundation;
-  assert.equal(report.tables.length, 25);
+  assert.equal(report.tables.length, 28);
   assert.ok(report.tables.every(table => table.rls && !table.anon_select && !table.authenticated_write));
   assert.equal(report.anon_erp_usage, false);
   assert.equal(report.anon_private_usage, false);
@@ -95,6 +95,7 @@ test('verificador da fundação confere RLS, grants e escritor restrito no labor
     ['erp_private', 'medida_operacao', 'erp_stock_writer'],
     ['erp_private', 'produto_ciclo_operacao', 'erp_stock_writer'],
     ['erp_private', 'produto_exclusao_motivo', 'erp_product_reference_reader'],
+    ['erp_private', 'requisicao_operacao', 'erp_stock_writer'],
     ['erp_private', 'usuario_login_salvar', 'erp_identity_writer'],
   ]);
 });
@@ -407,15 +408,16 @@ test('retorno por desativação nega leitura/RPC sem excluir dados', async () =>
 
 test('RLS nas tabelas e somente funções privilegiadas conhecidas com executores restritos', async () => {
   const tables = await db.query("select relname,relrowsecurity from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname='erp' and c.relkind='r'");
-  assert.equal(tables.rows.length, 25);
+  assert.equal(tables.rows.length, 28);
   assert.ok(tables.rows.every((row) => row.relrowsecurity));
   const functions = await db.query("select proname,pg_get_userbyid(proowner) as owner,proconfig from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname in ('erp','erp_private') and prosecdef");
   assert.deepEqual(functions.rows.map(row => [row.proname, row.owner]).sort(), [
     ['admin_usuario_edicao','erp_user_admin'],
     ['admin_usuario_situacao','erp_user_admin'],
     ['admin_usuarios_servico','erp_user_admin'],
+    ['requisicao_operacao','erp_stock_writer'],
     ['atualizar_configuracao', 'erp_config_writer'], ['calendario_operacao','erp_stock_writer'], ['catalogo_unidade', 'erp_stock_writer'], ['categoria_operacao', 'erp_stock_writer'], ['estoque_operacao', 'erp_stock_writer'], ['fornecedor_operacao', 'erp_stock_writer'], ['medida_operacao', 'erp_stock_writer'], ['produto_ciclo_operacao','erp_stock_writer'], ['produto_exclusao_motivo','erp_product_reference_reader'], ['usuario_login_salvar','erp_identity_writer'],
-  ]);
+  ].sort());
   assert.ok(functions.rows.every(row => row.proconfig.includes('search_path=""')));
   const referenceRole=(await db.query("select rolcanlogin,rolsuper,rolbypassrls,rolcreaterole,rolcreatedb from pg_roles where rolname='erp_product_reference_reader'")).rows[0];
   assert.ok(Object.values(referenceRole).every(value=>value===false));
