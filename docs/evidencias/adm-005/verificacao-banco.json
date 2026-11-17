@@ -1,0 +1,65 @@
+{
+  "runtimeSource": "ac5979d03f5a90d26ca64769687c9669c0fc4cf9",
+  "runtimeCi": "https://github.com/larabeatrizs/ERP_Restaurantes_Joinville/actions/runs/44134785879",
+  "migration": "20261117171705_edicao_administrativa_usuarios",
+  "migrationMd5": "8440e4e7cb8e59bbc33c1153fcfdde12",
+  "identityVersion": "1b571198-cd34-40d0-b01a-27672c27428f",
+  "configuratorVersion": "68402813-80f8-41f9-a922-5c173ca9216f",
+  "erpVersion": "61268ee3-23cf-4699-ae7e-bd6cb97fd15e",
+  "usuariosAntes": 8,
+  "usuariosDepois": 8,
+  "dadosUsuariosPreservadosExcetoNovaRevisao": true,
+  "vinculosPreservados": true,
+  "capacidadesDePerfilPreservadas": true,
+  "loginsAntes": 3,
+  "loginsDepois": 3,
+  "contatosAntes": 3,
+  "contatosDepois": 3,
+  "auditoriaAntes": 5,
+  "auditoriaDepois": 11,
+  "migrationsAntes": 14,
+  "migrationsDepois": 15,
+  "edicoesSomenteFixture": 6,
+  "revisaoFixture": "7",
+  "security": {
+    "owner": "erp_user_admin",
+    "erp_tables": 25,
+    "owner_role": {
+      "login": false,
+      "createdb": false,
+      "bypassrls": false,
+      "superuser": false,
+      "createrole": false
+    },
+    "anon_execute": false,
+    "owner_create": false,
+    "private_tables": 5,
+    "public_invoker": true,
+    "private_definer": true,
+    "service_execute": true,
+    "owner_delete_links": true,
+    "authenticated_update": false,
+    "authenticated_execute": false,
+    "authenticated_delete_links": false,
+    "authenticated_owner_member": false
+  },
+  "securityAdvisors": [
+    {
+      "name": "rls_enabled_no_policy",
+      "level": "INFO",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy"
+    },
+    {
+      "name": "auth_leaked_password_protection",
+      "level": "WARN",
+      "remediation": "https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection"
+    }
+  ],
+  "notes": [
+    "Six EDITAR events belong only to the reserved operator: three attempts with restoration; no audit/revision reset.",
+    "First checker expected 403 but the removed unit is intentionally hidden with 404; checker now proves 200 before and after restoration.",
+    "Second checker exceeded its 5-second UI wait; hosted verification now allows 30 seconds. The fixture was restored before retry.",
+    "Final real UI journey completed; all previous user fields, links and profile capabilities match the pre-migration snapshot excluding the new revision column.",
+    "No personal account, password, Auth identity, legacy data, profile capability seed or environment reset changed."
+  ]
+}

@@ -2,6 +2,8 @@
 
 Fonte: mensagem explícita da responsável, com prints de Início, Produtos e Movimentações. A direção abaixo revisa o planejamento anterior; não equivale a aceite institucional de implantação. [Issue #31](https://github.com/larabeatrizs/ERP_Restaurantes_Joinville/issues/31). Preservar o DRS e seus IDs; detalhar os novos contratos por incremento.
 
+**Confirmação em 17/11 — edição de usuários:** a responsável adotou a proposta de editar nome/perfil/unidades preservando login/email/senha; alterações do próprio perfil/vínculos exigem outro administrador; último ADMIN ativo não pode ser rebaixado. [ADM-005](../fundacao/ADM-005-CONSULTA-E-EDICAO.md) implementa detalhe/edição e CSV com revisão, motivo e auditoria, mantendo status/inativação e mudanças de identidade em recortes próprios. Resposta expressa recebida após a preparação inicial B/C1; não permanece decisão pendente.
+
 **Confirmação em 17/11 — Configurador:** após a entrega básica ADM-003, a responsável reafirmou que Usuários pertence a outra página web chamada Configurador e escolheu “Usar endereço separado da Cloudflare por enquanto”. [ADM-004](../fundacao/ADM-004-CONFIGURADOR.md) separa a origem administrativa e bloqueia as APIs correspondentes no ERP. As configurações operacionais por unidade permanecem nas operações; parâmetros globais/gestão integral são continuidade. Foi esclarecido que nenhum endereço público tem sigilo garantido por noindex/ausência de links; autorização server-side permanece obrigatória e VPN/Access não são comprovados pela separação.
 
 | Pedido | Contrato/destino | Estado inicial |

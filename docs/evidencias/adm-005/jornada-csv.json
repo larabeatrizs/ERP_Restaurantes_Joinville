@@ -1,0 +1,18 @@
+{
+  "executedAt": "2026-11-17T17:25:01.038Z",
+  "origin": "https://erp-joinville-configurador.erp-restaurantes-joinville.workers.dev",
+  "mocked": false,
+  "completed": true,
+  "domainWrites": 0,
+  "scenarios": [
+    {
+      "name": "ADMIN: CSV da pesquisa sintética, contato/perfil/unidade e feedback; sem overflow 360/768/1280",
+      "passed": true
+    },
+    {
+      "name": "CONSULTA: CSV da pesquisa sintética, contato/perfil/unidade e feedback; sem overflow 360/768/1280",
+      "passed": true
+    }
+  ],
+  "asset": "/assets/index-CA0ajgnK.js"
+}

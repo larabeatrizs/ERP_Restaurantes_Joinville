@@ -7,7 +7,7 @@ import type { StagingEnv } from './staging.ts';
 const env: StagingEnv = { ASSETS: { async fetch() { throw Error('API não pode servir HTML.'); } } };
 test('ERP bloqueia toda administração mesmo com Bearer ou cabeçalho Host/Origin forjado', async () => {
   let calls = 0;
-  for (const method of ['GET','POST','HEAD','OPTIONS']) for (const path of ['/api/admin','/api/admin/usuarios','/api/admin/usuarios/00000000-0000-4000-8000-000000000001/primeiro-acesso','/api/admin/desconhecida']) {
+  for (const method of ['GET','POST','PATCH','HEAD','OPTIONS']) for (const path of ['/api/admin','/api/admin/usuarios','/api/admin/usuarios/00000000-0000-4000-8000-000000000001','/api/admin/usuarios/00000000-0000-4000-8000-000000000001/primeiro-acesso','/api/admin/desconhecida']) {
     const response = await staging.fetch(new Request(`https://erp.test${path}`, { method, headers: { Authorization: 'Bearer valido', Host: 'configurador.test', Origin: 'https://configurador.test' } }), { ...env, IDENTITY_SERVICE: { async fetch() { calls++; return new Response('vazou'); } } });
     assert.equal(response.status,404); assert.equal(response.headers.get('Cache-Control'),'no-store');
     if (method === 'HEAD') assert.equal(await response.text(),'');

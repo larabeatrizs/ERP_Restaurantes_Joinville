@@ -83,6 +83,7 @@ test('verificador da fundação confere RLS, grants e escritor restrito no labor
   assert.ok(report.functions.every(fn => !fn.anon_execute));
   const privileged = report.functions.filter(fn => fn.definer);
   assert.deepEqual(privileged.map(fn => [fn.schema, fn.name, fn.owner]).sort(), [
+    ['erp_private', 'admin_usuario_edicao', 'erp_user_admin'],
     ['erp_private', 'admin_usuarios_servico', 'erp_user_admin'],
     ['erp_private', 'atualizar_configuracao', 'erp_config_writer'],
     ['erp_private', 'calendario_operacao', 'erp_stock_writer'],
@@ -101,6 +102,48 @@ const loginSave = async (user, login, revision = null, reason = 'Cadastro sinté
   (await client.query('select erp_private.usuario_login_salvar($1,$2,$3,$4) as result', [uid(user), login, revision, reason])).rows[0].result;
 const newUser = (extra = {}) => ({login:'usuario.novo',nome:'Usuário novo sintético',email:'novo@example.invalid',perfil:'ESTOQUISTA',unidades:['1','2'],status:'ATIVO',revisao:null,motivo:'Cadastro sintético',...extra});
 const adminRpc = async (action, data={}, actor=uid(1), client=db) => (await client.query('select erp.admin_usuarios_servico($1,$2,$3::jsonb) result',[actor,action,JSON.stringify(data)])).rows[0].result;
+const editRpc=async(target,data=null,actor=uid(1),client=db)=>(await client.query('select erp.admin_usuario_edicao($1,$2,$3::jsonb) result',[actor,uid(target),data===null?null:JSON.stringify(data)])).rows[0].result;
+const editDraft=(extra={})=>({nome:'Nome corrigido sintético',perfil:'ESTOQUISTA',unidades:['2'],revisao:'1',motivo:'Correção sintética',...extra});
+async function editError(target,data,code,actor=uid(1)){await db.exec('savepoint edit_error');await assert.rejects(()=>editRpc(target,data,actor),{code});await db.exec('rollback to savepoint edit_error');}
+test('edição: detalhe e alteração restritos; authenticated não chama RPC nem remove vínculos',async()=>{
+ for(const role of ['anon','authenticated'])await transaction(1,async()=>{await expectSqlError(`select erp.admin_usuario_edicao('${uid(1)}','${uid(3)}',null)`,'42501');await expectSqlError(`delete from erp.usuario_unidade where usuario_id='${uid(3)}'`,'42501');},role);
+ await adminTransaction(async()=>{assert.equal((await editRpc(3)).pode_editar,true);await editError(3,editDraft(),'PT403',uid(3));await editError(99,null,'PT404');});
+});
+test('edição: nome/perfil/unidades, revisão e auditoria são atômicos, sem mudar status/login/Auth',async()=>adminTransaction(async()=>{
+ const original=(await db.query('select status from erp.usuario where id=$1',[uid(3)])).rows[0].status;
+ const result=await editRpc(3,editDraft({perfil:'GESTOR_UNIDADE'}));assert.equal(result.revisao,'2');assert.equal(result.perfil,'GESTOR_UNIDADE');assert.deepEqual(result.unidades,['2']);assert.equal(result.status,original);
+ const audit=(await db.query("select dados from erp_private.auditoria_usuario where acao='EDITAR' and usuario_id=$1",[uid(3)])).rows[0].dados;assert.equal(audit.antes.perfil,'ESTOQUISTA');assert.deepEqual(audit.antes.unidades,['1']);assert.deepEqual(audit.depois.unidades,['2']);assert.equal(audit.motivo,'Correção sintética');assert.equal((await db.query('select count(*)::int n from erp_private.usuario_login')).rows[0].n,0);
+ await editError(3,editDraft(),'PT412');await editRpc(3,editDraft({perfil:'GESTOR_UNIDADE',revisao:'2'}));assert.equal((await db.query("select count(*)::int n from erp_private.auditoria_usuario where acao='EDITAR'")).rows[0].n,1);
+ await db.query("select set_config('request.jwt.claim.sub',$1,true)",[uid(3)]);await db.exec('set local role authenticated');assert.deepEqual((await db.query('select unidade_id::text id from erp.usuario_unidade order by unidade_id')).rows.map(row=>row.id),['2']);
+}));
+test('edição: autogestão só muda nome, último ADMIN permanece e payload inválido não altera nada',async()=>adminTransaction(async()=>{
+ await editError(1,editDraft({perfil:'ADMIN',unidades:['2']}),'PT403');await editError(1,editDraft({unidades:['1']}),'PT403');
+ const self=await editRpc(1,editDraft({perfil:'ADMIN',unidades:['1']}));assert.equal(self.proprio,true);assert.equal(self.revisao,'2');
+ await editRpc(2,editDraft());assert.equal((await db.query("select count(*)::int n from erp.usuario u join erp.perfil p on p.id=u.perfil_id where u.status='ATIVO' and p.codigo='ADMIN'")).rows[0].n,1);await editError(1,editDraft({revisao:'2',unidades:['1']}),'PT403');
+ for(const extra of [{senha:'nao'},{email:'novo@example.invalid'},{status:'INATIVO'},{perfil:'SUPERADMIN'},{unidades:['1','1']},{unidades:['999']},{unidades:[1]},{revisao:null},{nome:'abc\n'},{motivo:'a'}])await editError(3,editDraft(extra),'PT422');
+ assert.equal((await editRpc(3)).revisao,'1');
+}));
+test('edição: falha na auditoria reverte nome, perfil, vínculos e revisão',async()=>adminTransaction(async()=>{
+ await db.exec("create function pg_temp.fail_user_audit() returns trigger language plpgsql as $$begin raise exception 'audit failure';end$$;create trigger fail_user_audit before insert on erp_private.auditoria_usuario for each row execute function pg_temp.fail_user_audit()");
+ const before=await editRpc(3);await editError(3,editDraft(),'P0001');assert.deepEqual(await editRpc(3),before);
+}));
+test('edição: alterações cruzadas preservam ADMIN e revogação durante espera impede escrita', {skip:!process.env.DATABASE_TEST_URL},async()=>{
+ for(const mode of ['cruzada','revogacao']){
+  const first=new pg.Client({connectionString:process.env.DATABASE_TEST_URL}),second=new pg.Client({connectionString:process.env.DATABASE_TEST_URL});let pending;
+  await Promise.all([first.connect(),second.connect()]);
+  try{
+   await db.exec("insert into erp.perfil_permissao select id,p from erp.perfil cross join(values('USUARIO_LER'),('USUARIO_GERIR'))x(p) where codigo='ADMIN' on conflict do nothing");
+   await first.query('begin');await second.query('begin');await second.query('set local role service_role');const pid=(await second.query('select pg_backend_pid() pid')).rows[0].pid;
+   if(mode==='cruzada'){await first.query('set local role service_role');await editRpc(2,editDraft(),uid(1),first);pending=editRpc(1,editDraft({unidades:['1']}),uid(2),second).then(value=>({value}),error=>({error}));}
+   else{await first.query('select id from erp.usuario where id=$1 for update',[uid(3)]);pending=editRpc(3,editDraft(),uid(1),second).then(value=>({value}),error=>({error}));}
+   let blocked=false;for(let i=0;i<150;i++){blocked=(await db.query('select cardinality(pg_blocking_pids($1))>0 blocked',[pid])).rows[0].blocked;if(blocked)break;await new Promise(resolve=>setTimeout(resolve,20));}assert.equal(blocked,true);
+   if(mode==='revogacao')await first.query("delete from erp.perfil_permissao where permissao='USUARIO_GERIR'");
+   await first.query('commit');assert.equal((await pending).error?.code,'PT403');pending=undefined;await second.query('rollback');
+   assert.equal((await db.query("select count(*)::int n from erp.usuario u join erp.perfil p on p.id=u.perfil_id where u.status='ATIVO' and p.codigo='ADMIN'")).rows[0].n,mode==='cruzada'?1:2);
+   assert.equal((await db.query('select revisao::text r from erp.usuario where id=$1',[uid(3)])).rows[0].r,'1');
+  }finally{await first.query('rollback').catch(()=>{});if(pending)await pending;await second.query('rollback').catch(()=>{});await db.query("update erp.usuario set nome='Administrador fictício B',perfil_id=(select id from erp.perfil where codigo='ADMIN'),revisao=1 where id=$1",[uid(2)]);await db.exec("delete from erp_private.auditoria_usuario where acao='EDITAR';delete from erp.perfil_permissao where permissao in('USUARIO_LER','USUARIO_GERIR')");await Promise.all([first.end(),second.end()]);}
+ }
+});
 async function adminError(action,data,code,actor=uid(1)) {await db.exec('savepoint admin_error');await assert.rejects(()=>adminRpc(action,data,actor),{code});await db.exec('rollback to savepoint admin_error');}
 async function adminTransaction(callback) {await identityTransaction(async()=>{await db.exec("insert into erp.perfil_permissao select id,'USUARIO_LER' from erp.perfil where codigo='ADMIN'");await callback();});}
 test('admin: somente service_role executa a fronteira de provisionamento',async()=>{
@@ -323,6 +366,7 @@ test('RLS nas tabelas e somente funções privilegiadas conhecidas com executore
   assert.ok(tables.rows.every((row) => row.relrowsecurity));
   const functions = await db.query("select proname,pg_get_userbyid(proowner) as owner,proconfig from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname in ('erp','erp_private') and prosecdef");
   assert.deepEqual(functions.rows.map(row => [row.proname, row.owner]).sort(), [
+    ['admin_usuario_edicao','erp_user_admin'],
     ['admin_usuarios_servico','erp_user_admin'],
     ['atualizar_configuracao', 'erp_config_writer'], ['calendario_operacao','erp_stock_writer'], ['catalogo_unidade', 'erp_stock_writer'], ['categoria_operacao', 'erp_stock_writer'], ['estoque_operacao', 'erp_stock_writer'], ['fornecedor_operacao', 'erp_stock_writer'], ['medida_operacao', 'erp_stock_writer'], ['produto_ciclo_operacao','erp_stock_writer'], ['produto_exclusao_motivo','erp_product_reference_reader'], ['usuario_login_salvar','erp_identity_writer'],
   ]);

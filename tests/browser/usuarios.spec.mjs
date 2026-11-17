@@ -1,10 +1,11 @@
 import { test, expect } from '@playwright/test';
+import { readFile } from 'node:fs/promises';
 const user={id:'00000000-0000-4000-8000-000000000001',aud:'authenticated',role:'authenticated',email:'admin@example.invalid'};
 const session={access_token:'eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ0ZXN0ZSJ9.ficticio',refresh_token:'ficticio',token_type:'bearer',expires_in:3600,user};
 const units=[{id:'1',codigo:'RP1',nome:'Unidade A'},{id:'2',codigo:'RP2',nome:'Unidade B'}];
-async function setup(page,{allowed=true,write=true,conflict=false}={}){
+async function setup(page,{allowed=true,write=true,conflict=false,seed=[],failPage=false,editConflict=false}={}){
  await page.addInitScript(()=>Object.defineProperty(navigator,'clipboard',{configurable:true,value:{writeText:async()=>{}}}));
- const submissions=[],requests=[],reissues=[];const rows=[];
+ const submissions=[],requests=[],reissues=[],edits=[];const rows=structuredClone(seed);const revisions=new Map();
  await page.route('https://auth-ficticio.supabase.co/**',route=>route.fulfill({json:route.request().url().includes('/token')?session:user}));
  await page.route('**/api/**',async route=>{
   const req=route.request(),url=new URL(req.url());requests.push(url.pathname);
@@ -13,6 +14,11 @@ async function setup(page,{allowed=true,write=true,conflict=false}={}){
   if(url.pathname==='/api/me')return route.fulfill({json:{nome:'Administrador sintético',...(allowed?{administracao:true}:{})}});
   if(url.pathname==='/api/unidades')return route.fulfill({json:{unidades:units}});
   if(url.pathname.endsWith('/primeiro-acesso')){reissues.push(url.pathname);return route.fulfill({json:{criado:false,acesso:'https://erp-joinville-staging.erp-restaurantes-joinville.workers.dev/#definir-senha=token-reemitido-12345678901234567890'}});}
+  const edit=/^\/api\/admin\/usuarios\/([a-f0-9-]{36})$/.exec(url.pathname);
+  if(edit){const selected=rows.find(row=>row.id===edit[1]);if(!selected)return route.fulfill({status:404,json:{error:{code:'NOT_FOUND'}}});
+   if(req.method()==='PATCH'){const value=req.postDataJSON();edits.push(value);if(editConflict)return route.fulfill({status:412,json:{error:{code:'CONFLICT'}}});if(!write)return route.fulfill({status:403,json:{error:{code:'DENIED'}}});Object.assign(selected,{nome:value.nome,perfil:value.perfil,unidades:value.unidades});revisions.set(selected.id,String(Number(revisions.get(selected.id)??'1')+1));}
+   return route.fulfill({json:{id:selected.id,nome:selected.nome,perfil:selected.perfil,status:selected.status,primeiro_acesso:selected.primeiro_acesso,unidades:selected.unidades,revisao:revisions.get(selected.id)??'1',proprio:selected.id===user.id,pode_editar:write}});
+  }
   if(url.pathname==='/api/admin/usuarios'){
    if(req.method()==='POST'){
     const data=req.postDataJSON();submissions.push(data);
@@ -20,7 +26,10 @@ async function setup(page,{allowed=true,write=true,conflict=false}={}){
     rows.push({id:'00000000-0000-4000-8000-000000000090',nome:data.nome,login:data.login,email:data.email,perfil:data.perfil,status:'BLOQUEADO',primeiro_acesso:true,unidades:data.unidades});
     return route.fulfill({status:201,json:{criado:true,acesso:'https://erp-joinville-staging.erp-restaurantes-joinville.workers.dev/#definir-senha=token-fixture-12345678901234567890'}});
    }
-   return route.fulfill({json:{usuarios:rows,total:rows.length,pode_criar:write,unidades:units,perfis:['ADMIN','ESTOQUISTA','GESTOR_UNIDADE','NUTRICIONISTA','AUDITOR']}});
+   const offset=Number(url.searchParams.get('offset')??'0'),query=url.searchParams.get('q')??'';
+   if(failPage&&offset>0)return route.fulfill({status:503,json:{error:{code:'UNAVAILABLE'}}});
+   const filtered=rows.filter(row=>(row.nome+' '+row.login+' '+row.email).toLowerCase().includes(query.toLowerCase()));
+   return route.fulfill({json:{usuarios:filtered.slice(offset,offset+25),total:filtered.length,pode_criar:write,unidades:units,perfis:['ADMIN','ESTOQUISTA','GESTOR_UNIDADE','NUTRICIONISTA','AUDITOR']}});
   }
   if(url.pathname.endsWith('/produtos'))return route.fulfill({json:{produtos:[],total:0}});
   if(url.pathname.endsWith('/estoque/saldos'))return route.fulfill({json:{saldos:[]}});
@@ -30,7 +39,7 @@ async function setup(page,{allowed=true,write=true,conflict=false}={}){
  if(allowed){await expect(page.getByRole('heading',{name:'Usuários',exact:true})).toBeVisible();}
  await expect(page.getByLabel('Unidade de acesso',{exact:true})).toHaveCount(0);
  expect(requests.includes('/api/unidades')).toBe(false);
- return {submissions,requests,reissues};
+ return {submissions,requests,reissues,edits};
 }
 async function fill(page){await page.getByRole('button',{name:'Novo usuário',exact:true}).click();await page.getByLabel('Nome de login *',{exact:true}).fill(' NOVO.USUARIO ');await page.getByLabel('Nome de identificação *',{exact:true}).fill(' Pessoa sintética ');await page.getByLabel('Email *',{exact:true}).fill('NOVO@EXAMPLE.INVALID');await page.getByRole('checkbox',{name:'RP2 — Unidade B',exact:true}).check();await page.getByLabel('Motivo do cadastro *',{exact:true}).fill(' Cadastro sintético ');}
 test('usuários: administrador inclui com filiais e recebe link protegido; tabela mostra primeiro acesso',async({page})=>{
@@ -68,4 +77,29 @@ test('ERP: administrador continua escolhendo unidade e não recebe navegação p
  await page.goto('http://127.0.0.1:4173/');await page.getByLabel('Nome de usuário',{exact:true}).fill('admin');await page.getByLabel('Senha',{exact:true}).fill('Senha123!');await page.getByRole('button',{name:'Entrar',exact:true}).click();
  await expect(page.getByLabel('Unidade de acesso',{exact:true})).toBeEnabled();await page.getByLabel('Unidade de acesso',{exact:true}).selectOption('1');await page.getByRole('button',{name:'Acessar unidade',exact:true}).click();
  await expect(page.getByRole('heading',{name:'Início',exact:true})).toBeVisible();await expect(page.getByRole('link',{name:'Usuários',exact:true})).toHaveCount(0);await expect(page.locator('a[href*="configurador"]')).toHaveCount(0);expect(state.requests.includes('/api/admin/usuarios')).toBe(false);
+});
+
+const reportRows=()=>Array.from({length:27},(_,n)=>({id:`00000000-0000-4000-8000-${String(n+10).padStart(12,'0')}`,nome:`Pessoa ${n+1}`,login:`pessoa.${n+1}`,email:`pessoa-${n+1}@example.invalid`,perfil:'ESTOQUISTA',status:'ATIVO',primeiro_acesso:false,unidades:['2']}));
+test('usuários CSV: consulta exporta todas as páginas da pesquisa aplicada e mantém o rascunho da busca',async({page})=>{
+ const seed=[...reportRows(),{...reportRows()[0],id:'00000000-0000-4000-8000-000000000099',nome:'Outro cadastro',login:'outro',email:'outro@example.invalid'}];
+ await setup(page,{write:false,seed});await page.getByLabel('Pesquisar usuários',{exact:true}).fill('pessoa');const filtered=page.waitForResponse(response=>response.url().includes('q=pessoa')&&response.status()===200);await page.getByRole('button',{name:'Pesquisar',exact:true}).click();await filtered;await expect(page.getByText('27 usuário(s) · página 1',{exact:true})).toBeVisible();
+ await page.getByLabel('Pesquisar usuários',{exact:true}).fill('pesquisa ainda não aplicada');
+ const download=page.waitForEvent('download');await page.getByRole('button',{name:'Exportar CSV',exact:true}).click();const file=await download;expect(file.suggestedFilename()).toBe('usuarios.csv');const csv=await readFile(await file.path(),'utf8');expect(csv).toContain('pessoa.27');expect(csv).not.toContain('Outro cadastro');expect(csv).toContain('RP2 — Unidade B');expect(csv).toContain('"pessoa"');expect(csv).not.toContain('pesquisa ainda não aplicada');await expect(page.getByLabel('Pesquisar usuários',{exact:true})).toHaveValue('pesquisa ainda não aplicada');
+ await expect(page.getByRole('status')).toContainText('CSV gerado com 27');await expect(page.getByRole('button',{name:'Novo usuário',exact:true})).toHaveCount(0);
+});
+test('usuários CSV: falha da página seguinte não baixa arquivo parcial e libera a interface',async({page})=>{
+ await setup(page,{seed:reportRows(),failPage:true});const downloads=[];page.on('download',file=>downloads.push(file));await page.getByRole('button',{name:'Exportar CSV',exact:true}).click();await expect(page.getByRole('alert')).toContainText('Nenhum arquivo parcial');expect(downloads).toHaveLength(0);await expect(page.getByRole('button',{name:'Exportar CSV',exact:true})).toBeEnabled();await expect(page.getByRole('button',{name:'Sair',exact:true})).toBeEnabled();
+});
+
+test('usuários edição: salva nome/perfil/filiais com revisão e motivo, sem campos de identidade',async({page})=>{
+ const state=await setup(page,{seed:[reportRows()[0]]});await page.getByRole('button',{name:'Abrir cadastro de Pessoa 1',exact:true}).click();await expect(page.getByLabel('Nome de identificação *',{exact:true})).toHaveValue('Pessoa 1');await page.getByLabel('Nome de identificação *',{exact:true}).fill('Nome corrigido');await page.getByLabel('Perfil *',{exact:true}).selectOption('NUTRICIONISTA');await page.getByRole('checkbox',{name:'RP2 — Unidade B',exact:true}).uncheck();await page.getByRole('checkbox',{name:'RP1 — Unidade A',exact:true}).check();await page.getByLabel('Motivo da alteração *',{exact:true}).fill('Correção aprovada');page.once('dialog',dialog=>dialog.accept());await page.getByRole('button',{name:'Salvar alterações',exact:true}).click();await expect(page.getByRole('status').filter({hasText:'Cadastro atualizado'})).toBeVisible();expect(state.edits).toEqual([{nome:'Nome corrigido',perfil:'NUTRICIONISTA',unidades:['1'],revisao:'1',motivo:'Correção aprovada'}]);await expect(page.getByRole('cell',{name:'Nome corrigido',exact:true})).toBeVisible();
+});
+test('usuários edição: conflito mantém campos e recarga exige confirmação de descarte',async({page})=>{
+ await setup(page,{seed:[reportRows()[0]],editConflict:true});await page.getByRole('button',{name:'Abrir cadastro de Pessoa 1',exact:true}).click();await page.getByLabel('Nome de identificação *',{exact:true}).fill('Rascunho mantido');await page.getByLabel('Motivo da alteração *',{exact:true}).fill('Correção de nome');page.once('dialog',dialog=>dialog.accept());await page.getByRole('button',{name:'Salvar alterações',exact:true}).click();await expect(page.getByRole('alert')).toContainText('campos foram preservados');await expect(page.getByLabel('Nome de identificação *',{exact:true})).toHaveValue('Rascunho mantido');page.once('dialog',dialog=>dialog.dismiss());await page.getByRole('button',{name:'Fechar detalhes',exact:true}).click();await expect(page.getByLabel('Nome de identificação *',{exact:true})).toHaveValue('Rascunho mantido');page.once('dialog',dialog=>dialog.accept());await page.getByRole('button',{name:'Recarregar cadastro',exact:true}).click();await expect(page.getByLabel('Nome de identificação *',{exact:true})).toHaveValue('Pessoa 1');
+});
+test('usuários edição: consultor visualiza sem salvar',async({page})=>{
+ await setup(page,{seed:[reportRows()[0]],write:false});await page.getByRole('button',{name:'Abrir cadastro de Pessoa 1',exact:true}).click();await expect(page.getByLabel('Nome de identificação *',{exact:true})).toBeDisabled();await expect(page.getByRole('button',{name:'Salvar alterações',exact:true})).toHaveCount(0);
+});
+test('usuários edição: próprio ADMIN corrige nome mantendo perfil e vínculos protegidos',async({page})=>{
+ const state=await setup(page,{seed:[{...reportRows()[0],id:user.id,perfil:'ADMIN'}]});await page.getByRole('button',{name:'Abrir cadastro de Pessoa 1',exact:true}).click();await expect(page.getByLabel('Perfil *',{exact:true})).toBeDisabled();await expect(page.getByRole('checkbox',{name:'RP2 — Unidade B',exact:true})).toBeDisabled();await page.getByLabel('Nome de identificação *',{exact:true}).fill('Nome próprio');await page.getByLabel('Motivo da alteração *',{exact:true}).fill('Corrigir identificação');page.once('dialog',dialog=>dialog.accept());await page.getByRole('button',{name:'Salvar alterações',exact:true}).click();await expect(page.getByRole('status').filter({hasText:'Cadastro atualizado'})).toBeVisible();expect(state.edits[0].perfil).toBe('ADMIN');expect(state.edits[0].unidades).toEqual(['2']);
 });

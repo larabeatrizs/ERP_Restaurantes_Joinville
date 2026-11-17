@@ -27,8 +27,8 @@ export function createApp(factory: SessionFactory = createSupabaseSession, stock
     async fetch(request: Request, env: RuntimeEnv = {}): Promise<Response> {
       try {
         const path = new URL(request.url).pathname;
-        if (path === '/api/admin/usuarios' || /^\/api\/admin\/usuarios\/[a-f0-9-]{36}\/primeiro-acesso$/i.test(path)) {
-          const allowed = path === '/api/admin/usuarios' ? ['GET','POST'] : ['POST'];
+        if (path === '/api/admin/usuarios' || /^\/api\/admin\/usuarios\/[a-f0-9-]{36}(?:\/primeiro-acesso)?$/i.test(path)) {
+          const allowed = path === '/api/admin/usuarios' ? ['GET','POST'] : path.endsWith('/primeiro-acesso') ? ['POST'] : ['GET','PATCH'];
           if (!allowed.includes(request.method)) return methodNotAllowed(allowed.join(', '), request.method === 'HEAD');
           if (!request.headers.get('Authorization')?.startsWith('Bearer ')) throw new ApiError(401, 'UNAUTHORIZED', 'Entre novamente.');
           if (!env.IDENTITY_SERVICE) throw new ApiError(503, 'SERVICE_UNAVAILABLE', 'Administração temporariamente indisponível.');
