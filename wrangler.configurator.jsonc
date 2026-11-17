@@ -1,0 +1,16 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "erp-joinville-configurador",
+  "main": "apps/api/src/configurator.ts",
+  "compatibility_date": "2026-11-06",
+  "workers_dev": true,
+  "preview_urls": false,
+  "services": [{ "binding": "IDENTITY_SERVICE", "service": "erp-joinville-identidade-staging" }],
+  "assets": {
+    "directory": "./apps/web/dist-configurador",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": true
+  },
+  "observability": { "enabled": false }
+}

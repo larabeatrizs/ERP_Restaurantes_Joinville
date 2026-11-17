@@ -17,7 +17,7 @@
     "lint": "eslint apps packages",
     "typecheck": "npm run typecheck --workspaces",
     "test": "npm run test:api && npm run test:db && npm run test:stock && npm run test:legacy && npm run test:provision",
-    "test:api": "node --test apps/api/src/index.test.ts apps/api/src/settings.test.ts apps/api/src/supabase-settings.test.ts apps/api/src/staging.test.ts apps/api/src/stock.test.ts apps/api/src/stock-repository.test.ts apps/api/src/categories.test.ts apps/api/src/measures.test.ts apps/api/src/ux.test.ts apps/api/src/suppliers.test.ts apps/api/src/calendar.test.ts apps/api/src/admin-users.test.ts apps/api/src/identity/index.test.ts",
+    "test:api": "node --test apps/api/src/index.test.ts apps/api/src/settings.test.ts apps/api/src/supabase-settings.test.ts apps/api/src/staging.test.ts apps/api/src/stock.test.ts apps/api/src/stock-repository.test.ts apps/api/src/categories.test.ts apps/api/src/measures.test.ts apps/api/src/ux.test.ts apps/api/src/suppliers.test.ts apps/api/src/calendar.test.ts apps/api/src/admin-users.test.ts apps/api/src/identity/index.test.ts apps/api/src/configurator.test.ts",
     "test:db": "node --test tests/database/configuracoes.test.mjs",
     "test:stock": "node --test tests/database/estoque.test.mjs",
     "test:legacy": "node --test tests/database/legado.test.mjs",
@@ -28,13 +28,14 @@
     "test:staging:stock:web": "node scripts/staging/verificar-tela-estoque.mjs",
     "test:staging:catalog": "node scripts/staging/verificar-vinculo-produto.mjs",
     "test:web": "playwright test",
-    "build": "npm run build --workspaces && wrangler deploy --config wrangler.staging.jsonc --dry-run --outdir .wrangler/staging-dist && npm run build:identity",
+    "build": "npm run build --workspaces && wrangler deploy --config wrangler.staging.jsonc --dry-run --outdir .wrangler/staging-dist && npm run build:identity && npm run build:configurator",
     "build:identity": "wrangler deploy --config wrangler.identity.jsonc --dry-run --outdir .wrangler/identity-dist",
     "build:staging": "npm run build --workspace @erp/web && wrangler deploy --config wrangler.staging.jsonc --dry-run --outdir .wrangler/staging-dist",
     "deploy:staging": "npm run build --workspace @erp/web && wrangler deploy --config wrangler.staging.jsonc",
     "check": "npm run lint && npm run typecheck && npm test && npm run build",
     "test:staging:categories": "node scripts/staging/verificar-categorias.mjs",
-    "test:staging:measures": "node scripts/staging/verificar-medidas.mjs"
+    "test:staging:measures": "node scripts/staging/verificar-medidas.mjs",
+    "build:configurator": "npm run build:configurator --workspace @erp/web && wrangler deploy --config wrangler.configurator.jsonc --dry-run --outdir .wrangler/configurator-dist"
   },
   "overrides": {
     "minimatch": "11.0.1"

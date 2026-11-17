@@ -1,0 +1,47 @@
+{
+  "runtimeSource": "42e4a5fc3b440edef5179b8f3a5e4a14eda007d9",
+  "erpVersion": "3c4e3a10-19be-488d-85d4-264634ec622e",
+  "configuratorVersion": "eaa1694f-172b-422c-9f69-4d8468428f41",
+  "identityVersionUnchanged": "0c1d73a8-dede-41ec-9d4b-ae2e5705499c",
+  "runtimeCi": "https://github.com/larabeatrizs/ERP_Restaurantes_Joinville/actions/runs/44109295018",
+  "executedAt": "2026-11-17T15:02:13.749Z",
+  "erp": "https://erp-joinville-staging.erp-restaurantes-joinville.workers.dev",
+  "configurator": "https://erp-joinville-configurador.erp-restaurantes-joinville.workers.dev",
+  "mocked": false,
+  "completed": true,
+  "domainWrites": 0,
+  "scenarios": [
+    {
+      "name": "Origens/builds distintos; HTML e assets reais recebem noindex",
+      "passed": true
+    },
+    {
+      "name": "ERP recusa namespace administrativo; Configurador recusa operações; sem sessão retorna 401",
+      "passed": true
+    },
+    {
+      "name": "ADMIN existente acessa gestão/cadastro global sem unidade preselecionada; foco e 360/768/1280 preservados",
+      "passed": true
+    },
+    {
+      "name": "Mesmo login continua acessando ERP após escolher unidade; navegação sem entrada administrativa",
+      "passed": true
+    },
+    {
+      "name": "Estoquista existente recebe acesso restrito e HTTP administrativo 403",
+      "passed": true
+    },
+    {
+      "name": "Nenhuma criação, reemissão, alteração de senha ou escrita de domínio",
+      "passed": true
+    }
+  ],
+  "erpAsset": "/assets/index-LkeTS1fV.js",
+  "configuratorAsset": "/assets/index-CwO5jKZa.js",
+  "limits": [
+    "Only existing reserved synthetic identities; no personal login or password used.",
+    "No hosted user creation/reissue repeated: ADM-003 write journey remains historical evidence for reused form/service.",
+    "VPN/Cloudflare Access, full RF-008 and general SMTP remain pending.",
+    "No database mutation or migration requested; no new preservation snapshot or security advisor for this routing-only increment."
+  ]
+}

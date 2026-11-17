@@ -68,9 +68,7 @@ export function SettingsPanel({
   initialUnit = '',
   onUnitChange,
   userName = '',
-  canAdmin = false,
 }: {
-  canAdmin?: boolean;
   api: SettingsApi;
   onSignOut: () => Promise<void>;
   onNavigate?: (page: WorkspacePage) => void;
@@ -236,7 +234,7 @@ export function SettingsPanel({
         <div className="brand">Restaurante Popular</div>
         <p className="unit-caption"><strong>{userName || 'Conta conectada'}</strong><br />{units.find(item => item.id === unit)?.nome ?? 'Consultando unidade…'}</p>
         <nav aria-label="Principal">
-          {workspacePages.filter(item => item.key !== 'usuarios' || canAdmin).map(item => <a key={item.key} href={`#${item.key}`} aria-current={item.key === 'configuracoes' ? 'page' : undefined} aria-disabled={saving} onClick={event => {
+          {workspacePages.map(item => <a key={item.key} href={`#${item.key}`} aria-current={item.key === 'configuracoes' ? 'page' : undefined} aria-disabled={saving} onClick={event => {
             event.preventDefault();
             if (!saving && item.key !== 'configuracoes' && allowDiscard()) onNavigate?.(item.key);
           }}>{item.label}</a>)}

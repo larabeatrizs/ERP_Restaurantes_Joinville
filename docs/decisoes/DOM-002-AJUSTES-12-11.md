@@ -2,6 +2,8 @@
 
 Fonte: mensagem explícita da responsável, com prints de Início, Produtos e Movimentações. A direção abaixo revisa o planejamento anterior; não equivale a aceite institucional de implantação. [Issue #31](https://github.com/larabeatrizs/ERP_Restaurantes_Joinville/issues/31). Preservar o DRS e seus IDs; detalhar os novos contratos por incremento.
 
+**Confirmação em 17/11 — Configurador:** após a entrega básica ADM-003, a responsável reafirmou que Usuários pertence a outra página web chamada Configurador e escolheu “Usar endereço separado da Cloudflare por enquanto”. [ADM-004](../fundacao/ADM-004-CONFIGURADOR.md) separa a origem administrativa e bloqueia as APIs correspondentes no ERP. As configurações operacionais por unidade permanecem nas operações; parâmetros globais/gestão integral são continuidade. Foi esclarecido que nenhum endereço público tem sigilo garantido por noindex/ausência de links; autorização server-side permanece obrigatória e VPN/Access não são comprovados pela separação.
+
 | Pedido | Contrato/destino | Estado inicial |
 | --- | --- | --- |
 | Senha de 8 caracteres com letra, número e especial | Interpretar como **mínimo de 8**, aceitando maiúscula OU minúscula, número e símbolo; manter senhas maiores | View implementada; Auth com 8/letra/número, símbolo server-side pendente por limitação dos presets; sem reset automático |

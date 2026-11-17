@@ -18,6 +18,10 @@ function publicUrl(value: unknown): string | null {
   }
 }
 const endpoint = publicUrl(url);
+// Reutiliza o retorno já autorizado no Auth; não depende de nova allowlist.
+export const passwordReturnUrl = import.meta.env.VITE_APP_AREA === 'configurador'
+  ? 'https://erp-joinville-staging.erp-restaurantes-joinville.workers.dev'
+  : window.location.origin;
 // O fragmento não é enviado ao servidor; removê-lo antes de renderizar a tela.
 const link = new URLSearchParams(window.location.hash.slice(1));
 export const initialPasswordToken = link.get('definir-senha');
