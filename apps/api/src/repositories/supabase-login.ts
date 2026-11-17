@@ -23,6 +23,15 @@ export function createLoginRepository(env: RuntimeEnv, fetcher: typeof fetch = f
   if (url.protocol !== 'https:' || url.pathname !== '/' || url.username || url.password || url.search || url.hash || !env.SUPABASE_PUBLISHABLE_KEY?.startsWith('sb_publishable_')) throw unavailable();
   return {
     async signIn(login, password) {
+      if (env.IDENTITY_SERVICE) {
+        const response = await env.IDENTITY_SERVICE.fetch(new Request('https://identity.internal/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ login, password }) }));
+        if (response.status === 429) throw new ApiError(429, 'LOGIN_RATE_LIMIT', 'Aguarde antes de tentar entrar novamente.');
+        if (response.status === 401 || response.status === 403) throw denied();
+        if (!response.ok) throw unavailable();
+        const data: unknown = await response.json();
+        if (!isRecord(data) || typeof data.access_token !== 'string' || typeof data.refresh_token !== 'string') throw unavailable();
+        return { access_token: data.access_token, refresh_token: data.refresh_token };
+      }
       const known = Object.hasOwn(directory, login);
       // Usuário desconhecido também passa pelo provedor; nunca retorna email, usuário ou causa individual.
       const email = known ? directory[login] as string : 'username-unavailable@example.invalid';

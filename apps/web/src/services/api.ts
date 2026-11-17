@@ -9,6 +9,8 @@ import type {
   ConfigurationResult,
   UnitSummary,
 } from '@erp/contracts';
+import { isAdminUsersSnapshot } from '@erp/contracts';
+import type { AdminUsersSnapshot, AdminUserSave } from '@erp/contracts';
 export class RequestError extends Error {
   constructor(public status: number) {
     super('Não foi possível concluir a solicitação.');
@@ -31,12 +33,29 @@ function configuration(value: unknown): value is Configuration {
 export interface SettingsSnapshot extends ConfigurationResult {
   etag: string;
 }
+function userAccess(data: unknown): { criado: boolean; acesso: string | null } {
+  if (!isRecord(data) || typeof data.criado !== 'boolean' || (data.acesso !== null && typeof data.acesso !== 'string')) throw new RequestError(503);
+  if (typeof data.acesso === 'string' && !/^https:\/\/erp-joinville-staging\.erp-restaurantes-joinville\.workers\.dev\/#definir-senha=[A-Za-z0-9_-]{20,512}$/.test(data.acesso)) throw new RequestError(503);
+  return { criado: data.criado, acesso: data.acesso as string | null };
+}
 export class SettingsApi {
   constructor(private token: () => Promise<string | undefined>) {}
-  async identity(): Promise<{ nome: string }> {
+  async identity(): Promise<{ nome: string; administracao?: boolean }> {
     const value: unknown = await (await this.request('/me')).json();
     if (!isRecord(value) || typeof value.nome !== 'string' || !value.nome.trim()) throw new RequestError(503);
-    return { nome: value.nome };
+    return { nome: value.nome, ...(value.administracao === true ? { administracao: true } : {}) };
+  }
+  async adminUsers(q = '', offset = 0): Promise<AdminUsersSnapshot> {
+    const data: unknown = await (await this.request(`/admin/usuarios?${new URLSearchParams({ q, offset: String(offset) })}`)).json();
+    if (!isAdminUsersSnapshot(data)) throw new RequestError(503); return data;
+  }
+  async createUser(input: AdminUserSave): Promise<{ criado: boolean; acesso: string | null }> {
+    const data: unknown = await (await this.request('/admin/usuarios', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(input) })).json();
+    return userAccess(data);
+  }
+  async reissueUserAccess(id: string): Promise<{ criado: boolean; acesso: string | null }> {
+    if (!/^[a-f0-9-]{36}$/i.test(id)) throw new RequestError(422);
+    return userAccess(await (await this.request(`/admin/usuarios/${id}/primeiro-acesso`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' })).json());
   }
   private async request(path: string, init?: RequestInit): Promise<Response> {
     const token = await this.token();

@@ -1,17 +1,18 @@
 import { useEffect, useState } from 'react';
 import type { UnitSummary } from '@erp/contracts';
 import { SettingsApi } from '../services/api.ts';
-export function UnitAccess({ api, onEnter, onSignOut }: { api: SettingsApi; onEnter: (unit: UnitSummary, name: string) => void; onSignOut: () => Promise<void> }) {
+export function UnitAccess({ api, onEnter, onSignOut }: { api: SettingsApi; onEnter: (unit: UnitSummary, name: string, administration: boolean) => void; onSignOut: () => Promise<void> }) {
+  const [administration, setAdministration] = useState(false);
   const [units, setUnits] = useState<UnitSummary[]>(), [selected, setSelected] = useState(''), [name, setName] = useState(''), [error, setError] = useState(''), [retry, setRetry] = useState(0);
   useEffect(() => {
     let active = true; setUnits(undefined); setSelected(''); setName(''); setError('');
     void Promise.all([api.units(), api.identity()]).then(([value, identity]) => {
-      if (active) { setName(identity.nome); setUnits(value); }
+      if (active) { setName(identity.nome); setAdministration(identity.administracao === true); setUnits(value); }
     }).catch(() => { if (active) setError('Não foi possível consultar seu acesso. Tente novamente.'); });
     return () => { active = false; };
   }, [api, retry]);
   const unit = units?.find(item => item.id === selected);
-  return <main className="login-form"><form onSubmit={event => { event.preventDefault(); if (unit) onEnter(unit, name); }}>
+  return <main className="login-form"><form onSubmit={event => { event.preventDefault(); if (unit) onEnter(unit, name, administration); }}>
     <h1>Selecionar unidade</h1>{name && <p>Olá, {name}.</p>}<p>Escolha a unidade em que deseja trabalhar. Apenas seus vínculos ativos aparecem aqui.</p>
     {error && <p role="alert">{error}</p>}{!units && !error && <p role="status">Consultando suas unidades…</p>}
     {units && !units.length && <p role="status">Nenhuma unidade ativa vinculada. Procure a administração.</p>}
