@@ -9,8 +9,8 @@ import type {
   ConfigurationResult,
   UnitSummary,
 } from '@erp/contracts';
-import { isAdminUsersSnapshot } from '@erp/contracts';
-import type { AdminUsersSnapshot, AdminUserSave } from '@erp/contracts';
+import { isAdminUserDetail, isAdminUsersSnapshot } from '@erp/contracts';
+import type { AdminUserDetail, AdminUserEdit, AdminUsersSnapshot, AdminUserSave } from '@erp/contracts';
 export class RequestError extends Error {
   constructor(public status: number) {
     super('Não foi possível concluir a solicitação.');
@@ -52,6 +52,13 @@ export class SettingsApi {
   async createUser(input: AdminUserSave): Promise<{ criado: boolean; acesso: string | null }> {
     const data: unknown = await (await this.request('/admin/usuarios', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(input) })).json();
     return userAccess(data);
+  }
+  async userDetail(id:string):Promise<AdminUserDetail>{return this.userEdition(id);}
+  async editUser(id:string,input:AdminUserEdit):Promise<AdminUserDetail>{return this.userEdition(id,input);}
+  private async userEdition(id:string,input?:AdminUserEdit):Promise<AdminUserDetail>{
+    if(!/^[a-f0-9-]{36}$/i.test(id))throw new RequestError(422);
+    const value:unknown=await(await this.request(`/admin/usuarios/${id}`,input?{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(input)}:undefined)).json();
+    if(!isAdminUserDetail(value)||value.id!==id)throw new RequestError(503);return value;
   }
   async reissueUserAccess(id: string): Promise<{ criado: boolean; acesso: string | null }> {
     if (!/^[a-f0-9-]{36}$/i.test(id)) throw new RequestError(422);

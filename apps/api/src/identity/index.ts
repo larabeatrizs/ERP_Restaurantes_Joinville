@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import { hasExactFields, isRecord, normalizeLogin, validPassword, validateAdminUserSave } from '@erp/contracts';
+import { hasExactFields, isAdminUserDetail, isRecord, normalizeLogin, validPassword, validateAdminUserEdit, validateAdminUserSave } from '@erp/contracts';
 
 export interface IdentityEnv {
   SUPABASE_URL: string; SUPABASE_PUBLISHABLE_KEY: string; SUPABASE_ADMIN_KEY: string;
@@ -47,13 +47,22 @@ export function createIdentityApp(fetcher: typeof fetch = fetch) {
         return Response.json({ access_token: data.session.access_token, refresh_token: data.session.refresh_token }, { headers });
       }
       const reissue = /^\/admin\/usuarios\/([a-f0-9-]{36})\/primeiro-acesso$/i.exec(url.pathname);
-      if ((!reissue && url.pathname !== '/admin/usuarios') || (reissue ? request.method !== 'POST' : !['GET', 'POST'].includes(request.method))) throw new Problem(404);
+      const edit = /^\/admin\/usuarios\/([a-f0-9-]{36})$/i.exec(url.pathname);
+      if ((!reissue && !edit && url.pathname !== '/admin/usuarios') || (edit ? !['GET','PATCH'].includes(request.method) : reissue ? request.method !== 'POST' : !['GET', 'POST'].includes(request.method))) throw new Problem(404);
       const authorization = request.headers.get('Authorization');
       if (!authorization?.startsWith('Bearer ')) throw new Problem(401);
       const { data: authenticated, error: authError } = await publicClient.auth.getUser(authorization.slice(7));
       if (authError?.status && authError.status >= 500) throw new Problem(503);
       if (authError || !authenticated.user || authenticated.user.is_anonymous || authenticated.user.aud !== 'authenticated') throw new Problem(401);
       const actor = authenticated.user.id;
+      if(edit?.[1]){
+        let input:object|null=null;
+        if(request.method==='PATCH'){const validated=validateAdminUserEdit(await body());if(!validated.ok)throw new Problem(422);input=validated.value;}
+        const result=await privileged.schema('erp').rpc('admin_usuario_edicao',{p_ator:actor,p_alvo:edit[1],p_dados:input});
+        if(result.error)throw new Problem(({PT403:403,PT404:404,PT409:409,PT412:412,PT422:422}as Record<string,number>)[result.error.code]??503);
+        if(!isAdminUserDetail(result.data)||result.data.id!==edit[1])throw new Problem(503);
+        return Response.json(result.data,{headers});
+      }
       if (request.method === 'POST') { const allowed = await rpc(actor, 'autorizar'); if (!isRecord(allowed) || allowed.permitido !== true) throw new Problem(403); }
       const syntheticOnly = env.MANUAL_INVITES_ENABLED !== 'true' && env.SYNTHETIC_ADMIN_ID === actor;
       const manualAllowed = env.MANUAL_INVITES_ENABLED === 'true' || syntheticOnly;

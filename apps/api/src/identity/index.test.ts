@@ -29,6 +29,16 @@ function harness({denied=false,completed=false,revoked=false,exists=false,pendin
  return {app,actions,paths};
 }
 const request=(path='/admin/usuarios',value:unknown=fixture,token=true)=>new Request('https://identity.internal'+path,{method:'POST',headers:{'Content-Type':'application/json',...(token?{Authorization:'Bearer token-fixture'}:{})},body:JSON.stringify(value)});
+
+test('edição privada: identidade validada e rota fixa, sem Auth Admin ou dependência de convites',async()=>{
+ const calls:string[]=[],input={nome:'Nome corrigido',perfil:'ESTOQUISTA',unidades:['2'],revisao:'1',motivo:'Correção sintética'};
+ const app=createIdentityApp(async(resource,init)=>{const path=new URL(resource instanceof Request?resource.url:String(resource)).pathname;calls.push(path);if(path==='/auth/v1/user')return Response.json({id:actor,aud:'authenticated',is_anonymous:false});assert.equal(path,'/rest/v1/rpc/admin_usuario_edicao');const value=JSON.parse(String(init?.body));assert.equal(value.p_ator,actor);assert.equal(value.p_alvo,target);assert.deepEqual(value.p_dados,input);return Response.json({id:target,nome:input.nome,perfil:'ESTOQUISTA',status:'ATIVO',primeiro_acesso:false,unidades:['2'],revisao:'2',proprio:false,pode_editar:true});});
+ const response=await app.fetch(new Request(`https://identity.internal/admin/usuarios/${target}`,{method:'PATCH',headers:{Authorization:'Bearer token','Content-Type':'application/json'},body:JSON.stringify(input)}),{...env,MANUAL_INVITES_ENABLED:'false'});assert.equal(response.status,200);assert.equal((await response.json()).revisao,'2');assert.deepEqual(calls,['/auth/v1/user','/rest/v1/rpc/admin_usuario_edicao']);
+});
+test('edição privada: payload indevido e negação/conflito não alteram Auth nem expõem erro SQL',async()=>{
+ for(const code of['PT403','PT412']){const app=createIdentityApp(async(resource)=>{const path=new URL(resource instanceof Request?resource.url:String(resource)).pathname;if(path==='/auth/v1/user')return Response.json({id:actor,aud:'authenticated',is_anonymous:false});return Response.json({code,message:'private SQL details'},{status:400});});const response=await app.fetch(new Request(`https://identity.internal/admin/usuarios/${target}`,{headers:{Authorization:'Bearer token'}}),env);assert.equal(response.status,code==='PT403'?403:412);assert.equal((await response.text()).includes('SQL'),false);}
+ const h=harness();const response=await h.app.fetch(new Request(`https://identity.internal/admin/usuarios/${target}`,{method:'PATCH',headers:{Authorization:'Bearer token','Content-Type':'application/json'},body:JSON.stringify({nome:'Nome',perfil:'ADMIN',unidades:['1'],revisao:'1',motivo:'Teste',ator_id:target})}),env);assert.equal(response.status,422);assert.deepEqual(h.paths,['/auth/v1/user']);
+});
 test('identidade privada: cadastro novo entrega link só após conclusão e não envia email/senha',async()=>{
  const h=harness();const response=await h.app.fetch(request(),env);assert.equal(response.status,201);assert.equal(response.headers.get('Cache-Control'),'no-store');
  const result=await response.json();assert.match(result.acesso,/#definir-senha=token-sintetico/);assert.equal(JSON.stringify(result).includes(fixture.email),false);

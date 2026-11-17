@@ -86,7 +86,7 @@ export function validateAdminUserSave(value: unknown): AdminUserValidation {
   } };
 }
 
-/** ADM-005/B: draft only; no endpoint or authorization to change access. */
+/** Syntax only; the server must authorize and audit every change. */
 export interface AdminUserEdit {
   nome: string; perfil: AdminProfileCode; unidades: string[]; revisao: string; motivo: string;
 }
@@ -100,4 +100,12 @@ export function validateAdminUserEdit(value: unknown): AdminUserEditValidation {
   if (!isStockId(value.revisao)) return {ok:false,field:'revisao',message:'Recarregue a revisão do cadastro antes de editar.'};
   if (!text(value.motivo,500) || value.motivo.trim().length<3) return {ok:false,field:'motivo',message:'Informe um motivo de 3 a 500 caracteres.'};
   return {ok:true,value:{nome:value.nome.trim(),perfil:value.perfil as AdminProfileCode,unidades:[...value.unidades],revisao:value.revisao,motivo:value.motivo.trim()}};
+}
+export interface AdminUserDetail extends Omit<AdminUserEdit,'motivo'> {
+  id: string; status: AdminUserStatus; primeiro_acesso: boolean; proprio: boolean; pode_editar: boolean;
+}
+export function isAdminUserDetail(value: unknown): value is AdminUserDetail {
+  if(!isRecord(value)||!hasExactFields(value,['id','nome','perfil','status','primeiro_acesso','unidades','revisao','proprio','pode_editar'])||typeof value.id!=='string'||!/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(value.id)
+    ||!['ATIVO','INATIVO','BLOQUEADO'].includes(String(value.status))||typeof value.primeiro_acesso!=='boolean'||typeof value.proprio!=='boolean'||typeof value.pode_editar!=='boolean')return false;
+  return validateAdminUserEdit({nome:value.nome,perfil:value.perfil,unidades:value.unidades,revisao:value.revisao,motivo:'Validar resposta'}).ok;
 }

@@ -1,6 +1,6 @@
 # ADM-002/B — Contrato de cadastro administrativo
 
-> **Continuidade posterior ADM-005 em 17/11:** [consulta CSV e rascunho específico de edição](ADM-005-CONSULTA-E-EDICAO.md). `validateAdminUserEdit` exige revisão positiva e rejeita identidade/credenciais/status. É preparação B/C1, sem endpoint/escrita: decisões de autogestão e último administrador continuam pendentes de resposta. Cadastro e consulta existentes estão publicados em ADM-003/004; os estados iniciais descritos abaixo são históricos.
+> **Continuidade posterior ADM-005 em 17/11:** [edição e CSV](ADM-005-CONSULTA-E-EDICAO.md). Regras de autogestão/último administrador confirmadas expressamente; a implementação seguinte cobre C2/C3/C4 com revisão/motivo/auditoria. `validateAdminUserEdit` rejeita identidade/credenciais/status. Consultar evidências do recorte para estado de implantação. Cadastro/consulta existem em ADM-003/004; os estados iniciais descritos abaixo são históricos.
 
 > Continuidade C2 em 16/11: [registro privado de login e auditoria](ADM-002-IDENTIDADE-PERSISTIDA.md), com decisão confirmada sobre alcance global de administração e consulta. A preparação B/C1 abaixo é histórica; painel, gestão privilegiada real e adaptação do login continuam etapas seguintes.
 

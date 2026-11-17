@@ -1,6 +1,6 @@
-# ADM-005 — CSV de usuários e preparação de edição
+# ADM-005 — Edição e CSV de usuários
 
-Data: 17/11/2026. [Issue #48](https://github.com/larabeatrizs/ERP_Restaurantes_Joinville/issues/48), continuidade de [ADM-004](ADM-004-CONFIGURADOR.md), #19/#31. Fontes: DRS 4.1/4.2, **7.1 (CSV para RF-001 a RF-008)**, RF-008, RN-012/RN-022 e RNF-003/007/008/009/011; [contrato ADM-002](ADM-002-CONTRATO-USUARIOS.md). Recorte C4 de consulta e B/C1 de edição. Não altera o DRS nem declara RF-008 integral.
+Data: 17/11/2026. [Issue #48](https://github.com/larabeatrizs/ERP_Restaurantes_Joinville/issues/48), continuidade de [ADM-004](ADM-004-CONFIGURADOR.md), #19/#31. Fontes: DRS 4.1/4.2, **7.1 (CSV para RF-001 a RF-008)**, RF-008, RN-012/RN-022 e RNF-003/007/008/009/011; [contrato ADM-002](ADM-002-CONTRATO-USUARIOS.md). Recorte B/C2/C3/C4 de edição e consulta. A responsável confirmou nesta sessão **“Adotar essas regras”** para preservar login/email/senha, impedir a alteração do próprio perfil/unidades e preservar o último administrador ativo. Não declara RF-008 integral nem aceite institucional.
 
 ## Consulta independente das decisões de edição
 
@@ -12,11 +12,17 @@ Limite técnico: 10.000 registros por exportação; acima disso, pedir refinamen
 
 Botão fica indisponível durante carregamento/cadastro/geração; a geração bloqueia saída/ações concorrentes e mostra resultado ou erro recuperável, preservando pesquisa, rascunho e link de primeiro acesso existente. Componentes/cores/foco/rolagem do Style Guide e de ADM-004 reaproveitados, sem novo frame ou editor sem funcionalidade.
 
-## B/C1 — contrato de edição, sem escrita habilitada
+## Edição confirmada — contrato e autorização
 
 `validateAdminUserEdit` aceita exatamente nome, perfil, unidades, revisão positiva em texto bigint e motivo. Mesmos limites técnicos de nome/perfil/unidades/motivo do cadastro; revisão não admite null nem número com perda de precisão. Produz cópia normalizada, sem modificar o rascunho. Login/email/senha/status/ID Auth/metadados/permissões livres são rejeitados. Validação sintática não concede a capacidade de editar nem efetiva mudança de perfil/unidade.
 
-**Decisão material pendente nesta sessão:** o DRS não define autogestão/proteção do último administrador e ADM-002 pede contrato/testes antes da escrita. Foi enviada a proposta: preservar login/email/senha; impedir que o administrador mude o próprio perfil/unidades (outro administrador faz a alteração); impedir rebaixar o último ADMIN ativo. Não houve resposta no momento desta preparação; não interpretar silêncio como aprovação. Detalhar definição de administrador elegível/concorrência, revisão/revalidação do ator, auditoria de antes/depois, restrições de primeiro acesso e testes de revogação após a decisão. Status/inativação e troca de email/login continuam recortes próprios. Não há botão/endpoint de edição publicado por este DTO.
+Decisão confirmada: ADMIN pode alterar nome/perfil/unidades; consultores autorizados apenas visualizam. O próprio ADMIN pode corrigir o nome, preservando seu perfil e seus vínculos; outro administrador faz alterações de acesso. O último ADMIN com status ATIVO não pode ser rebaixado; contas de primeiro acesso ainda BLOQUEADAS não contam como ADMIN ativo. Campos de login/email/senha/status não entram no PATCH. Perfis são os oito códigos existentes, sem permissões livres. Unidades escolhidas devem existir/estar ativas e não podem ser vazias ou repetidas. A edição de conta pendente preserva seu bloqueio/primeiro acesso; não ativa nem reemite link. A regra vale também para contas anteriores sem contato/login persistidos, sem migrar suas credenciais.
+
+**Usuários → Abrir cadastro** consulta o detalhe atual. ADMIN recebe formulário de nome/perfil/filiais/motivo e confirmação ao salvar; consultor vê detalhes sem botão de salvar. Perfil/unidades próprios ficam desabilitados, reforçados no servidor. Um conflito de revisão preserva campos e oferece recarga confirmada. Formulário aberto bloqueia outras ações da lista; saída/recarga protegem rascunho. Abrir outro cadastro pede confirmação antes de retirar um primeiro link ainda exibido. O nome da sessão já carregada é atualizado ao entrar novamente; permissões/vínculos são conferidos nas próximas chamadas, inclusive com tokens emitidos antes da edição. Dados já mostrados em outra aba não são apagados retroativamente.
+
+API `GET/PATCH /api/admin/usuarios/:id` existe somente na origem Configurador e passa ao serviço privado. `Auth.getUser` valida ator; DTO estrito rejeita identidade/credenciais/ator fornecido. RPC nova `erp.admin_usuario_edicao` é invoker com EXECUTE somente service_role; delega a função privada definer de owner NOLOGIN/NOBYPASSRLS `erp_user_admin`, sem CREATE permanente nem nova chave na View/Worker comum. Reutiliza RLS; o único grant adicional ao owner é DELETE dos vínculos, indispensável para revogá-los. Clientes comuns não recebem escrita direta nem execução dessa RPC. Não depende da flag de envio de convites.
+
+Migration adiciona `erp.usuario.revisao bigint` positiva/default 1 e ação EDITAR na auditoria privada. Alteração espera lock administrativo global e bloqueia ator/alvo em ordem antes de revalidar status/perfil/capacidade, impedindo duas despromoções cruzadas. Revisão esperada divergente retorna 412; perfil/vínculos próprios são recusados. Atualização de nome/perfil, substituição dos vínculos, incremento da revisão e auditoria de antes/depois/motivo são atômicos; falha da auditoria reverte tudo. Salvar valores idênticos com revisão atual não incrementa nem duplica auditoria. Revisão cobre estes campos de edição; o primeiro acesso continua sua trilha própria de status sem sobrescrita pelo PATCH. Nenhum Auth Admin é chamado durante a edição. Status/inativação e troca de email/login continuam recortes próprios.
 
 ## Rastreabilidade e condição de saída
 
@@ -25,6 +31,6 @@ Botão fica indisponível durante carregamento/cadastro/geração; a geração b
 | DRS 7.1/RF-008: CSV | `admin-user-report.ts`, `UsersPanel.tsx`, API de consulta existente | filtro aplicado, 27 registros em duas páginas, consulta sem escrita |
 | RNF-003/007: sessão e dados limitados | leituras autorizadas, campos explícitos, CSV comum | revogação/falha sem download; fórmulas/aspas, sem IDs/segredos |
 | RNF-009/011: interface | botão/estados no shell existente | feedback, reabilitação após erro, responsividade anterior preservada |
-| ADM-002/RN-012/RN-022: rascunho de edição | contrato compartilhado estrito | revisão/bigint, mass assignment, campos faltantes, cópia e controles |
+| ADM-002/RN-012/RN-022: edição | contrato estrito, detalhe, serviço privado e RPC mediada | revisão/bigint, mass assignment, autogestão, último ADMIN, atomicidade, concorrência e revogação |
 
-Estado inicial: implementado localmente, testes/CI/deploy/jornada serão registrados após execução. Publicar consulta não autoriza edição. Nenhuma migration, reset, provisão permanente ou uso de senha pessoal. SMTP, VPN/Access, RF-008 integral, skeleton e carga real final permanecem nos seus recortes.
+Estado de preparação: implementação/testes locais em andamento; CI, migration conectada, deploy e jornadas serão registrados após execução. Nenhum reset, provisão permanente, alteração de conta pessoal ou senha prevista. Ensaiar somente fixtures reservadas: editar nome/perfil/vínculos do operador sintético e restaurá-los pela API com auditoria preservada. SMTP, VPN/Access, RF-008 integral, skeleton e carga real final permanecem nos seus recortes.
