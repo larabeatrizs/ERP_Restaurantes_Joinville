@@ -142,6 +142,7 @@ test('EST-002 seed é idempotente, Cozinha registra sem estoquista e ADMIN não 
  const migration=await readFile(new URL('../../supabase/migrations/20261117195030_requisicao_rapida_posterior.sql',import.meta.url),'utf8');
  const seed=migration.split('-- BEGIN WITHDRAWAL CAPABILITY SEED')[1].split('-- END WITHDRAWAL CAPABILITY SEED')[0];
  await db.exec(seed);await db.exec(seed);
+ const kitchenSeed=(await readFile(new URL('../../supabase/seeds/perfil_cozinha.sql',import.meta.url),'utf8')).replace(/^begin;$/m,'').replace(/^commit;$/m,'');await db.exec(kitchenSeed);await db.exec(kitchenSeed);
  const permissions=(await db.query("select p.codigo,pp.permissao from erp.perfil p join erp.perfil_permissao pp on pp.perfil_id=p.id where pp.permissao like 'REQUISICAO_%' order by p.codigo,pp.permissao")).rows;
  assert.deepEqual(permissions,[{codigo:'COZINHA',permissao:'REQUISICAO_REGISTRAR'},{codigo:'ESTOQUISTA',permissao:'REQUISICAO_REGISTRAR'},{codigo:'GESTOR_UNIDADE',permissao:'REQUISICAO_CONFERIR'},{codigo:'NUTRICIONISTA',permissao:'REQUISICAO_CONFERIR'}]);
  await withdrawalSetup();const p=await create();await confirm((await receive(p.id)).id);await become(8);
