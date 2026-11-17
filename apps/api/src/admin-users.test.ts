@@ -1,11 +1,18 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { adminProfileCodes, validateAdminUserSave } from '@erp/contracts';
+import { adminProfileCodes, validateAdminUserSave, validateAdminUserSituation, isAdminUserSituation } from '@erp/contracts';
 import { createApp } from './index.ts';
 import { createLoginRepository } from './repositories/supabase-login.ts';
 
 const draft = () => ({ login: ' OPERADOR.RP1 ', nome: ' Operador sintético ', email: ' OPERADOR@EXAMPLE.INVALID ',
   perfil: 'ESTOQUISTA', unidades: ['1', '2'], status: 'ATIVO', revisao: null, motivo: ' Cadastro sintético ' });
+test('situação: contrato exige revisão exata/motivo, aceita só ATIVO/INATIVO e rejeita identidade',()=>{
+ const input={status:'INATIVO',revisao:'9007199254740993',motivo:' Revisão sintética '};assert.deepEqual(validateAdminUserSituation(input),{ok:true,value:{...input,motivo:'Revisão sintética'}});
+ for(const extra of[{status:'BLOQUEADO'},{status:null},{revisao:null},{revisao:1},{revisao:'01'},{motivo:'a'},{motivo:'abc\n'},{motivo:'a'.repeat(501)},{password:'nao-ecoar'},{perfil:'ADMIN'},{ator_id:'indesejado'}]){const result=validateAdminUserSituation({...input,...extra});assert.equal(result.ok,false);assert.equal(JSON.stringify(result).includes('nao-ecoar'),false);}
+});
+test('situação: DTO não aceita campos inesperados ou permissões indefinidas',()=>{
+ const input={id:'00000000-0000-4000-8000-000000000001',nome:'Pessoa sintética',status:'BLOQUEADO',revisao:'1',primeiro_acesso:true,proprio:false,pode_alterar:false};assert.equal(isAdminUserSituation(input),true);for(const extra of[{pode_alterar:undefined},{revisao:1},{nome:''},{email:'nao-exportar@example.invalid'}])assert.equal(isAdminUserSituation({...input,...extra}),false);
+});
 test('admin API: sem sessão/serviço nega, proxy fixa destino e mantém segredo fora do Worker comum',async()=>{
  const app=createApp();assert.equal((await app.fetch(new Request('https://erp.test/api/admin/usuarios'))).status,401);
  const auth={Authorization:'Bearer fixture'};assert.equal((await app.fetch(new Request('https://erp.test/api/admin/usuarios',{headers:auth}))).status,503);
