@@ -3,6 +3,7 @@ import { before, after, test } from 'node:test';
 import { readFile, readdir } from 'node:fs/promises';
 import { PGlite } from '@electric-sql/pglite';
 import pg from 'pg';
+import { isAdminUsersSnapshot } from '@erp/contracts';
 
 let db;
 let close;
@@ -155,6 +156,8 @@ test('admin: perfil/capacidade/status atuais limitam consulta e criação globai
  await db.exec("insert into erp.perfil(codigo) values('AUDITOR');insert into erp.perfil_permissao select id,'USUARIO_LER' from erp.perfil where codigo='AUDITOR';update erp.usuario set perfil_id=(select id from erp.perfil where codigo='AUDITOR') where id='"+uid(3)+"'");
  assert.equal((await adminRpc('listar',{},uid(3))).pode_criar,false);await adminError('preparar',newUser(),'PT403',uid(3));
  const rows=await adminRpc('listar',{q:'Administrador'});assert.equal(rows.total,2);assert.equal(rows.unidades.length,2);assert.equal((await adminRpc('listar',{q:'inexistente'})).total,0);
+ assert.equal(isAdminUsersSnapshot(rows),true,'Database projection must match the shared browser contract.');
+ assert.deepEqual(rows.unidades.map(u=>u.nome),['Unidade fictícia A','Unidade fictícia B']);
 }));
 test('admin: revogação concorrente durante lock de conclusão impede criação do domínio', {skip:!process.env.DATABASE_TEST_URL},async()=>{
  const first=new pg.Client({connectionString:process.env.DATABASE_TEST_URL}),second=new pg.Client({connectionString:process.env.DATABASE_TEST_URL});let pending,operation;

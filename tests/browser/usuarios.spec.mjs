@@ -34,6 +34,7 @@ async function setup(page,{allowed=true,write=true,conflict=false}={}){
 async function fill(page){await page.getByRole('button',{name:'Novo usuário',exact:true}).click();await page.getByLabel('Nome de login *',{exact:true}).fill(' NOVO.USUARIO ');await page.getByLabel('Nome de identificação *',{exact:true}).fill(' Pessoa sintética ');await page.getByLabel('Email *',{exact:true}).fill('NOVO@EXAMPLE.INVALID');await page.getByRole('checkbox',{name:'RP2 — Unidade B',exact:true}).check();await page.getByLabel('Motivo do cadastro *',{exact:true}).fill(' Cadastro sintético ');}
 test('usuários: administrador inclui com filiais e recebe link protegido; tabela mostra primeiro acesso',async({page})=>{
  const state=await setup(page);await fill(page);
+ await page.getByLabel('Perfil *',{exact:true}).selectOption('NUTRICIONISTA');await expect(page.getByLabel('Perfil *',{exact:true})).toHaveValue('NUTRICIONISTA');await page.getByLabel('Perfil *',{exact:true}).selectOption('ESTOQUISTA');
  for(const width of [360,1280]){await page.setViewportSize({width,height:900});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);await page.screenshot({path:test.info().outputPath(`formulario-${width}.png`),fullPage:true});}
  await page.getByRole('button',{name:'Incluir usuário',exact:true}).click();
  await expect(page.getByRole('heading',{name:'Primeiro acesso',exact:true})).toBeVisible();await expect(page.getByRole('cell',{name:'Aguardando primeiro acesso',exact:true})).toBeVisible();

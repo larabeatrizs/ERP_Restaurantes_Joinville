@@ -29,6 +29,10 @@ try{
  const adminContext=await browser.newContext({viewport:{width:1280,height:900}});contexts.push(adminContext);const page=await adminContext.newPage();
  proof.phase='admin_login';await login(page,state.admin);await select(page,stock.units.A);await page.getByRole('link',{name:'Usuários',exact:true}).click();await expect(page.getByRole('button',{name:'Novo usuário',exact:true})).toBeEnabled();
  const adminClient=client(),adminSession=await adminClient.auth.signInWithPassword({email:state.admin.email,password:state.admin.password});assert.equal(adminSession.error,null);const adminToken=adminSession.data.session.access_token;
+ const adminContextData=await(await api(adminToken,`/api/unidades/${stock.units.A}/estoque/contexto`)).json();assert.equal(adminContextData.capacidades.produto_escrever,true);assert.equal(adminContextData.capacidades.produto_ciclo_vida,false);assert.equal(adminContextData.capacidades.recebimento_escrever,false);assert.equal(adminContextData.capacidades.divergencia_aprovar,false);
+ for(const resource of ['categorias','medidas','fornecedores']){const result=await(await api(adminToken,`/api/unidades/${stock.units.A}/${resource}`)).json();assert.equal(result.capacidades.editar,true);assert.equal(result.capacidades.ciclo_vida,false);}
+ assert.equal((await(await api(adminToken,`/api/unidades/${stock.units.A}/configuracoes`)).json()).pode_editar,false);
+ proof.scenarios.push({name:'ADMIN temporary catalog I enabled for four registries, without X, receipt write/approval or parameter edit',passed:true});
  const initial=await(await api(adminToken,'/api/admin/usuarios?'+new URLSearchParams({q:state.operator.login}))).json();
  let firstLink;
  if(initial.usuarios.length===0){
