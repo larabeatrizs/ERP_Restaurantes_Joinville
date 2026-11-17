@@ -21,12 +21,17 @@ import type { SupplierSessionFactory } from './repositories/supplier-repository.
 import { calendarController } from './controllers/calendar-controller.ts';
 import { createCalendarSession } from './repositories/supabase-calendar.ts';
 import type { CalendarSessionFactory } from './repositories/calendar-repository.ts';
+import { withdrawalController } from './controllers/withdrawal-controller.ts';
+import { createWithdrawalSession } from './repositories/supabase-withdrawals.ts';
+import type { WithdrawalFactory } from './repositories/withdrawal-repository.ts';
 
-export function createApp(factory: SessionFactory = createSupabaseSession, stockFactory: StockSessionFactory = createSupabaseStockSession, categoryFactory: CategorySessionFactory = createSupabaseCategorySession, loginFactory: LoginFactory = createLoginRepository, measureFactory: MeasureSessionFactory = createSupabaseMeasureSession, supplierFactory: SupplierSessionFactory = createSupabaseSupplierSession, calendarFactory: CalendarSessionFactory = createCalendarSession) {
+export function createApp(factory: SessionFactory = createSupabaseSession, stockFactory: StockSessionFactory = createSupabaseStockSession, categoryFactory: CategorySessionFactory = createSupabaseCategorySession, loginFactory: LoginFactory = createLoginRepository, measureFactory: MeasureSessionFactory = createSupabaseMeasureSession, supplierFactory: SupplierSessionFactory = createSupabaseSupplierSession, calendarFactory: CalendarSessionFactory = createCalendarSession, withdrawalFactory: WithdrawalFactory = createWithdrawalSession) {
   return {
     async fetch(request: Request, env: RuntimeEnv = {}): Promise<Response> {
       try {
         const path = new URL(request.url).pathname;
+        const withdrawal = /^\/api\/unidades\/([^/]+)\/requisicoes(?:\/([^/]+)\/conferencia)?$/.exec(path);
+        if(withdrawal?.[1])return await withdrawalController(request,env,withdrawal[1],withdrawal[2],withdrawalFactory);
         if (path === '/api/admin/usuarios' || /^\/api\/admin\/usuarios\/[a-f0-9-]{36}(?:\/(?:primeiro-acesso|situacao))?$/i.test(path)) {
           const allowed = path === '/api/admin/usuarios' ? ['GET','POST'] : path.endsWith('/primeiro-acesso') ? ['POST'] : ['GET','PATCH'];
           if (!allowed.includes(request.method)) return methodNotAllowed(allowed.join(', '), request.method === 'HEAD');

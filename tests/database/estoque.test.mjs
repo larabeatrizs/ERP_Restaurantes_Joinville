@@ -146,6 +146,7 @@ test('EST-002 seed é idempotente, Cozinha registra sem estoquista e ADMIN não 
  assert.deepEqual(permissions,[{codigo:'COZINHA',permissao:'REQUISICAO_REGISTRAR'},{codigo:'ESTOQUISTA',permissao:'REQUISICAO_REGISTRAR'},{codigo:'GESTOR_UNIDADE',permissao:'REQUISICAO_CONFERIR'},{codigo:'NUTRICIONISTA',permissao:'REQUISICAO_CONFERIR'}]);
  await withdrawalSetup();const p=await create();await confirm((await receive(p.id)).id);await become(8);
  const r=(await withdrawal('registrar',withdrawalInput(p.id))).requisicao;assert.equal(r.solicitante_id,uid(8));assert.equal(r.retirado_por,'Pessoa sintética da cozinha');
+ const panel=(await db.query('select erp.requisicao_painel(1) p')).rows[0].p;assert.equal(panel.pode_registrar,true);assert.equal(panel.pode_conferir,false);assert.equal(panel.usuario_id,uid(8));assert.equal(panel.requisicoes[0].id,r.id);assert.ok(panel.produtos.some(x=>x.id===p.id));
  await withdrawalReject('conferir',reviewInput(r),'PT403');
 }));
 test('EST-002 modo ausente e validade ausente em perecível bloqueiam; documento e livro são imutáveis',async()=>actor(1,async()=>{

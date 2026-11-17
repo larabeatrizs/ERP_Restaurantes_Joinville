@@ -8,7 +8,7 @@ import { StockApi } from '../services/stock-api.ts';
 import { SettingsPanel } from './SettingsPanel.tsx';
 import { StockPanel } from './StockPanel.tsx';
 
-export type WorkspacePage = 'inicio' | 'conta' | 'configuracoes' | 'calendario' | 'produtos' | 'recebimentos' | 'saldo' | 'categorias' | 'medidas' | 'fornecedores';
+export type WorkspacePage = 'inicio' | 'conta' | 'configuracoes' | 'calendario' | 'produtos' | 'recebimentos' | 'saldo' | 'categorias' | 'medidas' | 'fornecedores' | 'requisicoes';
 export const workspacePages: { key: WorkspacePage; label: string }[] = [
   { key: 'inicio', label: 'Início' },
   { key: 'configuracoes', label: 'Configurações' },
@@ -18,6 +18,7 @@ export const workspacePages: { key: WorkspacePage; label: string }[] = [
   { key: 'categorias', label: 'Categorias' },
   { key: 'produtos', label: 'Produtos' },
   { key: 'recebimentos', label: 'Recebimentos' },
+  { key: 'requisicoes', label: 'Requisições rápidas' },
   { key: 'saldo', label: 'Saldo' },
   { key: 'conta', label: 'Meu acesso' },
 ];
