@@ -1,3 +1,4 @@
+import { Skeleton } from './Skeleton.tsx';
 import { useEffect,useRef,useState } from 'react';
 import { isWithdrawalInput } from '@erp/contracts';
 import type { Withdrawal,WithdrawalInput,WithdrawalPanel as Snapshot } from '@erp/contracts';
@@ -34,7 +35,7 @@ export function WithdrawalPanel({api,unit,onDirty,onBusy}:{api:StockApi;unit:str
  return <>
   {error&&<p role="alert" className="notice error">{error}</p>}{message&&<p role="status" className="notice">{message}</p>}
   <button disabled={busy||loading||!!pending} onClick={()=>{if(!dirty||window.confirm('Descartar os campos preenchidos e atualizar?')){setSelected(undefined);setReason('');setProduct('');setQuantity('');setName('');setError('');setReload(v=>v+1);}}}>Atualizar requisições</button>
-  {loading&&<p role="status">Carregando requisições…</p>}
+  {loading&&<Skeleton label="Carregando requisições…" />}
   {snapshot?.pode_registrar&&<section className="card" aria-label="Registrar retirada"><h2>Registrar retirada</h2><p className="hint">A baixa acontece agora, pelos lotes válidos que vencem primeiro. A conferência vem depois.</p>
    {snapshot.modo_saida!=='POSTERIOR'&&<p className="notice">Esta unidade precisa estar configurada no modo Posterior para usar a requisição rápida.</p>}
    <form onSubmit={e=>{e.preventDefault();void register();}}><fieldset disabled={busy||!!pending||snapshot.modo_saida!=='POSTERIOR'}>

@@ -1,3 +1,4 @@
+import { Skeleton } from './Skeleton.tsx';
 import { CategoryApi } from '../services/category-api.ts';
 import { MeasureApi } from '../services/measure-api.ts';
 import { SupplierApi } from '../services/supplier-api.ts';
@@ -84,9 +85,7 @@ export function App() {
   }
   if (!ready || linkState === 'verifying')
     return (
-      <main className="login-form" role="status">
-        Carregando sessão…
-      </main>
+      <main className="login-form"><Skeleton label="Carregando sessão…" /></main>
     );
   if (linkState === 'invalid') return <main className="login-form"><h1>Link indisponível</h1><p role="alert">Este link expirou, já foi utilizado ou é inválido. Solicite um novo link à administração.</p><button onClick={() => { void endPasswordSession().catch(() => setError('Não foi possível sair. Tente novamente.')); }}>Voltar ao login</button>{error && <p role="alert">{error}</p>}</main>;
   if (session && passwordMode) return <PasswordPanel onDone={() => endPasswordSession(true)} onCancel={() => endPasswordSession()} />;

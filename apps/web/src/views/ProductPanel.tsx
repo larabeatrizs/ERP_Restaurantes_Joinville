@@ -1,3 +1,4 @@
+import { Skeleton } from './Skeleton.tsx';
 import { lazy, Suspense, useEffect, useState } from 'react';
 import type { Product, ProdutoInput } from '@erp/contracts';
 import { isProdutoInput, productInputFields } from '@erp/contracts';
@@ -98,7 +99,7 @@ export function ProductPanel({ api, unit, unitName = '', context, onDirty, onBus
       setError(err instanceof RequestError && err.status === 409 ? 'O produto possui vínculos ou histórico e não pode ser excluído. Atualize a lista e utilize a inativação para preservá-lo.' : stockError(err));
     } finally { setSaving(false); }
   }
-  if (linking) return <Suspense fallback={<p role="status">Carregando catálogo…</p>}><ProductLinkPanel key={unit} api={api} unit={unit} context={context} onDirty={onDirty} onBusy={onBusy}
+  if (linking) return <Suspense fallback={<Skeleton label="Carregando catálogo…" />}><ProductLinkPanel key={unit} api={api} unit={unit} context={context} onDirty={onDirty} onBusy={onBusy}
     onCancel={() => setLinking(false)} onDone={product => { setLinking(false); setQuery(product.descricao); setSearch(product.descricao); setStatus('ATIVO'); setOffset(0); setReload(v => v + 1); setMessage('Produto vinculado à unidade com sucesso.'); }} /></Suspense>;
   return <>
     {report && <ReportPreview report={report} onClose={() => setReport(undefined)} />}
@@ -136,7 +137,7 @@ export function ProductPanel({ api, unit, unitName = '', context, onDirty, onBus
           <label className="field">Buscar produto<input type="search" maxLength={200} disabled={saving} value={search} onChange={e => setSearch(e.target.value)} /></label>
           <label className="field compact-field">Situação<select disabled={saving} value={status} onChange={e => { setStatus(e.target.value); setOffset(0); }}><option value="ATIVO">Ativos</option><option value="INATIVO">Inativos</option></select></label><button disabled={loading || saving}>Buscar</button>
         </form>
-        {loading ? <p role="status">Carregando produtos…</p> : rows.length ? <div className="table-wrap" tabIndex={0} aria-label="Lista de produtos"><table>
+        {loading ? <Skeleton label="Carregando produtos…" /> : rows.length ? <div className="table-wrap" tabIndex={0} aria-label="Lista de produtos"><table>
           <thead><tr><th>Produto</th><th>Categoria</th><th>Armazenamento</th><th>Unidade</th><th>Estoque mínimo</th><th>Situação</th><th>Ações</th></tr></thead>
           <tbody>{rows.map(product => <tr key={product.id}><th scope="row">{product.descricao}<span className="table-secondary">{product.complemento}</span></th><td>{product.categoria_descricao}</td><td>{storage[product.armazenamento]}</td><td>{product.unidade_sigla}</td><td className="numeric">{decimalLabel(product.estoque_minimo)}</td><td><span className="badge">{product.status === 'ATIVO' ? 'Ativo' : 'Inativo'}</span></td><td><button className="table-action" disabled={saving} onClick={() => open(product)}>{editable ? 'Editar' : 'Visualizar'}<span className="sr-only"> {product.descricao}</span></button>
             <button className="table-action" disabled={!lifecycle || saving} onClick={() => void changeLifecycle(product)}>{product.status === 'ATIVO' ? 'Inativar' : 'Ativar'}<span className="sr-only"> {product.descricao}</span></button>

@@ -1,3 +1,4 @@
+import { Skeleton } from './Skeleton.tsx';
 import { useEffect, useRef, useState } from 'react';
 import { calendarInput, calendarTemplate, csvDocument, isCalendarInput, isIsoDate, mealTypes } from '@erp/contracts';
 import type { CalendarDay, CalendarException, CalendarInput, CalendarMeal, CalendarSnapshot, MealType } from '@erp/contracts';
@@ -54,7 +55,7 @@ export function CalendarPanel({ api, unit, onDirty, onBusy }: { api: CalendarApi
     const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' })); const a = document.createElement('a'); a.href = url; a.download = 'calendario-datas.csv'; a.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
   return <>
-    {loading ? <p role="status">Carregando calendário…</p> : <>
+    {loading ? <Skeleton label="Carregando calendário…" /> : <>
       {error && !review && <p role="alert" className="notice error">{error}</p>}{message && <p role="status" className="success">{message}</p>}
       <div className="section-heading"><p className="hint">{editable ? 'Gestor e nutricionista podem configurar suas unidades autorizadas.' : 'Acesso somente para consulta.'}</p><button disabled={saving} onClick={() => { if (!dirty || window.confirm('Descartar alterações e recarregar o calendário salvo?')) { setRetry(v => v + 1); setReview(false); } }}>Recarregar calendário</button></div>
       {snapshot && <>

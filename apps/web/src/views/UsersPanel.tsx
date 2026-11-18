@@ -1,3 +1,4 @@
+import { Skeleton } from './Skeleton.tsx';
 import { useEffect, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 import { adminProfileLabels as profiles, validateAdminUserSave } from '@erp/contracts';
@@ -41,7 +42,7 @@ export function UsersPanel({ api, unit, onDirty, onBusy }: { api: SettingsApi; u
   return <section aria-label="Gestão de usuários" aria-busy={saving}>
     <p className="hint">A gestão de acessos abrange todas as unidades. Cada pessoa verá somente suas unidades nas operações.</p>
     {error&&<p role="alert" className="notice error">{error}</p>}{notice&&<p role="status" className="notice">{notice}</p>}
-    {loading&&<p role="status">Consultando usuários…</p>}{!loading&&!data&&<button onClick={()=>setRetry(v=>v+1)}>Tentar novamente</button>}
+    {loading&&<Skeleton label="Consultando usuários…" />}{!loading&&!data&&<button onClick={()=>setRetry(v=>v+1)}>Tentar novamente</button>}
     {access&&<section className="card" aria-label="Primeiro acesso"><h2>Primeiro acesso</h2><p id="access-hint">Este link é de uso único e não foi enviado por email. Copie e entregue em canal privado. Ele não fica disponível ao sair desta tela.</p><label className="field">Link de primeiro acesso<input type="password" readOnly value={access} autoComplete="off" aria-describedby="access-hint" onFocus={e=>e.target.select()}/></label><button type="button" onClick={()=>void copy()}>Copiar link de primeiro acesso</button></section>}
     {data&&<>
       {situation&&<UserStatusPanel key={situation} api={api} id={situation} onDirty={onDirty} onBusy={setSaving} onClose={()=>setSituation(undefined)} onSaved={()=>{setSituation(undefined);setNotice('Situação atualizada. O acesso será conferido nas próximas operações.');setRetry(value=>value+1);}} />}

@@ -1,3 +1,4 @@
+import { Skeleton } from './Skeleton.tsx';
 import { CategoryApi } from '../services/category-api.ts';
 import { MeasureApi } from '../services/measure-api.ts';
 import { SupplierApi } from '../services/supplier-api.ts';
@@ -84,17 +85,17 @@ export function StockPanel({ api, stock, categories, measures, suppliers, calend
         </select></label><p className="hint">Seu vínculo e suas permissões definem as ações disponíveis.</p>
       </section>
       {error && <p role="alert" className="notice error">{error}</p>}
-      {loading && <p role="status">Carregando unidade…</p>}
+      {loading && <Skeleton label="Carregando unidade…" />}
       {unitsLoaded && !loading && !units.length && !error && <p className="notice">Nenhuma unidade ativa disponível para sua conta. Procure a administração.</p>}
       {!loading && !context && error && <button onClick={() => setRetry(value => value + 1)}>Tentar novamente</button>}
       {unitsLoaded && !loading && units.some(item => item.id === unit) && page === 'inicio' && <HomePanel key={unit} api={stock} unit={unit} name={userName} onNavigate={onNavigate} />}
       {unitsLoaded && !loading && units.some(item => item.id === unit) && page === 'conta' && <AccountPanel name={userName} />}
       {unitsLoaded && !loading && units.some(item => item.id === unit) && page === 'requisicoes' && <WithdrawalPanel key={unit} api={stock} unit={unit} onDirty={setDirty} onBusy={setBusy} />}
-      {unitsLoaded && !loading && units.some(item => item.id === unit) && page === 'calendario' && <Suspense fallback={<p role="status">Carregando calendário…</p>}><CalendarPanel key={unit} api={calendar} unit={unit} onDirty={setDirty} onBusy={setBusy} /></Suspense>}
+      {unitsLoaded && !loading && units.some(item => item.id === unit) && page === 'calendario' && <Suspense fallback={<Skeleton label="Carregando calendário…" />}><CalendarPanel key={unit} api={calendar} unit={unit} onDirty={setDirty} onBusy={setBusy} /></Suspense>}
       {context && !loading && <>
-        {page === 'fornecedores' && <Suspense fallback={<p role="status">Carregando fornecedores…</p>}><SupplierPanel key={unit} api={suppliers} unit={unit} onDirty={setDirty} onBusy={setBusy} /></Suspense>}
-        {page === 'medidas' && <Suspense fallback={<p role="status">Carregando medidas…</p>}><MeasurePanel key={unit} api={measures} unit={unit} onDirty={setDirty} onBusy={setBusy} /></Suspense>}
-        {page === 'categorias' && <Suspense fallback={<p role="status">Carregando categorias…</p>}><CategoryPanel key={unit} api={categories} unit={unit} onDirty={setDirty} onBusy={setBusy} /></Suspense>}
+        {page === 'fornecedores' && <Suspense fallback={<Skeleton label="Carregando fornecedores…" />}><SupplierPanel key={unit} api={suppliers} unit={unit} onDirty={setDirty} onBusy={setBusy} /></Suspense>}
+        {page === 'medidas' && <Suspense fallback={<Skeleton label="Carregando medidas…" />}><MeasurePanel key={unit} api={measures} unit={unit} onDirty={setDirty} onBusy={setBusy} /></Suspense>}
+        {page === 'categorias' && <Suspense fallback={<Skeleton label="Carregando categorias…" />}><CategoryPanel key={unit} api={categories} unit={unit} onDirty={setDirty} onBusy={setBusy} /></Suspense>}
         {page === 'produtos' && <ProductPanel key={unit} api={stock} unit={unit} unitName={units.find(item => item.id === unit)?.nome ?? ''} context={context} onDirty={setDirty} onBusy={setBusy} />}
         {page === 'recebimentos' && <ReceiptPanel key={unit} api={stock} unit={unit} unitName={units.find(item => item.id === unit)?.nome ?? ''} context={context} onDirty={setDirty} onBusy={setBusy} />}
         {page === 'saldo' && <Balances key={unit} api={stock} unit={unit} unitName={units.find(item => item.id === unit)?.nome ?? ''} />}
