@@ -1,0 +1,15 @@
+{
+  "date": "2026-11-18",
+  "unchanged": true,
+  "users": true,
+  "links": true,
+  "balances": true,
+  "grants": true,
+  "counts": {
+    "users": 8,
+    "products": 9,
+    "receipts": 6,
+    "ledger": 6,
+    "tables": 28
+  }
+}
