@@ -185,6 +185,8 @@ a:focus-visible {
 .stock-filters .compact-field { flex: 0 1 180px; }
 .pagination { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin-top: 20px; }
 .pagination p { margin: 0; }
+.pagination-arrow { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 44px; width: 44px; height: 44px; padding: 0; }
+.pagination-arrow svg { flex-shrink: 0; }
 .numeric { font-variant-numeric: tabular-nums; white-space: nowrap; }
 .table-secondary { display: block; font-size: 12px; font-weight: 400; color: #6b5c60; margin-top: 4px; }
 .table-action { padding: 6px 12px; min-height: 40px; color: #5b0f1a; border: 0; text-decoration: underline; }

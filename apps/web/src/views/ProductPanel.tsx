@@ -1,3 +1,4 @@
+import { PaginationArrow } from './PaginationArrow.tsx';
 import { Skeleton } from './Skeleton.tsx';
 import { lazy, Suspense, useEffect, useState } from 'react';
 import type { Product, ProdutoInput } from '@erp/contracts';
@@ -145,7 +146,7 @@ export function ProductPanel({ api, unit, unitName = '', context, onDirty, onBus
             {!product.pode_excluir && <span className="table-secondary">{product.motivo_exclusao === 'OUTRA_UNIDADE' ? 'Vinculado a outra unidade; use a inativação.' : 'Possui vínculos ou histórico; use a inativação.'}</span>}
           </div></td></tr>)}</tbody>
         </table></div> : <p className="empty">Nenhum produto encontrado para esta consulta.</p>}
-        <div className="pagination"><p className="hint">{total ? `${offset + 1} a ${Math.min(offset + rows.length, total)} de ${total} produtos` : '0 produtos'}</p><div className="actions"><button disabled={loading || saving || offset === 0} onClick={() => setOffset(value => Math.max(0, value - 50))}>Anterior</button><button disabled={loading || saving || offset + rows.length >= total} onClick={() => setOffset(value => value + 50)}>Próxima</button></div></div>
+        <div className="pagination"><p className="hint">{total ? `${offset + 1} a ${Math.min(offset + rows.length, total)} de ${total} produtos` : '0 produtos'}</p><div className="actions"><PaginationArrow direction="previous" disabled={loading || saving || offset === 0} onClick={() => setOffset(value => Math.max(0, value - 50))} /><PaginationArrow direction="next" disabled={loading || saving || offset + rows.length >= total} onClick={() => setOffset(value => value + 50)} /></div></div>
       </section>
     </>}
   </>;
