@@ -299,7 +299,7 @@ button.confirm-receipt:hover { background: #256530; border-color: #256530; }
   align-items: center;
   gap: 12px 16px;
 }
-.table-actions { gap: 8px 16px; min-width: 250px; }
+.table-actions { gap: 8px 16px; }
 .footer-actions {
   justify-content: space-between;
   margin-top: 24px;
