@@ -1,3 +1,4 @@
+import { PaginationArrow } from './PaginationArrow.tsx';
 import { useEffect, useState } from 'react';
 import { isProductLinkInput } from '@erp/contracts';
 import type { CatalogProduct, ProductLinkInput } from '@erp/contracts';
@@ -73,7 +74,7 @@ export function ProductLinkPanel({ api, unit, context, onDirty, onBusy, onDone, 
         <tbody>{rows.map(product => <tr key={product.id}><th scope="row">{product.descricao}<span className="table-secondary">{product.complemento}</span></th><td>{product.categoria_descricao}</td><td>{product.unidade_sigla}</td><td>{product.apresentacao_compra}</td>
           <td><button disabled={!editable} className="table-action" onClick={() => { setSelected(product); setMinimum('0'); setMaximum(''); setReorder(''); setDirty(false); setError(''); }}>Selecionar<span className="sr-only"> {product.descricao}</span></button></td></tr>)}</tbody>
       </table></div> : <p className="empty">Nenhum produto disponível para vínculo nesta consulta.</p>}
-      <div className="pagination"><p className="hint">{total} produtos disponíveis</p><div className="actions"><button disabled={loading || !offset} onClick={() => setOffset(v => Math.max(0, v - 50))}>Anterior</button><button disabled={loading || offset + rows.length >= total} onClick={() => setOffset(v => v + 50)}>Próxima</button></div></div>
+      <div className="pagination"><p className="hint">{total} produtos disponíveis</p><div className="actions"><PaginationArrow direction="previous" disabled={loading || !offset} onClick={() => setOffset(v => Math.max(0, v - 50))} /><PaginationArrow direction="next" disabled={loading || offset + rows.length >= total} onClick={() => setOffset(v => v + 50)} /></div></div>
     </section>}
     <div className="actions footer-actions"><button disabled={saving} onClick={() => { if (discard()) onCancel(); }}>Voltar aos produtos</button></div>
   </>;
