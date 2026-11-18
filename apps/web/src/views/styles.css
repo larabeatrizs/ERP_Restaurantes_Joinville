@@ -13,7 +13,7 @@
 :root {
   font-family: Manrope, system-ui, sans-serif;
   color: #1f1517;
-  background: #faf7f5;
+  background: #f7f8fa;
   font-synthesis: none;
   line-height: 1.5;
 }
@@ -48,18 +48,20 @@ textarea {
   font: inherit;
 }
 button {
-  font-size: 15px;
-  font-weight: 600;
+  font-size: 14px;
+  font-weight: 500;
   min-height: 44px;
-  padding: 8px 22px;
-  border: 2px solid #cfc5c2;
-  border-radius: 8px;
-  background: transparent;
+  padding: 8px 16px;
+  border: 1px solid #ded7d5;
+  border-radius: 10px;
+  background: #fff;
   color: #1f1517;
   cursor: pointer;
+  transition: background-color 140ms ease, border-color 140ms ease, box-shadow 140ms ease;
 }
 button:hover {
-  background: #f1ebe8;
+  background: #faf5f6;
+  border-color: #bb9ba1;
 }
 button.primary {
   background: #5b0f1a;
@@ -80,8 +82,8 @@ textarea {
   min-width: 0;
   min-height: 44px;
   padding: 8px 14px;
-  border: 1.5px solid #b9adaa;
-  border-radius: 8px;
+  border: 1px solid #cfc5c2;
+  border-radius: 10px;
   background: white;
   color: #1f1517;
   font-size: 16px;
@@ -132,9 +134,10 @@ a:focus-visible {
 }
 .card {
   background: white;
-  border: 1px solid #e6dedb;
-  border-radius: 12px;
+  border: 1px solid #e9e5e4;
+  border-radius: 16px;
   padding: 24px;
+  box-shadow: 0 2px 8px #271b2105;
 }
 .shell {
   display: flex;
@@ -143,20 +146,23 @@ a:focus-visible {
 }
 .side {
   flex: 0 0 248px;
-  background: #5b0f1a;
+  min-width: 0;
+  max-width: 100%;
+  background: #fff;
+  border-right: 1px solid #e9e5e4;
   padding: 24px 12px;
   display: flex;
   flex-direction: column;
   gap: 10px;
 }
 .brand {
-  color: white;
+  color: #5b0f1a;
   font-size: 18px;
   font-weight: 700;
   padding: 0 14px;
 }
 .unit-caption {
-  color: #f3dde0;
+  color: #6b5c60;
   font-size: 13px;
   padding: 0 14px;
 }
@@ -164,15 +170,15 @@ a:focus-visible {
   display: block;
   padding: 11px 14px;
   border-radius: 8px;
-  color: #f3dde0;
+  color: #59494d;
   text-decoration: none;
-  font-weight: 600;
-  font-size: 15px;
+  font-weight: 500;
+  font-size: 14px;
 }
 .side nav { display: grid; gap: 4px; }
-.side nav a[aria-current='page'] { background: white; color: #5b0f1a; }
-.side nav a:hover { background: #712633; color: white; }
-.side nav a[aria-current='page']:hover { background: #f1ebe8; color: #5b0f1a; }
+.side nav a[aria-current='page'] { background: #faebee; color: #5b0f1a; font-weight: 700; }
+.side nav a:hover { background: #f8f4f5; color: #5b0f1a; }
+.side nav a[aria-current='page']:hover { background: #f6e3e7; color: #5b0f1a; }
 .side nav a[aria-disabled='true'] { opacity: 0.6; cursor: default; }
 .stock-fields { display: grid; gap: 20px; }
 .stock-fields h3 { margin: 8px 0 0; font-size: 17px; color: #5b0f1a; }
@@ -213,11 +219,11 @@ button.confirm-receipt { background: #2f7d3a; border-color: #2f7d3a; }
 button.confirm-receipt:hover { background: #256530; border-color: #256530; }
 .side a:focus-visible,
 .side button:focus-visible {
-  outline-color: #7dbb7a;
+  outline-color: #5b0f1a;
 }
 .side .signout {
-  color: white;
-  border-color: #ad7780;
+  color: #5b0f1a;
+  border-color: #e9e5e4;
   margin-top: auto;
 }
 .main {
@@ -498,3 +504,33 @@ thead {
   .report-preview thead { display: table-header-group; }
   .report-preview tr { break-inside: avoid; }
 }
+
+/* UX-004: apresentação; estados transitórios sem dados ou controles fictícios. */
+.loading-skeleton { width: 100%; padding: 18px 0; }
+.skeleton-lines { display: grid; gap: 14px; }
+.skeleton-line { display: block; height: 18px; border-radius: 7px; background: linear-gradient(100deg, #ede9e8 20%, #f8f6f5 42%, #ede9e8 64%); background-size: 220% 100%; animation: skeleton-shimmer 1.6s ease-in-out infinite; }
+.skeleton-line-0 { width: 44%; height: 24px; }
+.skeleton-line-1 { width: 92%; }
+.skeleton-line-2 { width: 76%; }
+@keyframes skeleton-shimmer { to { background-position: -220% 0; } }
+.home-metrics .card { display: flex; flex-direction: column; align-items: flex-start; }
+.home-metrics .card button { margin-top: auto; }
+.home-welcome { background: linear-gradient(115deg, #fff 55%, #fcf3f5); }
+.table-action { min-height: 44px; }
+.stock-main .table-wrap { scrollbar-width: thin; scrollbar-color: #d5c3c7 transparent; }
+@media (max-width: 760px) {
+ .side { padding: 16px; gap: 8px; border-right: 0; border-bottom: 1px solid #e9e5e4; }
+ .side .brand, .side .unit-caption { padding: 0; margin-bottom: 4px; }
+ .side nav { display: flex; gap: 6px; max-width: 100%; overflow-x: auto; padding: 4px 0 8px; scrollbar-width: thin; }
+ .side nav a { flex: 0 0 auto; min-height: 44px; white-space: nowrap; }
+ .side .signout { margin-top: 0; align-self: flex-end; }
+ .main { padding: 24px 16px; gap: 20px; }
+ .card { padding: 20px; border-radius: 14px; }
+ h1 { font-size: 27px; }
+}
+@media (prefers-reduced-motion: reduce) { .skeleton-line { animation: none; background: #ede9e8; } button { transition: none; } }
+@media print { .loading-skeleton { display: none; } }
+
+.loading-metrics { padding: 0; }
+.skeleton-metrics .card { min-height: 224px; gap: 28px; justify-content: center; }
+.skeleton-number { width: 32%; height: 34px; }

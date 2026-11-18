@@ -1,0 +1,18 @@
+{
+  "completed": true,
+  "readOnly": true,
+  "scenarios": [
+    "Skeleton observado com atraso de rede, sem resposta simulada; dados reais substituem placeholder",
+    "Configurações ausentes da navegação e do Início",
+    "Início 1280/768/360 sem overflow da página",
+    "Produtos, recebimentos e saldos consultados sem erro; teclado preservado",
+    "Nenhum POST/PATCH/PUT/DELETE para o Worker"
+  ],
+  "screenshots": [
+    "skeleton.png",
+    "inicio-1280.png",
+    "inicio-768.png",
+    "inicio-360.png"
+  ],
+  "businessWrites": 0
+}

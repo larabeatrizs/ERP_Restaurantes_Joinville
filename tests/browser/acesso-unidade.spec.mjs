@@ -1,6 +1,21 @@
 import { test, expect } from '@playwright/test';
 import fs from 'node:fs/promises';
 
+test('apresentação: configurações removidas e skeleton substituído por dados, com movimento reduzido',async({page})=>{
+ await setup(page);let release;const gate=new Promise(resolve=>{release=resolve;});
+ await page.route('**/api/unidades/1/estoque/saldos',async route=>{await gate;await route.fulfill({json:{saldos:[]}});});
+ await page.emulateMedia({reducedMotion:'reduce'});await login(page);await enter(page);
+ await expect(page.getByRole('link',{name:'Configurações',exact:true})).toHaveCount(0);
+ await expect(page.getByRole('button',{name:'Ver configurações',exact:true})).toHaveCount(0);
+ const skeleton=page.getByRole('status',{name:'Consultando indicadores…',exact:true});await expect(skeleton).toBeVisible();
+ expect(await skeleton.locator('.skeleton-line').first().evaluate(el=>getComputedStyle(el).animationName)).toBe('none');
+ await page.screenshot({path:'.git/ux004-skeleton.png',fullPage:true});release();await expect(skeleton).toHaveCount(0);
+ await expect(page.locator('.home-metrics strong').first()).toHaveText('3');
+ const button=page.getByRole('button',{name:'Consultar recebimentos',exact:true});expect(await button.evaluate(el=>parseFloat(getComputedStyle(el).minHeight))).toBeGreaterThanOrEqual(44);expect(await button.evaluate(el=>getComputedStyle(el).borderTopWidth)).toBe('1px');
+ await page.screenshot({path:'.git/ux004-desktop.png',fullPage:true});
+ await page.setViewportSize({width:360,height:800});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);await page.screenshot({path:'.git/ux004-mobile.png',fullPage:true});
+});
+
 // Dublês de transporte: não comprovam entrega de email, Auth nem RLS hospedados.
 const user = { id: '00000000-0000-4000-8000-000000000001', aud: 'authenticated', role: 'authenticated', email: 'teste@example.invalid' };
 const session = { access_token: 'eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ0ZXN0ZSJ9.ficticio', refresh_token: 'ficticio', token_type: 'bearer', expires_in: 3600, user };
@@ -88,9 +103,9 @@ test('teclado: atalho chega ao conteúdo e mudança de tela transfere o foco par
   await expect(page.getByRole('heading',{name:'Meu acesso',exact:true})).toBeVisible();
   await expect(page.getByRole('main')).toBeFocused();
   await expect(page.getByRole('link',{name:'Meu acesso',exact:true})).toHaveAttribute('aria-current','page');
-  await page.getByRole('link',{name:'Configurações',exact:true}).focus();
+  await page.getByRole('link',{name:'Produtos',exact:true}).focus();
   await page.keyboard.press('Enter');
-  await expect(page.getByRole('heading',{name:'Configurações',exact:true})).toBeVisible();
+  await expect(page.getByRole('heading',{name:'Produtos e alimentos',exact:true})).toBeVisible();
   await expect(page.getByRole('main')).toBeFocused();
   await page.getByRole('link',{name:'Início',exact:true}).focus();
   await page.keyboard.press('Enter');

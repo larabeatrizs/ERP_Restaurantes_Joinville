@@ -1,3 +1,4 @@
+import { Skeleton } from './Skeleton.tsx';
 import { useEffect, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 import { validateAdminUserSituation } from '@erp/contracts';
@@ -19,7 +20,7 @@ export function UserStatusPanel({api,id,onClose,onSaved,onDirty,onBusy}:{api:Set
   finally{setSaving(false);onBusy(false);}
  }
  return <section className="card user-form" aria-label="Situação do usuário" aria-busy={saving}>
-  <h2>Situação do usuário</h2>{error&&<p className="notice error" role="alert">{error}</p>}{!data&&!error&&<p role="status">Consultando situação…</p>}
+  <h2>Situação do usuário</h2>{error&&<p className="notice error" role="alert">{error}</p>}{!data&&!error&&<Skeleton label="Consultando situação…" />}
   {data&&<><p>{data.nome}</p><p>Situação atual: <strong>{data.primeiro_acesso?'Aguardando primeiro acesso':data.status==='ATIVO'?'Ativo':data.status==='INATIVO'?'Inativo':'Bloqueado'}</strong></p>
    {data.proprio?<p className="notice">Outro administrador deve alterar a situação da sua conta.</p>:data.primeiro_acesso||data.status==='BLOQUEADO'?<p className="notice">Primeiro acesso e desbloqueio exigem um fluxo próprio. Esta ação não libera uma conta pendente ou bloqueada.</p>:!data.pode_alterar?<p className="notice">Seu acesso permite apenas consultar esta situação.</p>:<form ref={form} onSubmit={event=>void save(event)} onChange={()=>{setDirty(true);onDirty(true);}}>
     <fieldset disabled={saving} className="user-fields"><p>Nome, perfil, unidades, login, email e senha serão preservados.</p><label className="field">Motivo da alteração de situação *<textarea name="motivo" required minLength={3} maxLength={500}/></label><button className="primary">{saving?'Salvando…':target==='INATIVO'?'Inativar usuário':'Reativar usuário'}</button></fieldset>

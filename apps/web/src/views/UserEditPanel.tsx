@@ -1,3 +1,4 @@
+import { Skeleton } from './Skeleton.tsx';
 import { useEffect, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 import { adminProfileLabels, validateAdminUserEdit } from '@erp/contracts';
@@ -18,7 +19,7 @@ export function UserEditPanel({api,id,options,onClose,onSaved,onDirty,onBusy}:{a
  function close(){if(!dirty||window.confirm('Descartar as alterações ainda não salvas?')){onDirty(false);onClose();}}
  return <section className="card" aria-label="Detalhes do usuário" aria-busy={saving}>
   <h2>{data?.pode_editar?'Editar usuário':'Detalhes do usuário'}</h2>
-  {error&&<p role="alert" className="notice error">{error}</p>}{!data&&!error&&<p role="status">Consultando cadastro…</p>}
+  {error&&<p role="alert" className="notice error">{error}</p>}{!data&&!error&&<Skeleton label="Consultando cadastro…" />}
   {!data&&error&&<button onClick={()=>setRetry(value=>value+1)}>Tentar novamente</button>}
   {data&&<form key={`${data.id}-${data.revisao}`} ref={form} onSubmit={event=>void save(event)} onChange={()=>{setDirty(true);onDirty(true);}}>
    <p>Login, email, senha e situação não são alterados nesta tela.</p>{data.proprio&&data.pode_editar&&<p className="notice">Você pode corrigir seu nome. Seu perfil e suas unidades devem ser alterados por outro administrador.</p>}

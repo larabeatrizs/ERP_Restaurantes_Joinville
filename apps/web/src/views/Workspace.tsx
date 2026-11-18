@@ -5,13 +5,11 @@ import { CalendarApi } from '../services/calendar-api.ts';
 import { useEffect, useRef, useState } from 'react';
 import { SettingsApi } from '../services/api.ts';
 import { StockApi } from '../services/stock-api.ts';
-import { SettingsPanel } from './SettingsPanel.tsx';
 import { StockPanel } from './StockPanel.tsx';
 
-export type WorkspacePage = 'inicio' | 'conta' | 'configuracoes' | 'calendario' | 'produtos' | 'recebimentos' | 'saldo' | 'categorias' | 'medidas' | 'fornecedores' | 'requisicoes';
+export type WorkspacePage = 'inicio' | 'conta' | 'calendario' | 'produtos' | 'recebimentos' | 'saldo' | 'categorias' | 'medidas' | 'fornecedores' | 'requisicoes';
 export const workspacePages: { key: WorkspacePage; label: string }[] = [
   { key: 'inicio', label: 'Início' },
-  { key: 'configuracoes', label: 'Configurações' },
   { key: 'calendario', label: 'Calendário e refeições' },
   { key: 'medidas', label: 'Unidades de medida' },
   { key: 'fornecedores', label: 'Fornecedores' },
@@ -31,7 +29,5 @@ export function Workspace({ api, stock, categories, measures, suppliers, calenda
     if (previousPage.current !== page) document.getElementById('conteudo')?.focus();
     previousPage.current = page;
   }, [page]);
-  return page === 'configuracoes'
-    ? <SettingsPanel userName={userName} api={api} onSignOut={onSignOut} onNavigate={setPage} initialUnit={unit} onUnitChange={setUnit} />
-    : <StockPanel calendar={calendar} suppliers={suppliers} measures={measures} userName={userName} categories={categories} key={page} api={api} stock={stock} page={page} onNavigate={setPage} initialUnit={unit} onUnitChange={setUnit} onSignOut={onSignOut} />;
+  return <StockPanel calendar={calendar} suppliers={suppliers} measures={measures} userName={userName} categories={categories} key={page} api={api} stock={stock} page={page} onNavigate={setPage} initialUnit={unit} onUnitChange={setUnit} onSignOut={onSignOut} />;
 }

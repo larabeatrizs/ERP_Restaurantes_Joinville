@@ -1,3 +1,4 @@
+import { Skeleton } from './Skeleton.tsx';
 import { useEffect, useState } from 'react';
 import { SettingsApi } from '../services/api.ts';
 import { UsersPanel } from './UsersPanel.tsx';
@@ -28,7 +29,7 @@ export function Configurator({ api, onSignOut }: { api: SettingsApi; onSignOut: 
     <main id="conteudo" tabIndex={-1} className="main stock-main">
       <header><p className="eyebrow">CONFIGURADOR</p><h1>{allowed ? 'Usuários' : identity ? 'Acesso restrito' : 'Verificando acesso'}</h1></header>
       {error && <p role="alert" className="notice error">{error}</p>}
-      {!identity && !error && <p role="status">Consultando suas permissões…</p>}
+      {!identity && !error && <Skeleton label="Consultando suas permissões…" />}
       {error && !identity && <button onClick={() => setRetry(value => value + 1)}>Tentar novamente</button>}
       {identity && !allowed && <p role="alert">Sua conta não tem permissão para acessar o Configurador. Use o ERP para as rotinas da sua unidade.</p>}
       {allowed && <UsersPanel api={api} unit="" onDirty={setDirty} onBusy={setBusy} />}
