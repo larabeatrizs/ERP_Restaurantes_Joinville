@@ -1,0 +1,31 @@
+{
+  "completed": true,
+  "scenarios": [
+    {
+      "scenario": "View registra 2 de 20; replay não repete baixa; leitura/outra unidade/sem sessão/saldo insuficiente e conferência pelo solicitante negados",
+      "passed": true
+    },
+    {
+      "scenario": "View de gestor confere sem segunda baixa; segunda retirada contestada não estorna; revisão antiga é negada; layout 1280/768/360 sem overflow da página",
+      "passed": true
+    },
+    {
+      "scenario": "Leitor consulta sem controles de escrita/conferência",
+      "passed": true
+    }
+  ],
+  "screenshots": [
+    "requisicoes-1280.png",
+    "requisicoes-768.png",
+    "requisicoes-360.png"
+  ],
+  "nonce": "5043060f",
+  "resumed": true,
+  "productId": "16",
+  "entryId": "10",
+  "registrationViaView": true,
+  "withdrawalId": "1",
+  "reviewViaView": true,
+  "secondWithdrawalId": "3",
+  "balance": "15.000000"
+}
