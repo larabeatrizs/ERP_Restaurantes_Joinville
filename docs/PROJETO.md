@@ -1,5 +1,7 @@
 # PROJETO — ERP Restaurantes Populares de Joinville
 
+> **Correção visual em 18/11:** preservar a identidade vermelha e a logo original. A responsável restringiu o aperfeiçoamento a botões, espaçamento e skeleton, corrigindo a interpretação de sidebar clara de UX-004. [Registro](fundacao/UX-004-APRESENTACAO.md). Sem alteração de dados, permissões ou regras operacionais.
+
 > **UX-004 publicado/verificado em 18/11 para apresentação:** [PR #57](https://github.com/larabeatrizs/ERP_Restaurantes_Joinville/pull/57)/[evidências](fundacao/UX-004-APRESENTACAO.md). Configurações removidas da navegação e do Início, superfícies claras/botões suaves/menu móvel compacto e skeletons acessíveis. 75 testes de navegador, check e quatro jobs da CI do runtime aprovados. Jornada readonly hospedada verificou Início/cadastros/saldos e 1280/768/360; usuários, dados, saldos e capacidades preservados. Mesmos endereços ERP/Configurador e credenciais existentes, sem escrita de negócio ou alteração adicional no banco.
 
 > **Prioridade de apresentação em 18/11 — UX-004/issue #56:** [recorte visual](fundacao/UX-004-APRESENTACAO.md) remove a tela de Configurações do ERP e seu cartão no Início, refina botões/superfícies/menu móvel e antecipa skeletons acessíveis. Orientação explícita da responsável, sem alteração do Style Guide original nem de parâmetros/dados/permissões. EST-002 tem aplicação/API publicadas e smoke de consulta; a jornada hospedada mutativa permanece adiada na issue #52 para priorizar somente a apresentação.

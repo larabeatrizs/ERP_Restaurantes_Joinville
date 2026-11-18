@@ -22,7 +22,7 @@ export function Configurator({ api, onSignOut }: { api: SettingsApi; onSignOut: 
   const allowed = identity?.administracao === true;
   return <div className="shell">
     <a className="skip" href="#conteudo">Ir para o conteúdo</a>
-    <aside className="side"><div className="brand">Configurador</div><p className="unit-caption"><strong>{identity?.nome || 'Conta conectada'}</strong><br />Administração de acessos</p>
+    <aside className="side"><div className="brand-image sidebar-brand"><img src="/brand/programa.png" alt="Programa Restaurante Popular de Joinville" /></div><div className="brand">Configurador</div><p className="unit-caption"><strong>{identity?.nome || 'Conta conectada'}</strong><br />Administração de acessos</p>
       {allowed && <nav aria-label="Administração"><a href="#conteudo" aria-current="page">Usuários</a></nav>}
       <button className="signout" disabled={busy} onClick={() => { if (!dirty || window.confirm('Descartar as alterações ainda não salvas?')) void onSignOut().catch(() => setError('Não foi possível sair. Tente novamente.')); }}>Sair</button>
     </aside>

@@ -71,7 +71,7 @@ export function StockPanel({ api, stock, categories, measures, suppliers, calend
   return <div className="shell">
     <a className="skip" href="#conteudo">Ir para o conteúdo</a>
     <aside className="side">
-      <div className="brand">Restaurante Popular</div><p className="unit-caption"><strong>{userName || 'Conta conectada'}</strong><br />{units.find(item => item.id === unit)?.nome ?? 'Consultando unidade…'}</p>
+      <div className="brand-image sidebar-brand"><img src="/brand/programa.png" alt="Programa Restaurante Popular de Joinville" /></div><p className="unit-caption"><strong>{userName || 'Conta conectada'}</strong><br />{units.find(item => item.id === unit)?.nome ?? 'Consultando unidade…'}</p>
       <nav aria-label="Principal">{workspacePages.map(item => <a key={item.key} href={`#${item.key}`} aria-current={item.key === page ? 'page' : undefined} aria-disabled={busy} onClick={event => {
         event.preventDefault(); if (!busy && item.key !== page && discard()) onNavigate(item.key);
       }}>{item.label}</a>)}</nav>
