@@ -139,7 +139,7 @@ test('EST-002 seed é idempotente, Cozinha registra sem estoquista e ADMIN não 
  await db.exec('reset role');
  await db.exec(`insert into erp.perfil(codigo) values('COZINHA'),('ADMIN');insert into auth.users(id) values('${uid(8)}');
  insert into erp.usuario(id,perfil_id,nome,status) select '${uid(8)}',id,'Cozinha sintética','ATIVO' from erp.perfil where codigo='COZINHA';insert into erp.usuario_unidade values('${uid(8)}',1)`);
- const migration=await readFile(new URL('../../supabase/migrations/20261117195030_requisicao_rapida_posterior.sql',import.meta.url),'utf8');
+ const migration=await readFile(new URL('../../supabase/migrations/20261117204005_requisicao_rapida_posterior.sql',import.meta.url),'utf8');
  const seed=migration.split('-- BEGIN WITHDRAWAL CAPABILITY SEED')[1].split('-- END WITHDRAWAL CAPABILITY SEED')[0];
  await db.exec(seed);await db.exec(seed);
  const kitchenSeed=(await readFile(new URL('../../supabase/seeds/perfil_cozinha.sql',import.meta.url),'utf8')).replace(/^begin;$/m,'').replace(/^commit;$/m,'');await db.exec(kitchenSeed);await db.exec(kitchenSeed);
