@@ -1,5 +1,7 @@
 # PROJETO — ERP Restaurantes Populares de Joinville
 
+> **Revisão de espaçamento em 18/11:** filtros, campos, botões e cabeçalhos de tabelas seguem espaçamento compartilhado; ações antes soltas em tabelas passam a grupos com quebra de linha. Correção dos exemplos de Calendário/Recebimentos e dos padrões equivalentes nas demais telas, mantendo vermelho/logo/skeletons. [Registro UX-004](fundacao/UX-004-APRESENTACAO.md).
+
 > **Correção visual em 18/11:** preservar a identidade vermelha e a logo original. A responsável restringiu o aperfeiçoamento a botões, espaçamento e skeleton, corrigindo a interpretação de sidebar clara de UX-004. [Registro](fundacao/UX-004-APRESENTACAO.md). Sem alteração de dados, permissões ou regras operacionais.
 
 > **UX-004 publicado/verificado em 18/11 para apresentação:** [PR #57](https://github.com/larabeatrizs/ERP_Restaurantes_Joinville/pull/57)/[evidências](fundacao/UX-004-APRESENTACAO.md). Configurações removidas da navegação e do Início, superfícies claras/botões suaves/menu móvel compacto e skeletons acessíveis. 75 testes de navegador, check e quatro jobs da CI do runtime aprovados. Jornada readonly hospedada verificou Início/cadastros/saldos e 1280/768/360; usuários, dados, saldos e capacidades preservados. Mesmos endereços ERP/Configurador e credenciais existentes, sem escrita de negócio ou alteração adicional no banco.
