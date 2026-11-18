@@ -1,0 +1,245 @@
+{
+  "date": "2026-11-18",
+  "preservation": {
+    "date": "2026-11-18",
+    "method": "Hash MD5 de cada linha existente antes da jornada, comparado como multiconjunto; sem dados de linha publicados.",
+    "allExistingRowsPreserved": true,
+    "tables": [
+      {
+        "table": "erp_private.auditoria_login",
+        "before": 2,
+        "after": 2,
+        "existingRowsPreserved": true
+      },
+      {
+        "table": "erp_private.auditoria_usuario",
+        "before": 13,
+        "after": 13,
+        "existingRowsPreserved": true
+      },
+      {
+        "table": "erp_private.usuario_contato",
+        "before": 3,
+        "after": 3,
+        "existingRowsPreserved": true
+      },
+      {
+        "table": "erp_private.usuario_login",
+        "before": 3,
+        "after": 3,
+        "existingRowsPreserved": true
+      },
+      {
+        "table": "erp_private.usuario_provisionamento",
+        "before": 2,
+        "after": 2,
+        "existingRowsPreserved": true
+      },
+      {
+        "table": "erp.auditoria_configuracao",
+        "before": 11,
+        "after": 11,
+        "existingRowsPreserved": true
+      },
+      {
+        "table": "erp.auditoria_estoque",
+        "before": 67,
+        "after": 74,
+        "existingRowsPreserved": true
+      },
+      {
+        "table": "erp.calendario_excecao",
+        "before": 4,
+        "after": 4,
+        "existingRowsPreserved": true
+      },
+      {
+        "table": "erp.calendario_refeicao_especial",
+        "before": 1,
+        "after": 1,
+        "existingRowsPreserved": true
+      },
+      {
+        "table": "erp.calendario_semanal",
+        "before": 12,
+        "after": 12,
+        "existingRowsPreserved": true
+      },
+      {
+        "table": "erp.calendario_unidade",
+        "before": 2,
+        "after": 2,
+        "existingRowsPreserved": true
+      },
+      {
+        "table": "erp.camara",
+        "before": 3,
+        "after": 3,
+        "existingRowsPreserved": true
+      },
+      {
+        "table": "erp.categoria",
+        "before": 4,
+        "after": 4,
+        "existingRowsPreserved": true
+      },
+      {
+        "table": "erp.comando_estoque",
+        "before": 9,
+        "after": 10,
+        "existingRowsPreserved": true
+      },
+      {
+        "table": "erp.entrada",
+        "before": 6,
+        "after": 7,
+        "existingRowsPreserved": true
+      },
+      {
+        "table": "erp.entrada_item",
+        "before": 6,
+        "after": 7,
+        "existingRowsPreserved": true
+      },
+      {
+        "table": "erp.fornecedor",
+        "before": 3,
+        "after": 3,
+        "existingRowsPreserved": true
+      },
+      {
+        "table": "erp.lote",
+        "before": 6,
+        "after": 7,
+        "existingRowsPreserved": true
+      },
+      {
+        "table": "erp.movimento_estoque",
+        "before": 6,
+        "after": 9,
+        "existingRowsPreserved": true
+      },
+      {
+        "table": "erp.parametro_unidade",
+        "before": 2,
+        "after": 2,
+        "existingRowsPreserved": true
+      },
+      {
+        "table": "erp.perfil",
+        "before": 6,
+        "after": 6,
+        "existingRowsPreserved": true
+      },
+      {
+        "table": "erp.perfil_permissao",
+        "before": 51,
+        "after": 51,
+        "existingRowsPreserved": true
+      },
+      {
+        "table": "erp.produto",
+        "before": 9,
+        "after": 10,
+        "existingRowsPreserved": true
+      },
+      {
+        "table": "erp.produto_unidade",
+        "before": 12,
+        "after": 13,
+        "existingRowsPreserved": true
+      },
+      {
+        "table": "erp.refeicao_habilitada",
+        "before": 4,
+        "after": 4,
+        "existingRowsPreserved": true
+      },
+      {
+        "table": "erp.requisicao_comando",
+        "before": 0,
+        "after": 2,
+        "existingRowsPreserved": true
+      },
+      {
+        "table": "erp.requisicao_item",
+        "before": 0,
+        "after": 2,
+        "existingRowsPreserved": true
+      },
+      {
+        "table": "erp.requisicao_rapida",
+        "before": 0,
+        "after": 2,
+        "existingRowsPreserved": true
+      },
+      {
+        "table": "erp.saldo_lote_local",
+        "before": 6,
+        "after": 7,
+        "existingRowsPreserved": true
+      },
+      {
+        "table": "erp.unidade",
+        "before": 2,
+        "after": 2,
+        "existingRowsPreserved": true
+      },
+      {
+        "table": "erp.unidade_medida",
+        "before": 4,
+        "after": 4,
+        "existingRowsPreserved": true
+      },
+      {
+        "table": "erp.usuario",
+        "before": 8,
+        "after": 8,
+        "existingRowsPreserved": true
+      },
+      {
+        "table": "erp.usuario_unidade",
+        "before": 9,
+        "after": 9,
+        "existingRowsPreserved": true
+      }
+    ]
+  },
+  "verification": {
+    "rls": true,
+    "ledger": [
+      {
+        "delta": "20.000000",
+        "origem": "ENTRADA"
+      },
+      {
+        "delta": "-2.000000",
+        "origem": "REQUISICAO"
+      },
+      {
+        "delta": "-3.000000",
+        "origem": "REQUISICAO"
+      }
+    ],
+    "balance": "15.000000",
+    "commands": 2,
+    "withdrawals": [
+      {
+        "id": "1",
+        "modo": "POSTERIOR",
+        "estado": "CONFERIDA",
+        "quantidade": "2.000000",
+        "conferente_distinto": true,
+        "configuracao_revisao": "10"
+      },
+      {
+        "id": "3",
+        "modo": "POSTERIOR",
+        "estado": "CONTESTADA",
+        "quantidade": "3.000000",
+        "conferente_distinto": true,
+        "configuracao_revisao": "10"
+      }
+    ]
+  }
+}
