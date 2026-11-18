@@ -1,0 +1,21 @@
+{
+  "date": "2026-11-18",
+  "method": "Consultas com role authenticated e claims do administrador, sem login/senha pessoal; rollback ao terminar a leitura.",
+  "units": [
+    {
+      "code": "RP-BUCAREIN",
+      "name": "Bucarein",
+      "status": "ATIVO"
+    },
+    {
+      "code": "RP-ADHEMAR-GARCIA",
+      "name": "Adhemar Garcia",
+      "status": "ATIVO"
+    }
+  ],
+  "visible_self": 1,
+  "adhemar_empty": true,
+  "bucarein_empty": true,
+  "can_administer": true,
+  "contexts_empty": true
+}
