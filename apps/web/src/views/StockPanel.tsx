@@ -11,6 +11,7 @@ import { workspacePages } from './Workspace.tsx';
 import type { WorkspacePage } from './Workspace.tsx';
 import { ProductPanel } from './ProductPanel.tsx';
 import { ReceiptPanel } from './ReceiptPanel.tsx';
+import { WithdrawalPanel } from './WithdrawalPanel.tsx';
 import { HomePanel } from './HomePanel.tsx';
 import { AccountPanel } from './AccountPanel.tsx';
 import { ReportPreview } from './ReportPreview.tsx';
@@ -54,7 +55,7 @@ export function StockPanel({ api, stock, categories, measures, suppliers, calend
     let active = true;
     onUnitChange(unit);
     setContext(undefined); setLoading(true); setError('');
-    if (page === 'inicio' || page === 'conta' || page === 'calendario') { setLoading(false); return; }
+    if (page === 'inicio' || page === 'conta' || page === 'calendario' || page === 'requisicoes') { setLoading(false); return; }
     void stock.context(unit).then(data => { if (active) { setContext(data); setLoading(false); } })
       .catch(err => { if (active) { setError(stockError(err)); setLoading(false); } });
     return () => { active = false; };
@@ -76,7 +77,7 @@ export function StockPanel({ api, stock, categories, measures, suppliers, calend
       <button className="signout" disabled={busy} onClick={() => { if (discard()) void onSignOut().catch(err => setError(stockError(err))); }}>Sair</button>
     </aside>
     <main id="conteudo" tabIndex={-1} className="main stock-main">
-      <header><p className="eyebrow">GESTÃO DA UNIDADE</p><h1>{title[page]}</h1><p className="muted">{subtitle[page]}</p></header>
+      <header><p className="eyebrow">GESTÃO DA UNIDADE</p><h1>{page==='requisicoes'?'Requisições rápidas':title[page]}</h1><p className="muted">{page==='requisicoes'?'Registre a retirada no momento em que acontece.':subtitle[page]}</p></header>
       <section className="card unit-card" aria-label="Unidade">
         <label className="field">Unidade<select value={unit} disabled={busy || loading || !unitsLoaded || !units.length} onChange={event => { if (discard()) setUnit(event.target.value); }}>
           {units.map(item => <option key={item.id} value={item.id}>{item.codigo} — {item.nome}</option>)}
@@ -88,6 +89,7 @@ export function StockPanel({ api, stock, categories, measures, suppliers, calend
       {!loading && !context && error && <button onClick={() => setRetry(value => value + 1)}>Tentar novamente</button>}
       {unitsLoaded && !loading && units.some(item => item.id === unit) && page === 'inicio' && <HomePanel key={unit} api={stock} unit={unit} name={userName} onNavigate={onNavigate} />}
       {unitsLoaded && !loading && units.some(item => item.id === unit) && page === 'conta' && <AccountPanel name={userName} />}
+      {unitsLoaded && !loading && units.some(item => item.id === unit) && page === 'requisicoes' && <WithdrawalPanel key={unit} api={stock} unit={unit} onDirty={setDirty} onBusy={setBusy} />}
       {unitsLoaded && !loading && units.some(item => item.id === unit) && page === 'calendario' && <Suspense fallback={<p role="status">Carregando calendário…</p>}><CalendarPanel key={unit} api={calendar} unit={unit} onDirty={setDirty} onBusy={setBusy} /></Suspense>}
       {context && !loading && <>
         {page === 'fornecedores' && <Suspense fallback={<p role="status">Carregando fornecedores…</p>}><SupplierPanel key={unit} api={suppliers} unit={unit} onDirty={setDirty} onBusy={setBusy} /></Suspense>}

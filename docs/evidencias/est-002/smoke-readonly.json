@@ -1,0 +1,24 @@
+{
+  "date": "2026-11-18",
+  "readOnly": true,
+  "scenarios": [
+    {
+      "actor": "stockkeeperA",
+      "panel": true,
+      "capabilities": true,
+      "withdrawals": 0
+    },
+    {
+      "actor": "editorA",
+      "panel": true,
+      "capabilities": true,
+      "withdrawals": 0
+    },
+    {
+      "actor": "readerA",
+      "panel": true,
+      "capabilities": true,
+      "withdrawals": 0
+    }
+  ]
+}

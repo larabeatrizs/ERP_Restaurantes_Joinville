@@ -139,13 +139,15 @@ test('EST-002 seed é idempotente, Cozinha registra sem estoquista e ADMIN não 
  await db.exec('reset role');
  await db.exec(`insert into erp.perfil(codigo) values('COZINHA'),('ADMIN');insert into auth.users(id) values('${uid(8)}');
  insert into erp.usuario(id,perfil_id,nome,status) select '${uid(8)}',id,'Cozinha sintética','ATIVO' from erp.perfil where codigo='COZINHA';insert into erp.usuario_unidade values('${uid(8)}',1)`);
- const migration=await readFile(new URL('../../supabase/migrations/20261117195030_requisicao_rapida_posterior.sql',import.meta.url),'utf8');
+ const migration=await readFile(new URL('../../supabase/migrations/20261117204005_requisicao_rapida_posterior.sql',import.meta.url),'utf8');
  const seed=migration.split('-- BEGIN WITHDRAWAL CAPABILITY SEED')[1].split('-- END WITHDRAWAL CAPABILITY SEED')[0];
  await db.exec(seed);await db.exec(seed);
+ const kitchenSeed=(await readFile(new URL('../../supabase/seeds/perfil_cozinha.sql',import.meta.url),'utf8')).replace(/^begin;$/m,'').replace(/^commit;$/m,'');await db.exec(kitchenSeed);await db.exec(kitchenSeed);
  const permissions=(await db.query("select p.codigo,pp.permissao from erp.perfil p join erp.perfil_permissao pp on pp.perfil_id=p.id where pp.permissao like 'REQUISICAO_%' order by p.codigo,pp.permissao")).rows;
  assert.deepEqual(permissions,[{codigo:'COZINHA',permissao:'REQUISICAO_REGISTRAR'},{codigo:'ESTOQUISTA',permissao:'REQUISICAO_REGISTRAR'},{codigo:'GESTOR_UNIDADE',permissao:'REQUISICAO_CONFERIR'},{codigo:'NUTRICIONISTA',permissao:'REQUISICAO_CONFERIR'}]);
  await withdrawalSetup();const p=await create();await confirm((await receive(p.id)).id);await become(8);
  const r=(await withdrawal('registrar',withdrawalInput(p.id))).requisicao;assert.equal(r.solicitante_id,uid(8));assert.equal(r.retirado_por,'Pessoa sintética da cozinha');
+ const panel=(await db.query('select erp.requisicao_painel(1) p')).rows[0].p;assert.equal(panel.pode_registrar,true);assert.equal(panel.pode_conferir,false);assert.equal(panel.usuario_id,uid(8));assert.equal(panel.requisicoes[0].id,r.id);assert.ok(panel.produtos.some(x=>x.id===p.id));
  await withdrawalReject('conferir',reviewInput(r),'PT403');
 }));
 test('EST-002 modo ausente e validade ausente em perecível bloqueiam; documento e livro são imutáveis',async()=>actor(1,async()=>{
