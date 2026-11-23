@@ -11,8 +11,10 @@
 | RN-004, RN-012, RNF-002, CA-011 | Repository e banco exigem sessão, unidade vinculada e ESTOQUE_LER. Resolver produto/lote na unidade a partir das relações do livro, inclusive para histórico de itens inativos. Validar a pertença do lote antes de ler movimentos. | Consulta e CSV recusam unidade alheia, lote incompatível, perfil sem leitura e vínculo revogado. |
 | RF-017, RN-022 | O livro `erp.movimento_estoque` fornece os registros das origens já implementadas. A saída conserva precisão decimal. A exportação aplica a mesma seleção, filtros e ordenação, com proteção de fórmulas nos campos de texto. | CSV da consulta e falha posterior sem arquivo parcial. Consulta e exportação são operações de leitura. |
 
-## Decisão de apresentação em revisão
+## Decisão de apresentação confirmada
 
-O DRS exige saldo corrente. A issue #65 propõe acrescentar **saldo após cada lançamento** e pede revisão antes da implementação dessa apresentação. A responsável pelo requisito pode confirmar a coluna adicional ou usar saldo corrente no resumo e deltas nas linhas. Se aprovada, a coluna acumula o todo da seleção até cada movimento, inclusive os anteriores ao início do período e os tipos ocultos pelo filtro. Na visão por produto o acúmulo inclui todos os seus lotes na unidade. Na visão por lote o acúmulo usa somente aquele lote. A escolha afeta a projeção SQL, a resposta HTTP e as colunas da tela e do CSV.
+A responsável confirmou **saldo após cada movimentação**. A coluna acumula o todo da seleção até cada movimento, inclusive os anteriores ao início do período e os tipos ocultos pelo filtro. A visão por produto inclui todos os seus lotes na unidade. A visão por lote acumula somente o lote selecionado. O saldo corrente permanece no resumo.
 
-Neste incremento, o [contrato de filtros](../../packages/contracts/src/stock-ledger.ts) cobre a parte independente dessa decisão. O teste é executado por `npm run test:contracts`. O extrato funcional e o CA-011 neste fluxo dependem da implementação em banco, API e View e de evidências de integração. Perdas, transferências, estornos e abertura de estoque permanecem nos respectivos recortes.
+O [contrato compartilhado](../../packages/contracts/src/stock-ledger.ts) valida o filtro, o escopo da resposta e a ordem das linhas. A tela acessa `GET /api/unidades/:id/estoque/extrato` a partir de Saldos. A API consulta a RPC de leitura com a sessão autenticada. O CSV usa uma consulta única com os filtros aplicados, com limite técnico de 10.000 linhas. Acima do limite a tela orienta a refinar os filtros. A consulta única fornece um snapshot consistente e evita entregar um arquivo parcial.
+
+Perdas, transferências, estornos e abertura de estoque permanecem nos respectivos recortes.

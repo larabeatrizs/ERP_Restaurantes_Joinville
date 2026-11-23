@@ -1,4 +1,4 @@
-import type { EntradaInput, ProductLinkInput, ProductQuery, ProdutoInput } from '@erp/contracts';
+import type { EntradaInput, ProductLinkInput, ProductQuery, ProdutoInput, StockLedgerQuery } from '@erp/contracts';
 import type { StockRepository } from '../repositories/stock-repository.ts';
 import { ApiError } from '../errors.ts';
 
@@ -22,4 +22,5 @@ export class StockService {
   confirmReceipt(unit: string, id: string, key: string) { return this.repository.confirmReceipt(unit, id, key); }
   approveReceipt(unit: string, id: string, reason: string) { return this.repository.approveReceipt(unit, id, reason); }
   balances(unit: string) { return this.repository.balances(unit); }
+  ledger(unit: string, query: StockLedgerQuery) { return this.repository.ledger(unit, query); }
 }

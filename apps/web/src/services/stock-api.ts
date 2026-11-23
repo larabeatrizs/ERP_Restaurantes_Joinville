@@ -1,6 +1,6 @@
 import { isRecord, isPositiveBigint } from '@erp/contracts';
-import { isImportedProducts } from '@erp/contracts';
-import type { ImportedProducts } from '@erp/contracts';
+import { isImportedProducts, isStockLedger } from '@erp/contracts';
+import type { ImportedProducts, StockLedger, StockLedgerQuery } from '@erp/contracts';
 import type { AvailableProductList, ProductLinkInput, ProdutoInput, Product, EntradaInput, Receipt, StockContext, ProductList, ReceiptList, StockBalances } from '@erp/contracts';
 import { RequestError } from './api.ts';
 import { isWithdrawal,isWithdrawalPanel } from '@erp/contracts';
@@ -14,16 +14,29 @@ export class StockApi {
   async reviewWithdrawal(unit:string,id:string,input:WithdrawalReview):Promise<Withdrawal>{if(!isPositiveBigint(id))throw new RequestError(422);const data=await this.request(unit,`/requisicoes/${id}/conferencia`,input);if(!isWithdrawal(data.requisicao,unit)||data.requisicao.id!==id)throw new RequestError(503);return data.requisicao;}
   constructor(private token: () => Promise<string | undefined>) {}
 
-  private async request(unit: string, route: string, body?: unknown, method = 'POST'): Promise<Record<string, unknown>> {
+  async ledger(unit: string, query: StockLedgerQuery, signal?: AbortSignal): Promise<StockLedger> {
+    const { exportar, ...filters } = query;
+    const params = new URLSearchParams();
+    for (const [name, value] of Object.entries(filters)) {
+      if (value !== undefined) params.set(name, String(value));
+    }
+    if (exportar) params.set('exportar', '1');
+    const data = await this.request(unit, `/estoque/extrato?${params}`, undefined, 'GET', signal);
+    if (!isStockLedger(data, unit, query)) throw new RequestError(503);
+    return data;
+  }
+
+  private async request(unit: string, route: string, body?: unknown, method = 'POST', signal?: AbortSignal): Promise<Record<string, unknown>> {
     if (!isPositiveBigint(unit)) throw new RequestError(404);
     const token = await this.token();
     if (!token) throw new RequestError(401);
+    const timeout = AbortSignal.timeout(20000);
     const response = await fetch(`/api/unidades/${unit}${route}`, {
       method: body === undefined ? 'GET' : method,
       cache: 'no-store',
       headers: { Authorization: `Bearer ${token}`, ...(body === undefined ? {} : { 'Content-Type': 'application/json' }) },
       ...(body === undefined ? {} : { body: JSON.stringify(body) }),
-      signal: AbortSignal.timeout(20000),
+      signal: signal ? AbortSignal.any([signal, timeout]) : timeout,
     });
     if (!response.ok) throw new RequestError(response.status);
     const data: unknown = await response.json();
