@@ -8,6 +8,8 @@ Fontes e evidências: [SEC-001](../seguranca/SEC-001.md), [transações](../dado
 
 ## Propostas prioritárias
 
+**Decisão posterior em 23/11/2026 — DOM-01:** para Bucarein (RP1), a responsável confirmou nutricionista titular e gestor da unidade somente como substituto configurado. A política de Adhemar Garcia (RP2) segue em definição. O [recorte RF-015](../fundacao/RF-015-PERDAS.md) registra as dependências e os critérios.
+
 **Decisão posterior em 17/11/2026 — DOM-05:** a responsável confirmou a requisição rápida no modo Posterior sem vínculo inicial obrigatório, com distribuição posterior em **uma ou mais refeições** da mesma unidade, limitada à quantidade retirada e **sem nova baixa**. [Contrato e alcance EST-002](../fundacao/EST-002-REQUISICAO-RAPIDA.md), issue #52. O texto abaixo conserva a proposta histórica; DOM-01–04 não recebem aprovação por consequência desta decisão. A exceção não remove o vínculo da saída comum de consumo RF-013.
 
 | ID | Recomendação concreta | Alteração/ressalva necessária | Critério a verificar após decisão |
