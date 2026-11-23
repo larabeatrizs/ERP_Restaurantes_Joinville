@@ -18,3 +18,14 @@ A responsável confirmou **saldo após cada movimentação**. A coluna acumula o
 O [contrato compartilhado](../../packages/contracts/src/stock-ledger.ts) valida o filtro, o escopo da resposta e a ordem das linhas. A tela acessa `GET /api/unidades/:id/estoque/extrato` a partir de Saldos. A API consulta a RPC de leitura com a sessão autenticada. O CSV usa uma consulta única com os filtros aplicados, com limite técnico de 10.000 linhas. Acima do limite a tela orienta a refinar os filtros. A consulta única fornece um snapshot consistente e evita entregar um arquivo parcial.
 
 Perdas, transferências, estornos e abertura de estoque permanecem nos respectivos recortes.
+
+## Evidências de 23/11/2026
+
+| Critério | Evidência | Ambiente |
+| --- | --- | --- |
+| Saldo após cada linha | Entrada de 20 e retiradas de 2 e 3 retornaram 20, 18 e 15. O filtro de tipo preservou os acumulados. | Testes de estoque em PostgreSQL descartável e PGlite. |
+| Lote, datas e isolamento | Testes confirmaram o acúmulo por produto e por lote, o limite da data civil de São Paulo, o desempate por ID e as negações de produto, lote, unidade e perfil. | PostgreSQL descartável e PGlite. |
+| Consulta e CSV | Testes HTTP cobriram autenticação e filtros. A jornada de navegador conferiu o saldo por linha, o CSV filtrado com quantidade negativa e a recusa de exportação sem permissão. | API e navegador locais. 77 testes Playwright passaram. [CI da PR #67](https://github.com/larabeatrizs/ERP_Restaurantes_Joinville/actions/runs/45164027608) com quatro jobs aprovados. |
+| Migration e publicação | Migration `20261123112140`, conteúdo conferido por hash. A consulta com contexto autenticado alcançou a validação de filtros e seleção nas duas unidades. Os modos de consulta e exportação retornaram HTTP 401 sem sessão. O HTML e o bundle publicados coincidiram com o build local. | [Staging compartilhado](https://erp-joinville-staging.erp-restaurantes-joinville.workers.dev), commit `d7b97bc`, versão Cloudflare `340b21e8-7cb9-44f6-ba26-e4606e62ea91`. |
+
+O Supabase atribuiu a versão da migration no momento da aplicação. O arquivo foi renomeado para coincidir com o histórico remoto, com o mesmo SQL. O staging preservou um administrador, dois vínculos de unidade e 60 nomes pendentes. A base segue com zero movimentos. Por isso, a verificação hospedada cobre as rotas, o bundle e a fronteira de autorização, enquanto o cálculo com dados e o CSV foram exercitados em laboratório e com API simulada no navegador.
