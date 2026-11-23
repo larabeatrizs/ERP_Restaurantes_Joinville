@@ -2,7 +2,7 @@
 
 **Estado:** roteiro aprovado para planejamento da reconstrução, com metodologia **Spec-Driven Development (SDD)** adotada como **interpretação operacional provisória** da expressão "driven development" informada pela responsável. Se ela se referia a TDD, BDD ou outra prática, a denominação deverá ser ratificada em issue de decisão antes da primeira issue funcional. **TDD e BDD serão técnicas complementares** para verificação do contrato, não substitutos do DRS e da UI.
 
-**Continuidade em 23/11 — Entrega 1:** [RF-017](../fundacao/RF-017-EXTRATO-ESTOQUE.md) publicado com saldo após cada movimentação. [RF-022](../fundacao/RF-022-VALOR-ESTOQUE.md) avança sobre a consulta de saldos vigente para calcular o valor imobilizado por categoria e unidade, reutilizando as APIs de leitura e a prévia de relatórios.
+**Continuidade em 23/11 — Entrega 1:** [RF-017](../fundacao/RF-017-EXTRATO-ESTOQUE.md) publicado com saldo após cada movimentação e [RF-022](../fundacao/RF-022-VALOR-ESTOQUE.md) com valor imobilizado por categoria e unidade. O [RF-027](../fundacao/RF-027-VENCIMENTOS.md) acrescenta a consulta de validade e valor em risco por lote.
 
 ## Princípios inegociáveis
 

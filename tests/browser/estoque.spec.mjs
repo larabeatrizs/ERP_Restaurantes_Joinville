@@ -77,6 +77,9 @@ async function setup(page, options = {}) {
     }
     if (url.pathname.endsWith('/estoque/saldos')) return respond({ saldos: activeUnit === unit ? state.balances : [] });
     if (url.pathname.endsWith('/estoque/extrato') && options.ledger) return options.ledger(url, route);
+    if (url.pathname.endsWith('/estoque/vencimentos') && options.expiry) return respond({
+      unidade_id: activeUnit, data_referencia: '2026-11-23', lotes: activeUnit === unit ? options.expiry : [],
+    });
     if (url.pathname.endsWith('/produtos/disponiveis')) {
       const filtered=state.available.filter(p=>p.descricao.toLowerCase().includes((url.searchParams.get('q')??'').toLowerCase()));
       const offset=Number(url.searchParams.get('offset')??0);return respond({produtos:filtered.slice(offset,offset+50),total:filtered.length});
@@ -186,6 +189,24 @@ test('relatório de saldos respeita pesquisa e troca de unidade sem misturar pos
   await expect(dialog).toContainText('1 posições'); await expect(dialog).not.toContainText('Feijão'); const pending=page.waitForEvent('download');await dialog.getByRole('button',{name:'Exportar relatório em CSV'}).click();const csv=await readFile(await(await pending).path(),'utf8');expect(csv).toContain('7,000001');expect(csv).not.toContain('Feijão');
   await page.keyboard.press('Escape');await page.getByRole('combobox',{name:'Unidade',exact:true}).selectOption(otherUnit);await expect(page.getByText('Nenhum saldo registrado nesta unidade.',{exact:true})).toBeVisible();await page.getByRole('button',{name:'Relatório de saldos',exact:true}).click();await expect(page.getByRole('dialog')).toContainText('Unidade: Outra unidade');await expect(page.getByRole('dialog')).not.toContainText('Arroz branco');expect(state.writes).toHaveLength(0);
 });
+test('RF-027 apresenta validade, situação e valor em risco da unidade ativa', async ({ page }) => {
+  const lot = { lote_id: '20', lote: 'L-VENCIDO', produto: product.descricao, validade: '2026-11-22',
+    unidade_medida: 'kg', quantidade: '5', valor_unitario: '8', situacao: 'VENCIDO' };
+  await setup(page, { expiry: [lot, { ...lot, lote_id: '21', lote: 'L-HOJE', validade: '2026-11-23', situacao: 'A_VENCER' }] });
+  await navigate(page, 'Saldo');
+  await page.getByRole('button', { name: 'Consultar vencimentos' }).click();
+  const dialog = page.getByRole('dialog');
+  await expect(dialog.getByRole('columnheader', { name: 'Valor em risco (R$)' })).toBeVisible();
+  await expect(dialog.getByRole('row').nth(1)).toContainText('L-VENCIDO');
+  await expect(dialog.getByRole('row').nth(1)).toContainText('40,00');
+  await expect(dialog.getByRole('row').nth(2)).toContainText('A vencer');
+  await page.keyboard.press('Escape');
+  await page.getByRole('combobox', { name: 'Unidade', exact: true }).selectOption(otherUnit);
+  await page.getByRole('button', { name: 'Consultar vencimentos' }).click();
+  await expect(dialog).toContainText('Nenhum lote vencido ou a vencer com saldo.');
+  await expect(dialog).not.toContainText('L-VENCIDO');
+});
+
 test('RF-022 valoriza lotes por categoria, inclui inativos e recusa relatório incompleto', async ({ page }) => {
   const inactive = { ...product, id: '41', descricao: 'Feijão', status: 'INATIVO', categoria_id: '42', categoria_descricao: 'Leguminosas' };
   const balance = { produto_id: productId, produto: product.descricao, unidade_medida: 'kg', lote_id: '20',

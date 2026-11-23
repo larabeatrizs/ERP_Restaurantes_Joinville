@@ -1,5 +1,5 @@
 import { csvDocument, stockTotalCents } from '@erp/contracts';
-import type { ActiveStatus, Product, Receipt, StockBalance } from '@erp/contracts';
+import type { ActiveStatus, Product, Receipt, StockBalance, StockExpiry } from '@erp/contracts';
 import { decimalLabel } from './stock-api.ts';
 import type { StockApi } from './stock-api.ts';
 
@@ -39,9 +39,19 @@ export async function productReport(api: Pick<StockApi, 'products'>, unit: strin
     rows.map(row => [row.descricao, row.complemento, row.categoria_descricao, row.unidade_sigla, row.armazenamento, row.apresentacao_compra, decimal(row.quantidade_apresentacao), decimal(row.estoque_minimo), decimal(row.estoque_maximo), decimal(row.ponto_reposicao), row.status]));
 }
 
-export function stockValue(rows: StockBalance[]): string {
+export function stockValue(rows: Parameters<typeof stockTotalCents>[0]): string {
   const cents = stockTotalCents(rows);
   return decimalLabel(`${cents / 100n}.${String(cents % 100n).padStart(2, '0')}`, 2);
+}
+
+export function stockExpiryReport(data: StockExpiry, unitName: string): ConsultationReport {
+  return report('Validade e vencimentos', unitName,
+    `Referência: ${date(data.data_referencia)}. ${data.lotes.length ? 'Lotes com saldo, por ordem de validade.' : 'Nenhum lote vencido ou a vencer com saldo.'}`,
+    ['Produto', 'Lote', 'Validade', 'Situação', 'Saldo', 'Unidade de medida', 'Valor em risco (R$)'],
+    data.lotes.map(lot => [
+      lot.produto, lot.lote, date(lot.validade), lot.situacao === 'VENCIDO' ? 'Vencido' : 'A vencer',
+      decimal(lot.quantidade), lot.unidade_medida, stockValue([lot]),
+    ]));
 }
 
 export async function stockValueReport(

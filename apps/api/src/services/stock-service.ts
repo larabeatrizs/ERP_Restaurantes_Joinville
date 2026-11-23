@@ -23,4 +23,5 @@ export class StockService {
   approveReceipt(unit: string, id: string, reason: string) { return this.repository.approveReceipt(unit, id, reason); }
   balances(unit: string) { return this.repository.balances(unit); }
   ledger(unit: string, query: StockLedgerQuery) { return this.repository.ledger(unit, query); }
+  expiry(unit: string) { return this.repository.expiry(unit); }
 }
