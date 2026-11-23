@@ -14,3 +14,9 @@ A View consulta `GET /api/unidades/:id/estoque/vencimentos`, que encaminha a ses
 | Troca de unidade | Teste com transporte simulado confirma recorte vazio ao trocar para unidade sem lotes. |
 
 Gatilhos persistidos, destinatários e canais de notificação seguem o RF-029.
+
+## Publicação e evidências
+
+23/11/2026. Os quatro jobs da [CI da PR #72](https://github.com/larabeatrizs/ERP_Restaurantes_Joinville/actions/runs/45182395108) passaram. O [staging](https://erp-joinville-staging.erp-restaurantes-joinville.workers.dev) recebeu o commit `d4e1b9f`, versão Cloudflare `789a01d9-dd8f-42ba-bf4c-4cb3e06d0ddd`. HTML e bundle hospedados coincidiram com o build local. A rota retornou 401 sem sessão.
+
+A migration recebeu a versão `20261123164427` no Supabase. O hash do SQL armazenado coincidiu com o arquivo versionado. A consulta SQL em contexto autenticado retornou zero lotes nas duas unidades. A execução anônima da RPC foi negada por grant. A base tinha zero movimentos, uma conta Auth e 60 nomes pendentes antes e depois da aplicação. O comportamento com lotes e valores foi validado com dados sintéticos.
