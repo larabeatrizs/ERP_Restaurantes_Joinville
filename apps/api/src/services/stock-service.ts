@@ -24,4 +24,5 @@ export class StockService {
   balances(unit: string) { return this.repository.balances(unit); }
   ledger(unit: string, query: StockLedgerQuery) { return this.repository.ledger(unit, query); }
   expiry(unit: string) { return this.repository.expiry(unit); }
+  alerts(unit: string) { return this.repository.alerts(unit); }
 }

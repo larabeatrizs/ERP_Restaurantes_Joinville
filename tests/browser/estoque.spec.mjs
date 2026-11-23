@@ -80,6 +80,9 @@ async function setup(page, options = {}) {
     if (url.pathname.endsWith('/estoque/vencimentos') && options.expiry) return respond({
       unidade_id: activeUnit, data_referencia: '2026-11-23', lotes: activeUnit === unit ? options.expiry : [],
     });
+    if (url.pathname.endsWith('/estoque/alertas') && options.alerts) return respond({
+      unidade_id: activeUnit, alertas: activeUnit === unit ? options.alerts : [],
+    });
     if (url.pathname.endsWith('/produtos/disponiveis')) {
       const filtered=state.available.filter(p=>p.descricao.toLowerCase().includes((url.searchParams.get('q')??'').toLowerCase()));
       const offset=Number(url.searchParams.get('offset')??0);return respond({produtos:filtered.slice(offset,offset+50),total:filtered.length});
@@ -189,6 +192,20 @@ test('relatório de saldos respeita pesquisa e troca de unidade sem misturar pos
   await expect(dialog).toContainText('1 posições'); await expect(dialog).not.toContainText('Feijão'); const pending=page.waitForEvent('download');await dialog.getByRole('button',{name:'Exportar relatório em CSV'}).click();const csv=await readFile(await(await pending).path(),'utf8');expect(csv).toContain('7,000001');expect(csv).not.toContain('Feijão');
   await page.keyboard.press('Escape');await page.getByRole('combobox',{name:'Unidade',exact:true}).selectOption(otherUnit);await expect(page.getByText('Nenhum saldo registrado nesta unidade.',{exact:true})).toBeVisible();await page.getByRole('button',{name:'Relatório de saldos',exact:true}).click();await expect(page.getByRole('dialog')).toContainText('Unidade: Outra unidade');await expect(page.getByRole('dialog')).not.toContainText('Arroz branco');expect(state.writes).toHaveLength(0);
 });
+test('RF-029 consulta alertas no Início e descarta a lista ao trocar de unidade', async ({ page }) => {
+  await setup(page, { alerts: [
+    { id: '20', produto: 'Feijão', tipo: 'LOTE_VENCIDO', lote: 'ABC', validade: '2026-11-22' },
+    { id: productId, produto: 'Arroz branco', tipo: 'ESTOQUE_MINIMO', lote: null, validade: null },
+  ] });
+  await page.getByText('Alertas de estoque', { exact: true }).click();
+  const panel = page.getByRole('region', { name: 'Alertas de estoque' });
+  await expect(panel.getByRole('listitem').first()).toContainText('Lote vencido');
+  await expect(panel.getByRole('listitem').last()).toContainText('Estoque no mínimo ou abaixo');
+  await page.getByRole('combobox', { name: 'Unidade', exact: true }).selectOption(otherUnit);
+  await page.getByText('Alertas de estoque', { exact: true }).click();
+  await expect(panel).toContainText('Nenhum alerta de estoque para sua conta nesta unidade.');
+});
+
 test('RF-021 soma posições, destaca igualdade e informa falta de produto sem posição', async ({ page }) => {
   const balance = { produto_id: productId, produto: product.descricao, unidade_medida: 'kg', lote_id: '20',
     lote: 'L-1', validade: null, camara_id: '14', local: 'Seco', quantidade: '0.1', valor_unitario: '4' };

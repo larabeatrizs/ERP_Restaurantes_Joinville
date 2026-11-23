@@ -1,6 +1,6 @@
 import { isRecord, isPositiveBigint } from '@erp/contracts';
-import { isImportedProducts, isStockExpiry, isStockLedger } from '@erp/contracts';
-import type { ImportedProducts, StockExpiry, StockLedger, StockLedgerQuery } from '@erp/contracts';
+import { isImportedProducts, isStockAlerts, isStockExpiry, isStockLedger } from '@erp/contracts';
+import type { ImportedProducts, StockAlerts, StockExpiry, StockLedger, StockLedgerQuery } from '@erp/contracts';
 import type { AvailableProductList, ProductLinkInput, ProdutoInput, Product, EntradaInput, Receipt, StockContext, ProductList, ReceiptList, StockBalances } from '@erp/contracts';
 import { RequestError } from './api.ts';
 import { isWithdrawal,isWithdrawalPanel } from '@erp/contracts';
@@ -13,6 +13,12 @@ export class StockApi {
   async registerWithdrawal(unit:string,input:WithdrawalInput):Promise<Withdrawal>{const data=await this.request(unit,'/requisicoes',input);if(!isWithdrawal(data.requisicao,unit))throw new RequestError(503);return data.requisicao;}
   async reviewWithdrawal(unit:string,id:string,input:WithdrawalReview):Promise<Withdrawal>{if(!isPositiveBigint(id))throw new RequestError(422);const data=await this.request(unit,`/requisicoes/${id}/conferencia`,input);if(!isWithdrawal(data.requisicao,unit)||data.requisicao.id!==id)throw new RequestError(503);return data.requisicao;}
   constructor(private token: () => Promise<string | undefined>) {}
+
+  async alerts(unit: string): Promise<StockAlerts> {
+    const data = await this.request(unit, '/estoque/alertas');
+    if (!isStockAlerts(data, unit)) throw new RequestError(503);
+    return data;
+  }
 
   async expiry(unit: string): Promise<StockExpiry> {
     const data = await this.request(unit, '/estoque/vencimentos');
