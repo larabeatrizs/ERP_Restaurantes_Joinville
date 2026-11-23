@@ -2,6 +2,8 @@
 
 **Estado:** roteiro aprovado para planejamento da reconstrução, com metodologia **Spec-Driven Development (SDD)** adotada como **interpretação operacional provisória** da expressão "driven development" informada pela responsável. Se ela se referia a TDD, BDD ou outra prática, a denominação deverá ser ratificada em issue de decisão antes da primeira issue funcional. **TDD e BDD serão técnicas complementares** para verificação do contrato, não substitutos do DRS e da UI.
 
+**Continuidade em 23/11 — RF-017:** a [issue #65](https://github.com/larabeatrizs/ERP_Restaurantes_Joinville/issues/65) acompanha o extrato de movimentação sobre o livro atual. A [revisão da fase B](../fundacao/RF-017-EXTRATO-ESTOQUE.md) registra o contrato dos filtros, os critérios das fases seguintes e a decisão de apresentação do saldo por lançamento.
+
 ## Princípios inegociáveis
 
 **Atualização de ambiente — ADR-002:** durante a construção, o staging existente é compartilhado por desenvolvimento e testes. A provisão de ambientes permanentes separados fica congelada em AMB-001 até o encerramento. As referências abaixo a ambiente isolado continuam válidas para laboratórios locais/CI descartáveis; não exigem novo ambiente permanente nem impedem avanço no staging. Separação de ambientes de produção e limpeza/reconstrução são etapas finais planejadas, sem reset imediato.

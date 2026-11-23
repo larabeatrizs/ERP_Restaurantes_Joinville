@@ -60,3 +60,4 @@ export * from './stock-summary.ts';
 export * from './calendar.ts';
 export * from './withdrawals.ts';
 export * from './imported-products.ts';
+export * from './stock-ledger.ts';
