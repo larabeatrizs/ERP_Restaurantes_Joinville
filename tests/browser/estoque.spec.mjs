@@ -186,6 +186,36 @@ test('relatório de saldos respeita pesquisa e troca de unidade sem misturar pos
   await expect(dialog).toContainText('1 posições'); await expect(dialog).not.toContainText('Feijão'); const pending=page.waitForEvent('download');await dialog.getByRole('button',{name:'Exportar relatório em CSV'}).click();const csv=await readFile(await(await pending).path(),'utf8');expect(csv).toContain('7,000001');expect(csv).not.toContain('Feijão');
   await page.keyboard.press('Escape');await page.getByRole('combobox',{name:'Unidade',exact:true}).selectOption(otherUnit);await expect(page.getByText('Nenhum saldo registrado nesta unidade.',{exact:true})).toBeVisible();await page.getByRole('button',{name:'Relatório de saldos',exact:true}).click();await expect(page.getByRole('dialog')).toContainText('Unidade: Outra unidade');await expect(page.getByRole('dialog')).not.toContainText('Arroz branco');expect(state.writes).toHaveLength(0);
 });
+test('RF-022 valoriza lotes por categoria, inclui inativos e recusa relatório incompleto', async ({ page }) => {
+  const inactive = { ...product, id: '41', descricao: 'Feijão', status: 'INATIVO', categoria_id: '42', categoria_descricao: 'Leguminosas' };
+  const balance = { produto_id: productId, produto: product.descricao, unidade_medida: 'kg', lote_id: '20',
+    lote: 'L-1', validade: null, camara_id: '14', local: 'Seco', quantidade: '1', valor_unitario: '0.004' };
+  const state = await setup(page, { products: [product, inactive], balances: [
+    balance, { ...balance, lote_id: '21', lote: 'L-2' },
+    { ...balance, produto_id: inactive.id, produto: inactive.descricao, lote_id: '22', lote: 'L-3', quantidade: '5', valor_unitario: '8' },
+  ] });
+  await navigate(page, 'Saldo');
+  await page.getByLabel('Pesquisar saldos', { exact: true }).fill('arroz');
+  const button = page.getByRole('button', { name: 'Consultar valor imobilizado' });
+  await button.click();
+  const dialog = page.getByRole('dialog');
+  await expect(dialog.locator('tr').filter({ hasText: 'Grãos e secos' })).toContainText('0,01');
+  await expect(dialog.locator('tr').filter({ hasText: 'Leguminosas' })).toContainText('40,00');
+  await expect(dialog.locator('tr').filter({ hasText: 'Total da unidade' })).toContainText('40,01');
+  const pending = page.waitForEvent('download');
+  await dialog.getByRole('button', { name: 'Exportar relatório em CSV' }).click();
+  expect(await readFile(await (await pending).path(), 'utf8')).toContain('"Total da unidade";"40,01"');
+  await page.keyboard.press('Escape');
+  state.products = [product];
+  await button.click();
+  await expect(page.getByRole('alert')).toContainText('O catálogo mudou');
+  await expect(dialog).toHaveCount(0);
+  await page.getByRole('combobox', { name: 'Unidade', exact: true }).selectOption(otherUnit);
+  await button.click();
+  await expect(dialog.locator('tr').filter({ hasText: 'Total da unidade' })).toContainText('0,00');
+  await expect(dialog).not.toContainText('Leguminosas');
+});
+
 test('RF-017 exibe saldo após movimento e exporta apenas a seleção aplicada', async ({ page }) => {
   const balance = { produto_id: productId, produto: 'Arroz branco', unidade_medida: 'kg', lote_id: '20',
     lote: 'L-TESTE', validade: null, camara_id: '14', local: 'Seco', quantidade: '15', valor_unitario: '4' };
