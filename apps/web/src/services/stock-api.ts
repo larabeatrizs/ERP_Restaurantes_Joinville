@@ -1,10 +1,14 @@
 import { isRecord, isPositiveBigint } from '@erp/contracts';
+import { isImportedProducts } from '@erp/contracts';
+import type { ImportedProducts } from '@erp/contracts';
 import type { AvailableProductList, ProductLinkInput, ProdutoInput, Product, EntradaInput, Receipt, StockContext, ProductList, ReceiptList, StockBalances } from '@erp/contracts';
 import { RequestError } from './api.ts';
 import { isWithdrawal,isWithdrawalPanel } from '@erp/contracts';
 import type { WithdrawalInput,WithdrawalReview,Withdrawal,WithdrawalPanel } from '@erp/contracts';
 
 export class StockApi {
+  async importedProducts(unit:string,q='',offset=0):Promise<ImportedProducts>{const data=await this.request(unit,`/produtos-importados?${new URLSearchParams({q,offset:String(offset)})}`);if(!isImportedProducts(data))throw new RequestError(503);return data;}
+  async completeImportedProduct(unit:string,id:string,input:ProdutoInput):Promise<Product>{if(!isPositiveBigint(id))throw new RequestError(422);const data=await this.request(unit,`/produtos-importados/${id}/concluir`,input);if(!isRecord(data.produto)||typeof data.produto.id!=='string'||typeof data.produto.revisao!=='string')throw new RequestError(503);return data.produto as unknown as Product;}
   async withdrawals(unit:string):Promise<WithdrawalPanel>{const data=await this.request(unit,'/requisicoes');if(!isWithdrawalPanel(data,unit))throw new RequestError(503);return data;}
   async registerWithdrawal(unit:string,input:WithdrawalInput):Promise<Withdrawal>{const data=await this.request(unit,'/requisicoes',input);if(!isWithdrawal(data.requisicao,unit))throw new RequestError(503);return data.requisicao;}
   async reviewWithdrawal(unit:string,id:string,input:WithdrawalReview):Promise<Withdrawal>{if(!isPositiveBigint(id))throw new RequestError(422);const data=await this.request(unit,`/requisicoes/${id}/conferencia`,input);if(!isWithdrawal(data.requisicao,unit)||data.requisicao.id!==id)throw new RequestError(503);return data.requisicao;}

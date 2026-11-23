@@ -29,11 +29,12 @@ function productQuery(url: URL): ProductQuery {
 }
 
 export async function stockController(request: Request, env: StockRuntimeEnv, unit: string, route: string, factory: StockSessionFactory): Promise<Response> {
+  const importedCompletion=/^produtos-importados\/([^/]+)\/concluir$/.exec(route);
   const productEdit = route === 'produtos/disponiveis' ? null : /^produtos\/([^/]+)$/.exec(route);
   const productLink = /^produtos\/([^/]+)\/vinculo$/.exec(route);
   const productStatus = /^produtos\/([^/]+)\/status$/.exec(route);
   const confirmation = /^entradas\/([^/]+)\/(confirmar|aprovar-divergencia)$/.exec(route);
-  const allow = productEdit ? 'PATCH, DELETE' : confirmation || productLink || productStatus ? 'POST' : route === 'produtos' || route === 'entradas' ? 'GET, POST' : 'GET';
+  const allow = productEdit ? 'PATCH, DELETE' : confirmation || productLink || productStatus || importedCompletion ? 'POST' : route === 'produtos' || route === 'entradas' ? 'GET, POST' : 'GET';
   if (!allow.split(', ').includes(request.method)) return methodDenied(allow, request.method === 'HEAD');
   const token = /^Bearer\s+(\S+)$/i.exec(request.headers.get('Authorization') ?? '')?.[1];
   if (!token) throw new ApiError(401, 'UNAUTHORIZED', 'Informe uma sessão válida.');
@@ -41,6 +42,11 @@ export async function stockController(request: Request, env: StockRuntimeEnv, un
   const session = factory(env, token);
   await session.authenticate();
   const service = new StockService(session.repository);
+  if(route==='produtos-importados'){
+    const url=new URL(request.url);if(url.searchParams.has('status'))throw new ApiError(400,'INVALID_QUERY','Filtros inválidos.');
+    const {q,offset}=productQuery(url);return reply(await service.importedProducts(unit,{q,offset}));
+  }
+  if(importedCompletion){if(!isStockId(importedCompletion[1])||new URL(request.url).search)throw new ApiError(400,'INVALID_ID','Identificador inválido.');const input=await readJson(request);if(!isProdutoInput(input))invalid();return productReply(await service.completeImportedProduct(unit,importedCompletion[1],input));}
   if (route === 'produtos/disponiveis') {
     const url = new URL(request.url);
     if (url.searchParams.has('status')) throw new ApiError(400, 'INVALID_QUERY', 'Filtros inválidos.');

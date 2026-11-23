@@ -399,6 +399,22 @@ async function catalog(action, data, unit = 1, client = db) {
 async function receive(id, extra) { return (await rpc('entrada_criar', receipt(id, extra))).entrada; }
 async function confirm(id, n = 1) { return (await rpc('entrada_confirmar', { id, chave: key(n) })).entrada; }
 
+async function imported(action,data,unit=1){return(await db.query('select erp.produto_importado_operacao($1,$2,$3::jsonb) result',[unit,action,JSON.stringify(data)])).rows[0].result;}
+async function importedSeed(){await db.exec('reset role');const r=await db.query("insert into erp_private.produto_importado(chave,descricao,origens,criado_por) values('arroz importado','Arroz importado','[{\"arquivo\":\"fixture.xlsx\"}]',$1) returning id::text",[uid(1)]);await become(1);return r.rows[0].id;}
+async function importedReject(action,data,code,unit=1){await db.exec('savepoint imported_error');await assert.rejects(()=>imported(action,data,unit),{code});await db.exec('rollback to savepoint imported_error');}
+test('CARGA-002 conclusão atômica usa cadastro existente e replay não cria produto ou estoque novamente',async()=>actor(1,async()=>{
+ const id=await importedSeed(),input=product({descricao:'Arroz importado'});const list=await imported('listar',{q:'ARRÓZ',offset:0});assert.equal(list.total,1);assert.equal(list.itens[0].id,id);
+ const saved=await imported('concluir',{id,produto:input});assert.equal((await imported('listar',{q:'',offset:0})).total,0);assert.deepEqual(await imported('concluir',{id,produto:input}),saved);
+ await importedReject('concluir',{id,produto:{...input,descricao:'Outro'}},'PT409');await become(2);await importedReject('concluir',{id,produto:input},'PT409',2);await become(1);
+ await db.exec('reset role');assert.equal((await db.query('select count(*)::int n from erp.produto')).rows[0].n,1);assert.equal((await db.query('select count(*)::int n from erp.movimento_estoque')).rows[0].n,0);assert.equal((await db.query("select estado from erp_private.produto_importado where id=$1",[id])).rows[0].estado,'CONCLUIDO');
+}));
+test('CARGA-002 nega leitura/escrita direta, perfis/unidades indevidos e reverte produto se conclusão falha',async()=>actor(1,async()=>{
+ const id=await importedSeed();await sqlRejects('select * from erp_private.produto_importado');await sqlRejects('delete from erp_private.produto_importado');
+ await become(3);await importedReject('listar',{q:'',offset:0},'PT403');await become(6);await importedReject('listar',{q:'',offset:0},'PT404');await become(5);await importedReject('listar',{q:'',offset:0},'PT404');await become(1);
+ await importedReject('listar',{q:'',offset:-1},'PT422');await importedReject('concluir',{id,produto:{id:'1'}},'PT422');
+ await db.exec("reset role; create function erp_private.falhar_importado() returns trigger language plpgsql as $$ begin raise exception 'Falha induzida';end $$;create trigger falhar_importado before update on erp_private.produto_importado for each row execute function erp_private.falhar_importado()");await become(1);
+ await importedReject('concluir',{id,produto:product({descricao:'Arroz importado'})},'P0001');await db.exec('reset role');assert.equal((await db.query('select count(*)::int n from erp.produto')).rows[0].n,0);assert.equal((await db.query('select count(*)::int n from erp.auditoria_estoque')).rows[0].n,0);assert.equal((await db.query('select estado from erp_private.produto_importado')).rows[0].estado,'PENDENTE');
+}));
 test('schema novo tem RLS, executor restrito e nenhum DML cliente ou USAGE auth', async () => {
   const rows = (await db.query("select relname,relrowsecurity from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname='erp' and c.relkind='r'")).rows;
   assert.equal(rows.length, 28); assert.ok(rows.every((r) => r.relrowsecurity));

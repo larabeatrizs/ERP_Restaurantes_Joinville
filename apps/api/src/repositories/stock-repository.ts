@@ -2,6 +2,8 @@ import type { AvailableProductList, ProductLinkInput, EntradaInput, ProductList,
 
 export interface StockRuntimeEnv { SUPABASE_URL?: string; SUPABASE_PUBLISHABLE_KEY?: string }
 export interface StockRepository {
+  importedProducts?(unit:string,query:Pick<ProductQuery,'q'|'offset'>):Promise<import('@erp/contracts').ImportedProducts>;
+  completeImportedProduct?(unit:string,id:string,input:ProdutoInput):Promise<ProductResult>;
   context(unit: string): Promise<StockContext>;
   products(unit: string, query: ProductQuery): Promise<ProductList>;
   availableProducts(unit: string, query: Pick<ProductQuery, 'q' | 'offset'>): Promise<AvailableProductList>;
