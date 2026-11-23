@@ -399,6 +399,30 @@ async function catalog(action, data, unit = 1, client = db) {
 async function receive(id, extra) { return (await rpc('entrada_criar', receipt(id, extra))).entrada; }
 async function confirm(id, n = 1) { return (await rpc('entrada_confirmar', { id, chave: key(n) })).entrada; }
 
+test('RF-029 resolve condições atuais e envia cada tipo somente aos perfis da unidade', async () => actor(1, async () => {
+  const p = await create();
+  const dates = (await db.query(`select
+    to_char((now() at time zone 'America/Sao_Paulo')::date - 1,'YYYY-MM-DD') as ontem,
+    to_char((now() at time zone 'America/Sao_Paulo')::date,'YYYY-MM-DD') as hoje`)).rows[0];
+  await confirm((await receive(p.id, { total_nota: null, itens: [
+    line(p.id, { quantidade: '5', numero_lote: 'ANTES', validade: dates.ontem }),
+    line(p.id, { quantidade: '5', numero_lote: 'HOJE', validade: dates.hoje }),
+  ] })).id);
+  const types = async () => (await db.query("select erp.estoque_alertas(1,'listar','{}') as result"))
+    .rows[0].result.alertas.map(alert => alert.tipo);
+  assert.deepEqual(await types(), ['LOTE_A_VENCER', 'ESTOQUE_MINIMO']);
+  await become(7);
+  assert.deepEqual(await types(), ['ESTOQUE_MINIMO']);
+  await become(4);
+  assert.deepEqual(await types(), ['LOTE_VENCIDO', 'LOTE_A_VENCER']);
+  await become(3);
+  assert.deepEqual(await types(), []);
+  await sqlRejects("select erp.estoque_alertas(2,'listar','{}')", 'PT404');
+  await db.exec('reset role; update erp.produto_unidade set estoque_minimo=9 where unidade_id=1');
+  await become(1);
+  assert.deepEqual(await types(), ['LOTE_A_VENCER']);
+}));
+
 test('RF-027 herda prazo, preserva zero e consolida o saldo de um lote em dois locais', async () => actor(1, async () => {
   const p = await create();
   const { dias } = (await db.query(`select array(

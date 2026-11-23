@@ -64,7 +64,7 @@ export function createApp(factory: SessionFactory = createSupabaseSession, stock
           if (request.method === 'GET' || request.method === 'HEAD') return healthController(request);
           return methodNotAllowed('GET, HEAD', request.method === 'HEAD');
         }
-        const stock = /^\/api\/unidades\/([^/]+)\/(estoque\/(?:contexto|saldos|extrato|vencimentos)|produtos-importados(?:\/[^/]+\/concluir)?|produtos(?:\/[^/]+(?:\/(?:vinculo|status))?)?|entradas(?:\/[^/]+\/(?:confirmar|aprovar-divergencia))?)$/.exec(path);
+        const stock = /^\/api\/unidades\/([^/]+)\/(estoque\/(?:contexto|saldos|extrato|vencimentos|alertas)|produtos-importados(?:\/[^/]+\/concluir)?|produtos(?:\/[^/]+(?:\/(?:vinculo|status))?)?|entradas(?:\/[^/]+\/(?:confirmar|aprovar-divergencia))?)$/.exec(path);
         if (stock?.[1] && stock[2]) return await stockController(request, env, stock[1], stock[2], stockFactory);
         const match = /^\/api\/unidades\/([^/]+)\/configuracoes$/.exec(path);
         if (match?.[1]) {

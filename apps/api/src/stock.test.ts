@@ -51,6 +51,7 @@ function fixture(options: { authError?: Error; repositoryError?: Error } = {}) {
     async confirmReceipt(unit, id, confirmation) { collect('confirmReceipt', unit, id, confirmation); return { entrada: { ...receipt, estado: 'CONFIRMADA' } }; },
     async approveReceipt(unit, id, reason) { collect('approveReceipt', unit, id, reason); return { entrada: { ...receipt, divergencia_aprovada: true } }; },
     async balances(unit) { collect('balances', unit); return { saldos: [] }; },
+    async alerts(unit) { collect('alerts', unit); return { unidade_id: unit, alertas: [] }; },
     async expiry(unit) {
       collect('expiry', unit);
       return { unidade_id: unit, data_referencia: '2026-11-23', lotes: [] };
@@ -90,6 +91,16 @@ test('RF-027 exige sessão e consulta apenas a unidade selecionada, sem aceitar 
   assert.equal(response.status, 200);
   assert.equal(response.headers.get('Cache-Control'), 'no-store');
   assert.deepEqual(calls, [{ name: 'expiry', args: ['1'] }]);
+});
+
+test('RF-029 exige sessão e preserva a unidade ao consultar alertas', async () => {
+  const { app, calls } = fixture();
+  assert.equal((await app.fetch(new Request(base + '/estoque/alertas'))).status, 401);
+  assert.equal((await app.fetch(request('/estoque/alertas?perfil=GESTOR_UNIDADE'))).status, 400);
+  const response = await app.fetch(request('/estoque/alertas'));
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get('Cache-Control'), 'no-store');
+  assert.deepEqual(calls, [{ name: 'alerts', args: ['1'] }]);
 });
 
 test('estoque exige Bearer e não consulta dados sem identidade', async () => {
