@@ -15,7 +15,7 @@ export function ReportPreview({ report, onClose }: { report: ConsultationReport;
     <p><strong>Unidade: {report.unit}</strong></p><p className="hint">Gerado em {report.generatedAt} (America/Sao_Paulo)</p><p>{report.scope}</p>
     <p className="hint">{report.rows.length} linhas. Ajuste orientação/escala nas opções de impressão para tabelas largas.</p>
     <div className="table-wrap" tabIndex={0} aria-label="Dados do relatório"><table style={{ minWidth: `${report.headers.length * 110}px` }}><thead><tr>{report.headers.map(header => <th key={header}>{header}</th>)}</tr></thead>
-      <tbody>{report.rows.map((row, index) => <tr key={index}>{row.map((cell, col) => <td key={col}>{cell}</td>)}</tr>)}</tbody></table></div>
+      <tbody>{report.rows.map((row, index) => <tr key={index} className={report.warningRows?.has(index) ? 'error' : undefined}>{row.map((cell, col) => <td key={col}>{cell}</td>)}</tr>)}</tbody></table></div>
     {!report.rows.length && <p>Nenhum registro corresponde à consulta.</p>}
   </dialog></div>, document.body);
 }

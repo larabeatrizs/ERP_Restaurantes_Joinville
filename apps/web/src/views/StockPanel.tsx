@@ -16,7 +16,7 @@ import { WithdrawalPanel } from './WithdrawalPanel.tsx';
 import { HomePanel } from './HomePanel.tsx';
 import { AccountPanel } from './AccountPanel.tsx';
 import { ReportPreview } from './ReportPreview.tsx';
-import { balanceReport, stockExpiryReport, stockValueReport } from '../services/stock-reports.ts';
+import { balanceReport, stockExpiryReport, stockMinimumReport, stockValueReport } from '../services/stock-reports.ts';
 import type { ConsultationReport } from '../services/stock-reports.ts';
 import { StockLedgerPanel } from './StockLedgerPanel.tsx';
 const CategoryPanel = lazy(() => import('./CategoryPanel.tsx').then(module => ({ default: module.CategoryPanel })));
@@ -113,7 +113,7 @@ function Balances({ api, unit, unitName }: { api: StockApi; unit: string; unitNa
   const [error, setError] = useState('');
   const [retry, setRetry] = useState(0);
   const [query, setQuery] = useState('');
-  const [consultation, setConsultation] = useState<'valor' | 'validade'>();
+  const [consultation, setConsultation] = useState<'valor' | 'validade' | 'minimo'>();
   const [reportError, setReportError] = useState('');
   useEffect(() => {
     let active = true; setLoading(true); setError('');
@@ -125,11 +125,16 @@ function Balances({ api, unit, unitName }: { api: StockApi; unit: string; unitNa
     const url = URL.createObjectURL(new Blob([balancesCsv(filtered, unitName)], { type: 'text/csv;charset=utf-8' }));
     const link = document.createElement('a'); link.href = url; link.download = 'saldos.csv'; link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
-  async function openConsultation(kind: 'valor' | 'validade') {
+  async function openConsultation(kind: 'valor' | 'validade' | 'minimo') {
     setConsultation(kind);
     setReportError('');
     try {
-      setReport(kind === 'valor' ? await stockValueReport(api, unit, unitName) : stockExpiryReport(await api.expiry(unit), unitName));
+      const load = {
+        valor: () => stockValueReport(api, unit, unitName),
+        validade: async () => stockExpiryReport(await api.expiry(unit), unitName),
+        minimo: () => stockMinimumReport(api, unit, unitName),
+      };
+      setReport(await load[kind]());
     } catch (reason) {
       setReportError(reason instanceof Error && reason.message && reason.name === 'Error' ? reason.message : stockError(reason));
     } finally {
@@ -148,6 +153,7 @@ function Balances({ api, unit, unitName }: { api: StockApi; unit: string; unitNa
     <div className="actions">
       <button disabled={loading || !!error || !!consultation} onClick={() => void openConsultation('valor')}>{consultation === 'valor' ? 'Consultando valor…' : 'Consultar valor imobilizado'}</button>
       <button disabled={!!consultation} onClick={() => void openConsultation('validade')}>{consultation === 'validade' ? 'Consultando vencimentos…' : 'Consultar vencimentos'}</button>
+      <button disabled={!!consultation} onClick={() => void openConsultation('minimo')}>{consultation === 'minimo' ? 'Consultando mínimo…' : 'Consultar estoque mínimo'}</button>
     </div>
     {!loading && !error && <p className="hint">{filtered.length} de {rows.length} posições da unidade selecionada. O CSV respeita a pesquisa.</p>}
     {loading ? <p role="status">Consultando saldos…</p> : !error && !rows.length ? <p className="empty">Nenhum saldo registrado nesta unidade.</p> : !error && !filtered.length ? <p className="empty">Nenhum saldo corresponde à pesquisa.</p> : !error && <div className="table-wrap" tabIndex={0} aria-label="Saldos por lote e local"><table>
