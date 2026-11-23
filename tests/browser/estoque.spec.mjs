@@ -189,6 +189,24 @@ test('relatório de saldos respeita pesquisa e troca de unidade sem misturar pos
   await expect(dialog).toContainText('1 posições'); await expect(dialog).not.toContainText('Feijão'); const pending=page.waitForEvent('download');await dialog.getByRole('button',{name:'Exportar relatório em CSV'}).click();const csv=await readFile(await(await pending).path(),'utf8');expect(csv).toContain('7,000001');expect(csv).not.toContain('Feijão');
   await page.keyboard.press('Escape');await page.getByRole('combobox',{name:'Unidade',exact:true}).selectOption(otherUnit);await expect(page.getByText('Nenhum saldo registrado nesta unidade.',{exact:true})).toBeVisible();await page.getByRole('button',{name:'Relatório de saldos',exact:true}).click();await expect(page.getByRole('dialog')).toContainText('Unidade: Outra unidade');await expect(page.getByRole('dialog')).not.toContainText('Arroz branco');expect(state.writes).toHaveLength(0);
 });
+test('RF-021 soma posições, destaca igualdade e informa falta de produto sem posição', async ({ page }) => {
+  const balance = { produto_id: productId, produto: product.descricao, unidade_medida: 'kg', lote_id: '20',
+    lote: 'L-1', validade: null, camara_id: '14', local: 'Seco', quantidade: '0.1', valor_unitario: '4' };
+  await setup(page, { products: [{ ...product, estoque_minimo: '0.3' }, { ...product, id: '41', descricao: 'Feijão', estoque_minimo: '2' }],
+    balances: [balance, { ...balance, lote_id: '21', quantidade: '0.2' }] });
+  await navigate(page, 'Saldo');
+  await page.getByRole('button', { name: 'Consultar estoque mínimo' }).click();
+  const dialog = page.getByRole('dialog');
+  await expect(dialog.getByRole('columnheader', { name: 'Falta para o mínimo' })).toBeVisible();
+  const rice = dialog.getByRole('row').filter({ hasText: 'Arroz branco' });
+  await expect(rice).toHaveClass('error');
+  await expect(rice.getByRole('cell').nth(3)).toHaveText('0,3');
+  await expect(rice.getByRole('cell').nth(5)).toHaveText('0');
+  const beans = dialog.getByRole('row').filter({ hasText: 'Feijão' });
+  await expect(beans.getByRole('cell').nth(3)).toHaveText('0');
+  await expect(beans.getByRole('cell').nth(5)).toHaveText('2');
+});
+
 test('RF-027 apresenta validade, situação e valor em risco da unidade ativa', async ({ page }) => {
   const lot = { lote_id: '20', lote: 'L-VENCIDO', produto: product.descricao, validade: '2026-11-22',
     unidade_medida: 'kg', quantidade: '5', valor_unitario: '8', situacao: 'VENCIDO' };

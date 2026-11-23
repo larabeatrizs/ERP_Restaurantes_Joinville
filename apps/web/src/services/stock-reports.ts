@@ -1,10 +1,11 @@
 import { csvDocument, stockTotalCents } from '@erp/contracts';
 import type { ActiveStatus, Product, Receipt, StockBalance, StockExpiry } from '@erp/contracts';
-import { decimalLabel } from './stock-api.ts';
+import { decimalLabel, decimalUnits } from './stock-api.ts';
 import type { StockApi } from './stock-api.ts';
 
 export interface ConsultationReport {
   title: string; unit: string; generatedAt: string; scope: string; headers: string[]; rows: string[][];
+  warningRows?: ReadonlySet<number>;
 }
 const date = (value: string | null) => value ? value.split('-').reverse().join('/') : '';
 const decimal = (value: string | null) => value?.replace('.', ',') ?? '';
@@ -42,6 +43,28 @@ export async function productReport(api: Pick<StockApi, 'products'>, unit: strin
 export function stockValue(rows: Parameters<typeof stockTotalCents>[0]): string {
   const cents = stockTotalCents(rows);
   return decimalLabel(`${cents / 100n}.${String(cents % 100n).padStart(2, '0')}`, 2);
+}
+
+export async function stockMinimumReport(
+  api: Pick<StockApi, 'balances' | 'products'>, unit: string, unitName: string,
+): Promise<ConsultationReport> {
+  const [{ saldos }, products] = await Promise.all([api.balances(unit), reportProducts(api, unit, '', 'ATIVO')]);
+  const sums = new Map<string, bigint>();
+  for (const row of saldos) {
+    sums.set(row.produto_id, (sums.get(row.produto_id) ?? 0n) + decimalUnits(row.quantidade));
+  }
+  const format = (units: bigint) => decimalLabel(`${units / 1000000000000n}.${String(units % 1000000000000n).padStart(12, '0')}`);
+  const warningRows = new Set<number>();
+  const rows = products.map((product, index) => {
+    const current = sums.get(product.id) ?? 0n;
+    const minimum = decimalUnits(product.estoque_minimo);
+    if (current <= minimum) warningRows.add(index);
+    return [product.descricao, product.complemento, product.unidade_sigla, format(current),
+      format(minimum), format(current < minimum ? minimum - current : 0n),
+      current <= minimum ? '⚠ No mínimo ou abaixo' : 'Acima do mínimo'];
+  });
+  return { ...report('Estoque mínimo', unitName, 'Saldo agregado por produto ativo da unidade.',
+    ['Produto', 'Complemento', 'Medida', 'Saldo', 'Mínimo', 'Falta para o mínimo', 'Situação'], rows), warningRows };
 }
 
 export function stockExpiryReport(data: StockExpiry, unitName: string): ConsultationReport {
