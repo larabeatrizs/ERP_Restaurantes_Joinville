@@ -1,6 +1,7 @@
 import { readJson } from './read-json.ts';
 import { hasExactFields, isEntradaInput, isProductLinkInput, isProdutoInput, isRecord, isStockId, isText } from '@erp/contracts';
-import type { ProductQuery, ProductResult } from '@erp/contracts';
+import { isStockLedgerFilters } from '@erp/contracts';
+import type { ProductQuery, ProductResult, StockLedgerQuery } from '@erp/contracts';
 import { ApiError } from '../errors.ts';
 import { StockService } from '../services/stock-service.ts';
 import type { StockRuntimeEnv, StockSessionFactory } from '../repositories/stock-repository.ts';
@@ -26,6 +27,17 @@ function productQuery(url: URL): ProductQuery {
   const offset = url.searchParams.get('offset') ?? '0';
   if (q.length > 200 || !['ATIVO', 'INATIVO'].includes(status) || !/^(0|[1-9]\d{0,9})$/.test(offset) || Number(offset) > 2147483647) throw new ApiError(400, 'INVALID_QUERY', 'Filtros inválidos.');
   return { q, status: status as ProductQuery['status'], offset: Number(offset) };
+}
+
+function ledgerQuery(url: URL): StockLedgerQuery {
+  const error = new ApiError(400, 'INVALID_QUERY', 'Filtros inválidos.');
+  for (const key of url.searchParams.keys()) {
+    if (url.searchParams.getAll(key).length !== 1) throw error;
+  }
+  const { offset = '0', exportar, ...filters } = Object.fromEntries(url.searchParams);
+  if (!isStockLedgerFilters(filters) || !/^(0|[1-9]\d{0,9})$/.test(offset) || Number(offset) > 2147483647
+    || (exportar !== undefined && (exportar !== '1' || offset !== '0'))) throw error;
+  return { ...filters, offset: Number(offset), exportar: exportar === '1' };
 }
 
 export async function stockController(request: Request, env: StockRuntimeEnv, unit: string, route: string, factory: StockSessionFactory): Promise<Response> {
@@ -55,6 +67,7 @@ export async function stockController(request: Request, env: StockRuntimeEnv, un
   }
   if (route === 'estoque/contexto') return reply(await service.context(unit));
   if (route === 'estoque/saldos') return reply(await service.balances(unit));
+  if (route === 'estoque/extrato') return reply(await service.ledger(unit, ledgerQuery(new URL(request.url))));
   if (route === 'produtos' && request.method === 'GET') return reply(await service.products(unit, productQuery(new URL(request.url))));
   if (route === 'entradas' && request.method === 'GET') return reply(await service.receipts(unit));
   const data = await readJson(request);

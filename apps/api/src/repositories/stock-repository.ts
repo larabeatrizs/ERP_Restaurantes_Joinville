@@ -1,4 +1,5 @@
 import type { AvailableProductList, ProductLinkInput, EntradaInput, ProductList, ProductQuery, ProductResult, ProdutoInput, ReceiptList, ReceiptResult, StockBalances, StockContext } from '@erp/contracts';
+import type { StockLedger, StockLedgerQuery } from '@erp/contracts';
 
 export interface StockRuntimeEnv { SUPABASE_URL?: string; SUPABASE_PUBLISHABLE_KEY?: string }
 export interface StockRepository {
@@ -16,6 +17,7 @@ export interface StockRepository {
   confirmReceipt(unit: string, id: string, key: string): Promise<ReceiptResult>;
   approveReceipt(unit: string, id: string, reason: string): Promise<ReceiptResult>;
   balances(unit: string): Promise<StockBalances>;
+  ledger(unit: string, query: StockLedgerQuery): Promise<StockLedger>;
 }
 export interface StockSession { authenticate(): Promise<void>; repository: StockRepository }
 export type StockSessionFactory = (env: StockRuntimeEnv, token: string) => StockSession;

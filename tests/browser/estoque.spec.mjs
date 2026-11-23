@@ -76,6 +76,7 @@ async function setup(page, options = {}) {
       state.categories=state.categories.filter(c=>c.id!==saved.id);state.categories.push(saved);return respond({categoria:saved});
     }
     if (url.pathname.endsWith('/estoque/saldos')) return respond({ saldos: activeUnit === unit ? state.balances : [] });
+    if (url.pathname.endsWith('/estoque/extrato') && options.ledger) return options.ledger(url, route);
     if (url.pathname.endsWith('/produtos/disponiveis')) {
       const filtered=state.available.filter(p=>p.descricao.toLowerCase().includes((url.searchParams.get('q')??'').toLowerCase()));
       const offset=Number(url.searchParams.get('offset')??0);return respond({produtos:filtered.slice(offset,offset+50),total:filtered.length});
@@ -185,6 +186,50 @@ test('relatório de saldos respeita pesquisa e troca de unidade sem misturar pos
   await expect(dialog).toContainText('1 posições'); await expect(dialog).not.toContainText('Feijão'); const pending=page.waitForEvent('download');await dialog.getByRole('button',{name:'Exportar relatório em CSV'}).click();const csv=await readFile(await(await pending).path(),'utf8');expect(csv).toContain('7,000001');expect(csv).not.toContain('Feijão');
   await page.keyboard.press('Escape');await page.getByRole('combobox',{name:'Unidade',exact:true}).selectOption(otherUnit);await expect(page.getByText('Nenhum saldo registrado nesta unidade.',{exact:true})).toBeVisible();await page.getByRole('button',{name:'Relatório de saldos',exact:true}).click();await expect(page.getByRole('dialog')).toContainText('Unidade: Outra unidade');await expect(page.getByRole('dialog')).not.toContainText('Arroz branco');expect(state.writes).toHaveLength(0);
 });
+test('RF-017 exibe saldo após movimento e exporta apenas a seleção aplicada', async ({ page }) => {
+  const balance = { produto_id: productId, produto: 'Arroz branco', unidade_medida: 'kg', lote_id: '20',
+    lote: 'L-TESTE', validade: null, camara_id: '14', local: 'Seco', quantidade: '15', valor_unitario: '4' };
+  let denyExport = true;
+  const exportQueries = [];
+  await setup(page, { balances: [balance], ledger(url, route) {
+    const tipo = url.searchParams.get('tipo');
+    if (url.searchParams.has('exportar')) {
+      exportQueries.push(Object.fromEntries(url.searchParams));
+      if (denyExport) return route.fulfill({ status: 403, json: { error: { code: 'ACCESS_DENIED' } } });
+    }
+    const row = { ocorrido_em: '2026-11-23T12:00:00.000000Z', lote_id: '20', lote: 'L-TESTE', local: '=Seco' };
+    const items = [
+      { ...row, id: '1', tipo: 'ENTRADA', quantidade: '20', saldo_apos: '20' },
+      { ...row, id: '2', tipo: 'REQUISICAO_RAPIDA', quantidade: '-2', saldo_apos: '18' },
+      { ...row, id: '3', tipo: 'REQUISICAO_RAPIDA', quantidade: '-3', saldo_apos: '15' },
+    ].filter(item => !tipo || item.tipo === tipo);
+    return route.fulfill({ json: { unidade_id: unit, produto_id: productId, lote_id: url.searchParams.get('lote_id'),
+      unidade_medida: 'kg', saldo_corrente: '15', total: items.length, itens: items } });
+  } });
+  await navigate(page, 'Saldo');
+  await page.getByRole('button', { name: 'Ver extrato de Arroz branco, lote L-TESTE' }).click();
+  await expect(page.getByRole('columnheader', { name: 'Saldo após movimentação' })).toBeVisible();
+  await expect(page.getByText('Saldo corrente: 15 kg')).toBeVisible();
+  await page.getByLabel('Lote', { exact: true }).selectOption('20');
+  await page.getByLabel('Tipo', { exact: true }).selectOption('REQUISICAO_RAPIDA');
+  await page.getByRole('button', { name: 'Filtrar', exact: true }).click();
+  await expect(page.getByRole('cell', { name: '18', exact: true })).toBeVisible();
+  await expect(page.getByRole('cell', { name: 'Entrada confirmada' })).toHaveCount(0);
+  const downloads = [];
+  page.on('download', download => downloads.push(download));
+  await page.getByRole('button', { name: 'Exportar extrato em CSV' }).click();
+  await expect(page.getByRole('alert')).toBeVisible();
+  expect(downloads).toHaveLength(0);
+  denyExport = false;
+  const pending = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Exportar extrato em CSV' }).click();
+  const csv = await readFile(await (await pending).path(), 'utf8');
+  expect(csv).toContain('"Saldo após movimentação"');
+  expect(csv).toContain(`"'=Seco";"kg";"-2";"18"`);
+  expect(csv).not.toContain('Entrada confirmada');
+  expect(exportQueries).toEqual(Array(2).fill({ produto_id: productId, lote_id: '20', tipo: 'REQUISICAO_RAPIDA', offset: '0', exportar: '1' }));
+});
+
 test('medidas cadastra fator exato em português e reabre null sem alterar precisão',async({page})=>{
  const state=await setup(page);await navigate(page,'Unidades de medida');await page.getByRole('button',{name:'Incluir medida',exact:true}).click();await page.getByLabel('Descrição *',{exact:true}).fill('Miligrama teste');await page.getByLabel('Sigla *',{exact:true}).fill('MG');await page.getByLabel('Fator-base',{exact:true}).fill('0,000001');await page.getByRole('button',{name:'Salvar medida',exact:true}).click();await expect(page.getByText('Medida salva com sucesso.',{exact:true})).toBeVisible();expect(state.writes.at(-1).body.fator_base).toBe('0.000001');expect(state.writes.at(-1).body).not.toHaveProperty('status');
  await page.getByRole('button',{name:'Editar Miligrama teste',exact:true}).click();await page.getByLabel('Fator-base',{exact:true}).fill('');await page.getByRole('button',{name:'Salvar medida',exact:true}).click();await page.getByRole('button',{name:'Visualizar Miligrama teste',exact:true}).click();await expect(page.getByLabel('Fator-base',{exact:true})).toHaveValue('');await expect(page.getByLabel('Sigla *',{exact:true})).toBeDisabled();expect(state.writes.at(-1).body.fator_base).toBeNull();

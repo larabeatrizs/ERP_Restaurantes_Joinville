@@ -18,6 +18,7 @@ import { AccountPanel } from './AccountPanel.tsx';
 import { ReportPreview } from './ReportPreview.tsx';
 import { balanceReport } from '../services/stock-reports.ts';
 import type { ConsultationReport } from '../services/stock-reports.ts';
+import { StockLedgerPanel } from './StockLedgerPanel.tsx';
 const CategoryPanel = lazy(() => import('./CategoryPanel.tsx').then(module => ({ default: module.CategoryPanel })));
 const MeasurePanel = lazy(() => import('./MeasurePanel.tsx').then(module => ({ default: module.MeasurePanel })));
 const SupplierPanel = lazy(() => import('./SupplierPanel.tsx').then(module => ({ default: module.SupplierPanel })));
@@ -105,6 +106,7 @@ export function StockPanel({ api, stock, categories, measures, suppliers, calend
 }
 
 function Balances({ api, unit, unitName }: { api: StockApi; unit: string; unitName: string }) {
+  const [ledgerProduct, setLedgerProduct] = useState<StockBalance>();
   const [report, setReport] = useState<ConsultationReport>();
   const [rows, setRows] = useState<StockBalance[]>([]);
   const [loading, setLoading] = useState(true);
@@ -121,6 +123,9 @@ function Balances({ api, unit, unitName }: { api: StockApi; unit: string; unitNa
     const url = URL.createObjectURL(new Blob([balancesCsv(filtered, unitName)], { type: 'text/csv;charset=utf-8' }));
     const link = document.createElement('a'); link.href = url; link.download = 'saldos.csv'; link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
+  if (ledgerProduct) return <StockLedgerPanel api={api} unit={unit} product={ledgerProduct}
+    positions={rows.filter(row => row.produto_id === ledgerProduct.produto_id)}
+    onClose={() => setLedgerProduct(undefined)} />;
   return <section className="card" aria-label="Consulta de saldo">
     <div className="section-heading"><h2>Posição por lote e local</h2><button disabled={loading} onClick={() => setRetry(value => value + 1)}>Atualizar saldo</button></div>
     {error && <p role="alert" className="notice error">{error}</p>}
@@ -128,10 +133,9 @@ function Balances({ api, unit, unitName }: { api: StockApi; unit: string; unitNa
     <div className="filters"><label className="field">Pesquisar saldos<input value={query} maxLength={200} placeholder="Produto, lote ou local" disabled={loading} onChange={event => setQuery(event.target.value)} /></label><button disabled={loading || !!error || !filtered.length} onClick={exportCsv}>Exportar saldos em CSV</button><button disabled={loading || !!error} onClick={() => setReport(balanceReport(filtered, unitName, query))}>Relatório de saldos</button></div>
     {!loading && !error && <p className="hint">{filtered.length} de {rows.length} posições da unidade selecionada. O CSV respeita a pesquisa.</p>}
     {loading ? <p role="status">Consultando saldos…</p> : !error && !rows.length ? <p className="empty">Nenhum saldo registrado nesta unidade.</p> : !error && !filtered.length ? <p className="empty">Nenhum saldo corresponde à pesquisa.</p> : !error && <div className="table-wrap" tabIndex={0} aria-label="Saldos por lote e local"><table>
-      <thead><tr><th>Produto</th><th>Lote</th><th>Validade</th><th>Local</th><th>Saldo</th><th>Valor unitário</th></tr></thead>
-      <tbody>{filtered.map(row => <tr key={`${row.lote_id}-${row.camara_id}`}><th scope="row">{row.produto}</th><td>{row.lote}</td><td>{dateLabel(row.validade)}</td><td>{row.local}</td><td className="numeric">{decimalLabel(row.quantidade)} {row.unidade_medida}</td><td className="numeric">R$ {decimalLabel(row.valor_unitario, 2)}</td></tr>)}</tbody>
+      <thead><tr><th>Produto</th><th>Lote</th><th>Validade</th><th>Local</th><th>Saldo</th><th>Valor unitário</th><th>Ações</th></tr></thead>
+      <tbody>{filtered.map(row => <tr key={`${row.lote_id}-${row.camara_id}`}><th scope="row">{row.produto}</th><td>{row.lote}</td><td>{dateLabel(row.validade)}</td><td>{row.local}</td><td className="numeric">{decimalLabel(row.quantidade)} {row.unidade_medida}</td><td className="numeric">R$ {decimalLabel(row.valor_unitario, 2)}</td><td><button type="button" aria-label={`Ver extrato de ${row.produto}, lote ${row.lote}`} onClick={() => setLedgerProduct(row)}>Ver extrato</button></td></tr>)}</tbody>
     </table></div>}
-    <p className="hint stock-footnote">Os saldos refletem os recebimentos confirmados. Saídas, perdas e inventário serão disponibilizados nos próximos incrementos.</p>
   </section>;
 }
 

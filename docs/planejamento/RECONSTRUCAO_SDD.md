@@ -2,7 +2,7 @@
 
 **Estado:** roteiro aprovado para planejamento da reconstrução, com metodologia **Spec-Driven Development (SDD)** adotada como **interpretação operacional provisória** da expressão "driven development" informada pela responsável. Se ela se referia a TDD, BDD ou outra prática, a denominação deverá ser ratificada em issue de decisão antes da primeira issue funcional. **TDD e BDD serão técnicas complementares** para verificação do contrato, não substitutos do DRS e da UI.
 
-**Continuidade em 23/11 — RF-017:** a [issue #65](https://github.com/larabeatrizs/ERP_Restaurantes_Joinville/issues/65) acompanha o extrato de movimentação sobre o livro atual. A [revisão da fase B](../fundacao/RF-017-EXTRATO-ESTOQUE.md) registra o contrato dos filtros, os critérios das fases seguintes e a decisão de apresentação do saldo por lançamento.
+**Continuidade em 23/11 — RF-017:** a [issue #65](https://github.com/larabeatrizs/ERP_Restaurantes_Joinville/issues/65) acompanha o extrato de movimentação sobre o livro atual. A responsável confirmou o saldo após cada movimentação. O [registro do recorte](../fundacao/RF-017-EXTRATO-ESTOQUE.md) detalha filtros, cálculo, consulta, exportação e evidências.
 
 ## Princípios inegociáveis
 

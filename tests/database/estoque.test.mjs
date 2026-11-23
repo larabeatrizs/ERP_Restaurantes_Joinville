@@ -399,6 +399,61 @@ async function catalog(action, data, unit = 1, client = db) {
 async function receive(id, extra) { return (await rpc('entrada_criar', receipt(id, extra))).entrada; }
 async function confirm(id, n = 1) { return (await rpc('entrada_confirmar', { id, chave: key(n) })).entrada; }
 
+async function ledger(action, filters, unit = 1) {
+  const result = await db.query('select erp.estoque_extrato($1,$2,$3::jsonb) as result', [unit, action, JSON.stringify(filters)]);
+  return result.rows[0].result;
+}
+
+test('RF-017 saldo corrente e saldo por linha incluem origens ocultas e desempate por ID', async () => actor(1, async () => {
+  await withdrawalSetup();
+  const p = await create();
+  await confirm((await receive(p.id)).id);
+  await withdrawal('registrar', withdrawalInput(p.id, { quantidade: '2' }));
+  await withdrawal('registrar', withdrawalInput(p.id, { quantidade: '3', chave: key(801) }));
+  await become(3);
+  const selection = { produto_id: p.id };
+  const page = await ledger('listar', selection);
+  assert.equal(page.saldo_corrente, '15.000000');
+  assert.deepEqual(page.itens.map(row => [row.quantidade, row.saldo_apos]), [
+    ['20.000000', '20.000000'], ['-2.000000', '18.000000'], ['-3.000000', '15.000000'],
+  ]);
+  assert.equal(new Set(page.itens.map(row => row.ocorrido_em)).size, 1);
+  const filtered = await ledger('exportar', { ...selection, tipo: 'REQUISICAO_RAPIDA', lote_id: page.itens[0].lote_id });
+  assert.deepEqual(filtered.itens, page.itens.slice(1));
+  assert.equal(filtered.saldo_corrente, page.saldo_corrente);
+  const empty = await ledger('listar', { ...selection, data_fim: '2020-01-01' });
+  assert.equal(empty.saldo_corrente, page.saldo_corrente);
+  assert.deepEqual(empty.itens, []);
+  await sqlRejects(`select erp.estoque_extrato(2,'exportar','{"produto_id":"${p.id}"}')`, 'PT404');
+  await sqlRejects(`select erp.estoque_extrato(1,'listar','{"produto_id":"${p.id}","lote_id":"9223372036854775807"}')`, 'PT404');
+  await become(7);
+  await sqlRejects(`select erp.estoque_extrato(1,'listar','{"produto_id":"${p.id}"}')`, 'PT403');
+}));
+
+test('RF-017 separa saldo por lote e aplica a data civil de São Paulo após calcular o acumulado', async () => actor(1, async () => {
+  const p = await create();
+  const e = await receive(p.id, { total_nota: null, itens: [
+    line(p.id, { numero_lote: 'PRIMEIRO', quantidade: '20' }),
+    line(p.id, { numero_lote: 'SEGUNDO', quantidade: '4' }),
+  ] });
+  await confirm(e.id);
+  await db.exec(`reset role;
+    alter table erp.movimento_estoque disable trigger movimento_imutavel;
+    update erp.movimento_estoque m set ocorrido_em = case l.codigo
+      when 'PRIMEIRO' then '2026-11-23 02:59:59+00'::timestamptz else '2026-11-23 03:00:00+00'::timestamptz end
+    from erp.lote l where l.id = m.lote_id;
+    alter table erp.movimento_estoque enable trigger movimento_imutavel;`);
+  await become(3);
+  const filters = { produto_id: p.id, data_inicio: '2026-11-23', data_fim: '2026-11-23' };
+  const all = await ledger('listar', filters);
+  assert.equal(all.total, 1);
+  assert.equal(all.saldo_corrente, '24.000000');
+  assert.equal(all.itens[0].saldo_apos, '24.000000');
+  const onlyLot = await ledger('listar', { ...filters, lote_id: all.itens[0].lote_id });
+  assert.equal(onlyLot.saldo_corrente, '4.000000');
+  assert.equal(onlyLot.itens[0].saldo_apos, '4.000000');
+}));
+
 async function imported(action,data,unit=1){return(await db.query('select erp.produto_importado_operacao($1,$2,$3::jsonb) result',[unit,action,JSON.stringify(data)])).rows[0].result;}
 async function importedSeed(){await db.exec('reset role');const r=await db.query("insert into erp_private.produto_importado(chave,descricao,origens,criado_por) values('arroz importado','Arroz importado','[{\"arquivo\":\"fixture.xlsx\"}]',$1) returning id::text",[uid(1)]);await become(1);return r.rows[0].id;}
 async function importedReject(action,data,code,unit=1){await db.exec('savepoint imported_error');await assert.rejects(()=>imported(action,data,unit),{code});await db.exec('rollback to savepoint imported_error');}

@@ -51,12 +51,32 @@ function fixture(options: { authError?: Error; repositoryError?: Error } = {}) {
     async confirmReceipt(unit, id, confirmation) { collect('confirmReceipt', unit, id, confirmation); return { entrada: { ...receipt, estado: 'CONFIRMADA' } }; },
     async approveReceipt(unit, id, reason) { collect('approveReceipt', unit, id, reason); return { entrada: { ...receipt, divergencia_aprovada: true } }; },
     async balances(unit) { collect('balances', unit); return { saldos: [] }; },
+    async ledger(unit, query) {
+      collect('ledger', unit, query);
+      return { unidade_id: unit, produto_id: query.produto_id, lote_id: query.lote_id ?? null,
+        unidade_medida: 'KG', saldo_corrente: '15', total: 0, itens: [] };
+    },
   };
   return { calls, app: createApp(() => { throw Error('Estoque não deve usar sessão de configurações.'); }, (_env, token) => {
     assert.equal(token, 'sessao-estoque');
     return { repository, async authenticate() { if (options.authError) throw options.authError; } };
   }) };
 }
+
+test('RF-017 autentica, encaminha filtros e rejeita query repetida ou exportação parcial solicitada', async () => {
+  const { app, calls } = fixture();
+  const path = `/estoque/extrato?produto_id=${product.id}`;
+  assert.equal((await app.fetch(new Request(base + path))).status, 401);
+  assert.equal((await app.fetch(request(path + '&produto_id=2'))).status, 400);
+  assert.equal((await app.fetch(request(path + '&exportar=1&offset=50'))).status, 400);
+  const response = await app.fetch(request(path + '&lote_id=7&tipo=REQUISICAO_RAPIDA&exportar=1'));
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get('Cache-Control'), 'no-store');
+  assert.equal((await response.json() as { saldo_corrente: string }).saldo_corrente, '15');
+  assert.deepEqual(calls, [{ name: 'ledger', args: ['1', {
+    produto_id: product.id, lote_id: '7', tipo: 'REQUISICAO_RAPIDA', offset: 0, exportar: true,
+  }] }]);
+});
 
 test('estoque exige Bearer e não consulta dados sem identidade', async () => {
   const { app, calls } = fixture();
