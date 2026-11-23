@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { isImportedProducts } from '@erp/contracts';
 import { isEntradaInput, isEntradaItemInput, isIsoDate, isProdutoInput, isRecord, isStockDecimal, isStockId, isStorageType, isText, productInputFields } from '@erp/contracts';
 import type { CatalogProduct, Product, Receipt, ReceiptItem, StockBalance, StockContext } from '@erp/contracts';
 import type { StockRuntimeEnv, StockSession } from './stock-repository.ts';
@@ -131,6 +132,8 @@ export function createSupabaseStockSession(env: StockRuntimeEnv, token: string, 
       if (error || !data.user || data.user.is_anonymous || data.user.aud !== 'authenticated') throw new ApiError(401, 'UNAUTHORIZED', 'Sessão inválida ou expirada.');
     },
     repository: {
+      async importedProducts(unit,query){const result=await operation(unit,'listar',query,'produto_importado_operacao');if(!isImportedProducts(result))unavailable();return result;},
+      async completeImportedProduct(unit,id,input){const result=await operation(unit,'concluir',{id,produto:input},'produto_importado_operacao');return{produto:product(result.produto)};},
       async context(unit) { return context(await operation(unit, 'contexto', {})); },
       async availableProducts(unit, query) {
         const result = await operation(unit, 'disponiveis', query, 'catalogo_unidade');

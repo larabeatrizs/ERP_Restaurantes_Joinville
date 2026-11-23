@@ -295,6 +295,9 @@ button.confirm-receipt:hover { background: #256530; border-color: #256530; }
   padding: 6px 12px;
   font-size: 12px;
 }
+.import-tabs { margin-bottom: 20px; }
+.import-review { display: flex; align-items: center; gap: 10px; margin-top: 16px; }
+.import-review input[type="checkbox"] { width: 18px; height: 18px; min-height: 18px; padding: 0; flex: 0 0 18px; accent-color: #6f1528; }
 .actions {
   display: flex;
   flex-wrap: wrap;

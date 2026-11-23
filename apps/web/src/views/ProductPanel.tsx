@@ -1,7 +1,7 @@
 import { PaginationArrow } from './PaginationArrow.tsx';
 import { Skeleton } from './Skeleton.tsx';
 import { lazy, Suspense, useEffect, useState } from 'react';
-import type { Product, ProdutoInput } from '@erp/contracts';
+import type { Product, ProdutoInput, ImportedProduct } from '@erp/contracts';
 import { isProdutoInput, productInputFields } from '@erp/contracts';
 import { decimalInput, decimalLabel, stockError } from '../services/stock-api.ts';
 import type { StockPageProps } from './StockPanel.tsx';
@@ -10,6 +10,7 @@ import type { ConsultationReport } from '../services/stock-reports.ts';
 import { ReportPreview } from './ReportPreview.tsx';
 import { RequestError } from '../services/api.ts';
 const ProductLinkPanel = lazy(() => import('./ProductLinkPanel.tsx').then(module => ({ default: module.ProductLinkPanel })));
+const ImportedProductsPanel=lazy(()=>import('./ImportedProductsPanel.tsx').then(module=>({default:module.ImportedProductsPanel})));
 
 const storage = { SECO: 'Seco', RESFRIADO: 'Resfriado', CONGELADO: 'Congelado' };
 function localDraft(product: ProdutoInput): ProdutoInput {
@@ -43,6 +44,9 @@ export function ProductPanel({ api, unit, unitName = '', context, onDirty, onBus
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
   const [linking, setLinking] = useState(false);
+  const [importMode,setImportMode]=useState(false);
+  const [imported,setImported]=useState<ImportedProduct>();
+  const [reviewed,setReviewed]=useState(false);
   const editable = context.capacidades.produto_escrever;
   const lifecycle = context.capacidades.produto_ciclo_vida;
   useEffect(() => { onDirty(dirty); return () => onDirty(false); }, [dirty, onDirty]);
@@ -61,13 +65,14 @@ export function ProductPanel({ api, unit, unitName = '', context, onDirty, onBus
     catch (err) { setError(err instanceof RequestError ? stockError(err) : err instanceof Error ? err.message : stockError(err)); }
     finally { setSaving(false); }
   }
-  function open(product?: Product) {
+  function open(product?: Product, source?: ImportedProduct) {
     if (!discard()) return;
     setSelected(product); setError(''); setMessage(''); setDirty(false);
+    setImported(source);setReviewed(false);
     setDraft(product ? localDraft(product) : {
-      descricao: '', complemento: '', unidade_medida_id: context.medidas[0]?.id ?? '', categoria_id: context.categorias[0]?.id ?? '',
+      descricao: source?.descricao??'', complemento: '', unidade_medida_id: source?'':context.medidas[0]?.id ?? '', categoria_id: source?'':context.categorias[0]?.id ?? '',
       perecivel: false, armazenamento: context.categorias[0]?.armazenamento_padrao ?? 'SECO', fator_correcao: '1', apresentacao_compra: '',
-      quantidade_apresentacao: '1', estoque_minimo: '0', estoque_maximo: null, ponto_reposicao: null, status: 'ATIVO',
+      quantidade_apresentacao: source?'':'1', estoque_minimo: '0', estoque_maximo: null, ponto_reposicao: null, status: 'ATIVO',
     });
   }
   function edit<K extends keyof ProdutoInput>(key: K, value: ProdutoInput[K]) {
@@ -75,13 +80,15 @@ export function ProductPanel({ api, unit, unitName = '', context, onDirty, onBus
   }
   async function save() {
     if (!draft || !editable || saving) return;
+    if(imported&&!reviewed){setError('Confirme a revisão de perecibilidade e armazenamento.');return;}
     let input: ProdutoInput;
     try { input = normalize(draft); } catch (err) { setError((err as Error).message); return; }
     if (selected?.status === 'ATIVO' && input.status === 'INATIVO'
       && !window.confirm('Inativar este produto no catálogo compartilhado de todas as unidades? Ele deixará de aparecer em novos lançamentos e continuará disponível no histórico.')) return;
     setSaving(true); setError(''); setMessage('');
     try {
-      const product = await api.saveProduct(unit, input, selected);
+      const product = imported?await api.completeImportedProduct(unit,imported.id,input):await api.saveProduct(unit, input, selected);
+      setImported(undefined);setImportMode(false);
       setSelected(product); setDraft(localDraft(product)); setDirty(false); setMessage('Produto salvo com sucesso.'); setReload(value => value + 1);
     } catch (err) { setError(stockError(err)); } finally { setSaving(false); }
   }
@@ -107,6 +114,7 @@ export function ProductPanel({ api, unit, unitName = '', context, onDirty, onBus
     {message && <p role="status" className="success">{message}</p>}
     {error && <p role="alert" className="notice error">{error}</p>}
     {draft ? <form onSubmit={event => { event.preventDefault(); void save(); }} aria-label="Cadastro de produto">
+      {imported&&<section className="card"><h2>Completar produto importado</h2><p>Informe os dados de cadastro. A apresentação original é apenas uma referência e não representa saldo.</p>{imported.origens.map((o,i)=><p className="hint" key={i}>{o.aba} · linha {o.linha}{o.apresentacao?` · ${o.apresentacao}`:''}{o.observacao?` · descrição original: ${o.observacao}`:''}</p>)}<label className="import-review"><input type="checkbox" disabled={saving} checked={reviewed} onChange={e=>{setReviewed(e.target.checked);setDirty(true);}}/> Revisei a perecibilidade e o armazenamento deste produto</label></section>}
       <div className="section-heading stock-form-heading"><div><h2>{selected ? editable ? 'Editar produto' : 'Visualizar produto' : 'Novo produto'}</h2><p className="hint">Campos com * são obrigatórios.</p></div><span className="badge">{editable ? 'Edição permitida' : 'Somente leitura'}</span></div>
       <fieldset disabled={saving || !editable}>
         <section className="card stock-fields">
@@ -130,10 +138,11 @@ export function ProductPanel({ api, unit, unitName = '', context, onDirty, onBus
         </section>
       </fieldset>
       <div className="actions footer-actions"><button type="button" disabled={saving} onClick={() => { if (discard()) { setDraft(undefined); setSelected(undefined); setDirty(false); setError(''); setReload(value => value + 1); } }}>Voltar aos produtos</button>
-        <button className="primary" disabled={saving || !editable || !dirty}>{saving ? 'Salvando…' : 'Salvar produto'}</button></div>
+        <button className="primary" disabled={saving || !editable || !dirty || (!!imported&&!reviewed)}>{saving ? 'Salvando…' : 'Salvar produto'}</button></div>
     </form> : <>
       <div className="section-heading"><p className="hint">{editable ? 'Produtos compartilhados; parâmetros de estoque definidos por unidade.' : 'Acesso somente para consulta.'}</p><div className="actions"><button disabled={loading || saving} onClick={() => void generateReport()}>{saving ? 'Gerando relatório…' : 'Relatório de produtos'}</button><button disabled={!editable || saving} onClick={() => { setError(''); setMessage(''); setLinking(true); }}>Vincular produto existente</button><button className="primary" disabled={!editable || saving || !context.medidas.length || !context.categorias.length} onClick={() => open()}>Novo produto</button></div></div>
-      <section className="card">
+      {editable&&<div className="actions import-tabs" aria-label="Visualização de produtos"><button aria-pressed={!importMode} onClick={()=>setImportMode(false)}>Produtos cadastrados</button><button aria-pressed={importMode} onClick={()=>setImportMode(true)}>Importados para completar</button></div>}
+      {importMode&&editable?<Suspense fallback={<Skeleton label="Carregando importação…"/>}><ImportedProductsPanel key={unit} api={api} unit={unit} onOpen={item=>open(undefined,item)}/></Suspense>:<section className="card">
         <form className="stock-filters" aria-label="Filtros de produtos" onSubmit={e => { e.preventDefault(); setQuery(search.trim()); setOffset(0); setReload(value => value + 1); }}>
           <label className="field">Buscar produto<input type="search" maxLength={200} disabled={saving} value={search} onChange={e => setSearch(e.target.value)} /></label>
           <label className="field compact-field">Situação<select disabled={saving} value={status} onChange={e => { setStatus(e.target.value); setOffset(0); }}><option value="ATIVO">Ativos</option><option value="INATIVO">Inativos</option></select></label><button disabled={loading || saving}>Buscar</button>
@@ -147,7 +156,7 @@ export function ProductPanel({ api, unit, unitName = '', context, onDirty, onBus
           </div></td></tr>)}</tbody>
         </table></div> : <p className="empty">Nenhum produto encontrado para esta consulta.</p>}
         <div className="pagination"><p className="hint">{total ? `${offset + 1} a ${Math.min(offset + rows.length, total)} de ${total} produtos` : '0 produtos'}</p><div className="actions"><PaginationArrow direction="previous" disabled={loading || saving || offset === 0} onClick={() => setOffset(value => Math.max(0, value - 50))} /><PaginationArrow direction="next" disabled={loading || saving || offset + rows.length >= total} onClick={() => setOffset(value => value + 50)} /></div></div>
-      </section>
+      </section>}
     </>}
   </>;
 }
