@@ -1,13 +1,9 @@
 import { Skeleton } from './Skeleton.tsx';
 import { useEffect, useState } from 'react';
 import type { StockBalance } from '@erp/contracts';
-import { stockTotalCents } from '@erp/contracts';
-import { StockApi, decimalLabel, decimalUnits } from '../services/stock-api.ts';
+import { StockApi, decimalUnits } from '../services/stock-api.ts';
+import { stockValue } from '../services/stock-reports.ts';
 import type { WorkspacePage } from './Workspace.tsx';
-export function stockValue(rows: StockBalance[]): string {
-  const cents = stockTotalCents(rows);
-  return decimalLabel(`${cents / 100n}.${String(cents % 100n).padStart(2, '0')}`, 2);
-}
 export function HomePanel({ api, unit, name, onNavigate }: { api: StockApi; unit: string; name: string; onNavigate: (page: WorkspacePage) => void }) {
   const [products, setProducts] = useState<number>(), [balances, setBalances] = useState<StockBalance[]>(), [loading, setLoading] = useState(true), [failed, setFailed] = useState(false), [retry, setRetry] = useState(0);
   useEffect(() => {

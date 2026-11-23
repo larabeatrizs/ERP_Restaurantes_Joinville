@@ -1,5 +1,6 @@
-import { csvDocument } from '@erp/contracts';
-import type { Product, Receipt, StockBalance } from '@erp/contracts';
+import { csvDocument, stockTotalCents } from '@erp/contracts';
+import type { ActiveStatus, Product, Receipt, StockBalance } from '@erp/contracts';
+import { decimalLabel } from './stock-api.ts';
 import type { StockApi } from './stock-api.ts';
 
 export interface ConsultationReport {
@@ -13,8 +14,8 @@ function report(title: string, unit: string, scope: string, headers: string[], r
   }).format(new Date()) };
 }
 
-/** Pages use the current session/RLS; no partial report escapes on a failed or inconsistent read. */
-export async function productReport(api: Pick<StockApi, 'products'>, unit: string, unitName: string, query: string, status: string): Promise<ConsultationReport> {
+/** Pages use the current session and fail as a whole on an inconsistent read. */
+async function reportProducts(api: Pick<StockApi, 'products'>, unit: string, query: string, status: string): Promise<Product[]> {
   const rows: Product[] = [];
   const ids = new Set<string>();
   let total: number | undefined;
@@ -28,9 +29,47 @@ export async function productReport(api: Pick<StockApi, 'products'>, unit: strin
       ids.add(row.id); rows.push(row);
     }
   } while (rows.length < total);
+  return rows;
+}
+
+export async function productReport(api: Pick<StockApi, 'products'>, unit: string, unitName: string, query: string, status: string): Promise<ConsultationReport> {
+  const rows = await reportProducts(api, unit, query, status);
   return report('Produtos', unitName, `Busca: ${query || 'todos'} · Situação: ${status === 'ATIVO' ? 'Ativos' : 'Inativos'} · ${rows.length} produtos. Consulta durante a geração; não é fechamento contábil.`,
     ['Produto', 'Complemento', 'Categoria', 'Unidade de medida', 'Armazenamento', 'Apresentação', 'Quantidade da apresentação', 'Estoque mínimo', 'Estoque máximo', 'Ponto de reposição', 'Situação'],
     rows.map(row => [row.descricao, row.complemento, row.categoria_descricao, row.unidade_sigla, row.armazenamento, row.apresentacao_compra, decimal(row.quantidade_apresentacao), decimal(row.estoque_minimo), decimal(row.estoque_maximo), decimal(row.ponto_reposicao), row.status]));
+}
+
+export function stockValue(rows: StockBalance[]): string {
+  const cents = stockTotalCents(rows);
+  return decimalLabel(`${cents / 100n}.${String(cents % 100n).padStart(2, '0')}`, 2);
+}
+
+export async function stockValueReport(
+  api: Pick<StockApi, 'balances' | 'products'>, unit: string, unitName: string,
+): Promise<ConsultationReport> {
+  const { saldos } = await api.balances(unit);
+  const rows = saldos.filter(row => /[1-9]/.test(row.quantidade));
+  const statuses: ActiveStatus[] = ['ATIVO', 'INATIVO'];
+  const catalog = rows.length ? (await Promise.all(statuses.map(status => reportProducts(api, unit, '', status)))).flat() : [];
+  const products = new Map(catalog.map(product => [product.id, product]));
+  const changed = 'O catálogo mudou durante a consulta. Atualize o relatório e tente novamente.';
+  if (products.size !== catalog.length) throw new Error(changed);
+
+  const categories = new Map<string, { name: string; balances: StockBalance[] }>();
+  for (const row of rows) {
+    const product = products.get(row.produto_id);
+    if (!product) throw new Error(changed);
+    const group = categories.get(product.categoria_id) ?? { name: product.categoria_descricao, balances: [] };
+    if (group.name !== product.categoria_descricao) throw new Error(changed);
+    group.balances.push(row);
+    categories.set(product.categoria_id, group);
+  }
+
+  const subtotals = [...categories.values()]
+    .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'))
+    .map(group => [group.name, stockValue(group.balances)]);
+  return report('Valor imobilizado em estoque', unitName, 'Saldo atual de todos os lotes da unidade.',
+    ['Categoria', 'Valor em reais'], [...subtotals, ['Total da unidade', stockValue(rows)]]);
 }
 export function receiptReport(rows: Receipt[], unitName: string): ConsultationReport {
   return report('Recebimentos', unitName, `${rows.length} recebimentos · Até 50 registros mais recentes da consulta carregada; não representa o histórico completo. Cada linha corresponde a um item; rascunhos e itens recusados não creditam estoque.`,
