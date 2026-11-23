@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import { isImportedProducts, isStockLedger } from '@erp/contracts';
+import { isImportedProducts, isStockExpiry, isStockLedger } from '@erp/contracts';
 import { isEntradaInput, isEntradaItemInput, isIsoDate, isProdutoInput, isRecord, isStockDecimal, isStockId, isStorageType, isText, productInputFields } from '@erp/contracts';
 import type { CatalogProduct, Product, Receipt, ReceiptItem, StockBalance, StockContext } from '@erp/contracts';
 import type { StockRuntimeEnv, StockSession } from './stock-repository.ts';
@@ -198,6 +198,11 @@ export function createSupabaseStockSession(env: StockRuntimeEnv, token: string, 
         const { exportar, ...filters } = query;
         const result = await operation(unit, exportar ? 'exportar' : 'listar', filters, 'estoque_extrato');
         if (!isStockLedger(result, unit, query)) unavailable();
+        return result;
+      },
+      async expiry(unit) {
+        const result = await operation(unit, 'listar', {}, 'estoque_vencimentos');
+        if (!isStockExpiry(result, unit)) unavailable();
         return result;
       },
     },

@@ -399,6 +399,39 @@ async function catalog(action, data, unit = 1, client = db) {
 async function receive(id, extra) { return (await rpc('entrada_criar', receipt(id, extra))).entrada; }
 async function confirm(id, n = 1) { return (await rpc('entrada_confirmar', { id, chave: key(n) })).entrada; }
 
+test('RF-027 herda prazo, preserva zero e consolida o saldo de um lote em dois locais', async () => actor(1, async () => {
+  const p = await create();
+  const { dias } = (await db.query(`select array(
+    select to_char((now() at time zone 'America/Sao_Paulo')::date + d, 'YYYY-MM-DD')
+    from unnest(array[-1,0,2,7,8,3]) d) as dias`)).rows[0];
+  const codes = ['VENCIDO', 'HOJE', 'DOIS', 'LIMITE', 'FORA', 'SEM-SALDO', 'SEM-VALIDADE'];
+  await confirm((await receive(p.id, { total_nota: null, itens: codes.map((code, index) =>
+    line(p.id, { numero_lote: code, validade: dias[index] ?? null, quantidade: '5', valor_unitario: '8' })) })).id);
+  await db.exec(`reset role;
+    update erp.saldo_lote_local s set quantidade = case l.codigo when 'VENCIDO' then 2 else 0 end
+      from erp.lote l where l.id = s.lote_id and l.codigo in ('VENCIDO','SEM-SALDO');
+    insert into erp.saldo_lote_local(unidade_id,lote_id,camara_id,quantidade)
+      select 1,id,3,3 from erp.lote where codigo='VENCIDO';`);
+  const expiry = async () => (await db.query("select erp.estoque_vencimentos(1,'listar','{}') as result")).rows[0].result;
+  await become(3);
+  const fallback = await expiry();
+  assert.equal(fallback.data_referencia, dias[1]);
+  assert.deepEqual(fallback.lotes.map(lot => [lot.lote, lot.situacao]), [
+    ['VENCIDO', 'VENCIDO'], ['HOJE', 'A_VENCER'], ['DOIS', 'A_VENCER'], ['LIMITE', 'A_VENCER'],
+  ]);
+  assert.equal(fallback.lotes[0].quantidade, '5.000000');
+  assert.equal(fallback.lotes[0].valor_unitario, '8.000000');
+  await db.exec("reset role; insert into erp.parametro_unidade(unidade_id,modo_saida,dias_alerta_validade,motivo_alteracao) values(1,'POSTERIOR',2,'Teste sintético')");
+  await become(3);
+  assert.deepEqual((await expiry()).lotes.map(lot => lot.lote), ['VENCIDO', 'HOJE', 'DOIS']);
+  await db.exec('reset role; update erp.categoria set dias_alerta_validade=0 where id=1');
+  await become(3);
+  assert.deepEqual((await expiry()).lotes.map(lot => lot.lote), ['VENCIDO', 'HOJE']);
+  await sqlRejects("select erp.estoque_vencimentos(2,'listar','{}')", 'PT404');
+  await become(7);
+  await sqlRejects("select erp.estoque_vencimentos(1,'listar','{}')", 'PT403');
+}));
+
 async function ledger(action, filters, unit = 1) {
   const result = await db.query('select erp.estoque_extrato($1,$2,$3::jsonb) as result', [unit, action, JSON.stringify(filters)]);
   return result.rows[0].result;

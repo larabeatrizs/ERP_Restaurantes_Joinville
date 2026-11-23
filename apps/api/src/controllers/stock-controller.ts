@@ -68,6 +68,10 @@ export async function stockController(request: Request, env: StockRuntimeEnv, un
   if (route === 'estoque/contexto') return reply(await service.context(unit));
   if (route === 'estoque/saldos') return reply(await service.balances(unit));
   if (route === 'estoque/extrato') return reply(await service.ledger(unit, ledgerQuery(new URL(request.url))));
+  if (route === 'estoque/vencimentos') {
+    if (new URL(request.url).search) throw new ApiError(400, 'INVALID_QUERY', 'Filtros inválidos.');
+    return reply(await service.expiry(unit));
+  }
   if (route === 'produtos' && request.method === 'GET') return reply(await service.products(unit, productQuery(new URL(request.url))));
   if (route === 'entradas' && request.method === 'GET') return reply(await service.receipts(unit));
   const data = await readJson(request);

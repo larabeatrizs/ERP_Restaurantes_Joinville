@@ -51,6 +51,10 @@ function fixture(options: { authError?: Error; repositoryError?: Error } = {}) {
     async confirmReceipt(unit, id, confirmation) { collect('confirmReceipt', unit, id, confirmation); return { entrada: { ...receipt, estado: 'CONFIRMADA' } }; },
     async approveReceipt(unit, id, reason) { collect('approveReceipt', unit, id, reason); return { entrada: { ...receipt, divergencia_aprovada: true } }; },
     async balances(unit) { collect('balances', unit); return { saldos: [] }; },
+    async expiry(unit) {
+      collect('expiry', unit);
+      return { unidade_id: unit, data_referencia: '2026-11-23', lotes: [] };
+    },
     async ledger(unit, query) {
       collect('ledger', unit, query);
       return { unidade_id: unit, produto_id: query.produto_id, lote_id: query.lote_id ?? null,
@@ -76,6 +80,16 @@ test('RF-017 autentica, encaminha filtros e rejeita query repetida ou exportaç�
   assert.deepEqual(calls, [{ name: 'ledger', args: ['1', {
     produto_id: product.id, lote_id: '7', tipo: 'REQUISICAO_RAPIDA', offset: 0, exportar: true,
   }] }]);
+});
+
+test('RF-027 exige sessão e consulta apenas a unidade selecionada, sem aceitar filtros', async () => {
+  const { app, calls } = fixture();
+  assert.equal((await app.fetch(new Request(base + '/estoque/vencimentos'))).status, 401);
+  assert.equal((await app.fetch(request('/estoque/vencimentos?dias=40'))).status, 400);
+  const response = await app.fetch(request('/estoque/vencimentos'));
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get('Cache-Control'), 'no-store');
+  assert.deepEqual(calls, [{ name: 'expiry', args: ['1'] }]);
 });
 
 test('estoque exige Bearer e não consulta dados sem identidade', async () => {

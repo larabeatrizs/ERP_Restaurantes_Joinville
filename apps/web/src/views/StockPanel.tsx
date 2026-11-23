@@ -16,7 +16,7 @@ import { WithdrawalPanel } from './WithdrawalPanel.tsx';
 import { HomePanel } from './HomePanel.tsx';
 import { AccountPanel } from './AccountPanel.tsx';
 import { ReportPreview } from './ReportPreview.tsx';
-import { balanceReport, stockValueReport } from '../services/stock-reports.ts';
+import { balanceReport, stockExpiryReport, stockValueReport } from '../services/stock-reports.ts';
 import type { ConsultationReport } from '../services/stock-reports.ts';
 import { StockLedgerPanel } from './StockLedgerPanel.tsx';
 const CategoryPanel = lazy(() => import('./CategoryPanel.tsx').then(module => ({ default: module.CategoryPanel })));
@@ -113,8 +113,8 @@ function Balances({ api, unit, unitName }: { api: StockApi; unit: string; unitNa
   const [error, setError] = useState('');
   const [retry, setRetry] = useState(0);
   const [query, setQuery] = useState('');
-  const [valuing, setValuing] = useState(false);
-  const [valueError, setValueError] = useState('');
+  const [consultation, setConsultation] = useState<'valor' | 'validade'>();
+  const [reportError, setReportError] = useState('');
   useEffect(() => {
     let active = true; setLoading(true); setError('');
     void api.balances(unit).then(data => { if (active) { setRows(data.saldos); setLoading(false); } }).catch(err => { if (active) { setError(stockError(err)); setLoading(false); } });
@@ -125,15 +125,15 @@ function Balances({ api, unit, unitName }: { api: StockApi; unit: string; unitNa
     const url = URL.createObjectURL(new Blob([balancesCsv(filtered, unitName)], { type: 'text/csv;charset=utf-8' }));
     const link = document.createElement('a'); link.href = url; link.download = 'saldos.csv'; link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
-  async function showStockValue() {
-    setValuing(true);
-    setValueError('');
+  async function openConsultation(kind: 'valor' | 'validade') {
+    setConsultation(kind);
+    setReportError('');
     try {
-      setReport(await stockValueReport(api, unit, unitName));
+      setReport(kind === 'valor' ? await stockValueReport(api, unit, unitName) : stockExpiryReport(await api.expiry(unit), unitName));
     } catch (reason) {
-      setValueError(reason instanceof Error && reason.message && reason.name === 'Error' ? reason.message : stockError(reason));
+      setReportError(reason instanceof Error && reason.message && reason.name === 'Error' ? reason.message : stockError(reason));
     } finally {
-      setValuing(false);
+      setConsultation(undefined);
     }
   }
   if (ledgerProduct) return <StockLedgerPanel api={api} unit={unit} product={ledgerProduct}
@@ -142,10 +142,13 @@ function Balances({ api, unit, unitName }: { api: StockApi; unit: string; unitNa
   return <section className="card" aria-label="Consulta de saldo">
     <div className="section-heading"><h2>Posição por lote e local</h2><button disabled={loading} onClick={() => setRetry(value => value + 1)}>Atualizar saldo</button></div>
     {error && <p role="alert" className="notice error">{error}</p>}
-    {valueError && <p role="alert" className="notice error">{valueError}</p>}
+    {reportError && <p role="alert" className="notice error">{reportError}</p>}
     {report && <ReportPreview report={report} onClose={() => setReport(undefined)} />}
     <div className="filters"><label className="field">Pesquisar saldos<input value={query} maxLength={200} placeholder="Produto, lote ou local" disabled={loading} onChange={event => setQuery(event.target.value)} /></label><button disabled={loading || !!error || !filtered.length} onClick={exportCsv}>Exportar saldos em CSV</button><button disabled={loading || !!error} onClick={() => setReport(balanceReport(filtered, unitName, query))}>Relatório de saldos</button></div>
-    <button disabled={loading || !!error || valuing} onClick={() => void showStockValue()}>{valuing ? 'Consultando valor…' : 'Consultar valor imobilizado'}</button>
+    <div className="actions">
+      <button disabled={loading || !!error || !!consultation} onClick={() => void openConsultation('valor')}>{consultation === 'valor' ? 'Consultando valor…' : 'Consultar valor imobilizado'}</button>
+      <button disabled={!!consultation} onClick={() => void openConsultation('validade')}>{consultation === 'validade' ? 'Consultando vencimentos…' : 'Consultar vencimentos'}</button>
+    </div>
     {!loading && !error && <p className="hint">{filtered.length} de {rows.length} posições da unidade selecionada. O CSV respeita a pesquisa.</p>}
     {loading ? <p role="status">Consultando saldos…</p> : !error && !rows.length ? <p className="empty">Nenhum saldo registrado nesta unidade.</p> : !error && !filtered.length ? <p className="empty">Nenhum saldo corresponde à pesquisa.</p> : !error && <div className="table-wrap" tabIndex={0} aria-label="Saldos por lote e local"><table>
       <thead><tr><th>Produto</th><th>Lote</th><th>Validade</th><th>Local</th><th>Saldo</th><th>Valor unitário</th><th>Ações</th></tr></thead>
