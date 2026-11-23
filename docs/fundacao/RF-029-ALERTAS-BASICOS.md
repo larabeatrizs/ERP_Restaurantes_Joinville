@@ -13,3 +13,9 @@
 A View chama `GET /api/unidades/:id/estoque/alertas` autenticado. O Repository usa a RPC de leitura, que verifica o vínculo ativo e resolve o perfil a partir do ator autenticado. Dias de validade seguem categoria, unidade e padrão de sete dias, com data civil de São Paulo. O teste de banco verifica igualdade, prioridade, destinatários, isolamento e resolução. HTTP e navegador exercitam autenticação e troca de unidade com dados sintéticos.
 
 Histórico de notificações, confirmação de leitura, envio por e-mail e demais gatilhos do RF-029 permanecem em recortes futuros.
+
+## Publicação e evidências
+
+23/11/2026. Os quatro jobs da [CI da PR #77](https://github.com/larabeatrizs/ERP_Restaurantes_Joinville/actions/runs/45233903236) passaram. O [staging](https://erp-joinville-staging.erp-restaurantes-joinville.workers.dev) recebeu o commit `b31f096`, versão Cloudflare `6999f506-f0d1-4f26-aaee-37b450e6db66`. O bundle publicado coincidiu com o build local e a rota retornou HTTP 401 sem sessão.
+
+O Supabase registrou a migration como `20261123185937`. O hash do SQL hospedado coincidiu com o arquivo versionado. A RPC foi consultada em contexto autenticado do administrador nas duas unidades e retornou listas vazias. A base manteve zero movimentos e 60 nomes pendentes. Os gatilhos e destinatários foram verificados com dados sintéticos em banco descartável.
