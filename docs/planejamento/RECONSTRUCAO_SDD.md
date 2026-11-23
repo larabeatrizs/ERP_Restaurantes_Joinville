@@ -6,6 +6,8 @@
 
 ## Princípios inegociáveis
 
+**Continuidade da Entrega 1:** [estimativa atual do ERP completo](STATUS-2026-11-23.md) e [recorte de perdas RF-015](../fundacao/RF-015-PERDAS.md).
+
 **Atualização de ambiente — ADR-002:** durante a construção, o staging existente é compartilhado por desenvolvimento e testes. A provisão de ambientes permanentes separados fica congelada em AMB-001 até o encerramento. As referências abaixo a ambiente isolado continuam válidas para laboratórios locais/CI descartáveis; não exigem novo ambiente permanente nem impedem avanço no staging. Separação de ambientes de produção e limpeza/reconstrução são etapas finais planejadas, sem reset imediato.
 1. **Fontes de verdade:** DRS v1.3 + adendo técnico 1.3-A (IDs RF/RN/RNF/CA), Style Guide aprovado, `docs/PROJETO.md` e decisões arquiteturais vigentes. Nenhuma lacuna autoriza inventar regra ou redesenhar UI.
 2. **Código novo, produto preservado:** `legacy/` apenas referência histórica. O banco será **remodelado do zero em migrations versionadas**, frontend/backend/regras de negócio serão **reimplementados** em `apps/*`, sem estender as pastas legadas. Recriação não significa apagar o projeto Supabase existente sem revisão e autorização.
