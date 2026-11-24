@@ -2,7 +2,7 @@ import { PaginationArrow } from './PaginationArrow.tsx';
 import { Skeleton } from './Skeleton.tsx';
 import { useEffect, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
-import { adminProfileLabels as profiles, validateAdminUserSave } from '@erp/contracts';
+import { adminProfileLabels as profiles, validateAdminUserCreation } from '@erp/contracts';
 import type { AdminUsersSnapshot } from '@erp/contracts';
 import { RequestError, SettingsApi } from '../services/api.ts';
 import { AdminUserReportError, adminUserReport, downloadAdminUserReport } from '../services/admin-user-report.ts';
@@ -25,13 +25,18 @@ export function UsersPanel({ api, unit, onDirty, onBusy }: { api: SettingsApi; u
   const [exporting,setExporting]=useState(false);
   const [editing,setEditing]=useState<string>();
   const [situation,setSituation]=useState<string>();
+  const [selectedUnits, setSelectedUnits] = useState<string[]>([]);
+  const [selectedProfile, setSelectedProfile] = useState('ESTOQUISTA');
   const form=useRef<HTMLFormElement>(null);
   useEffect(()=>{let active=true;setLoading(true);setError('');void api.adminUsers(query,offset).then(next=>{if(active){setData(next);setLoading(false);}}).catch(e=>{if(active){setError(message(e));setLoading(false);}});return()=>{active=false;};},[api,query,offset,retry]);
   useEffect(()=>{onBusy(saving);},[saving,onBusy]);
   useEffect(()=>{if(creating)form.current?.querySelector('input')?.focus();},[creating]);
   async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();if(saving)return;const fields=new FormData(event.currentTarget);
-    const result=validateAdminUserSave({login:fields.get('login'),nome:fields.get('nome'),email:fields.get('email'),perfil:fields.get('perfil'),unidades:fields.getAll('unidades'),status:'ATIVO',revisao:null,motivo:fields.get('motivo')});
+    const acessos_periodo = selectedUnits.map(unidade_id => ({
+      unidade_id, fechar: fields.has(`fechar-${unidade_id}`), reabrir: fields.has(`reabrir-${unidade_id}`),
+    }));
+    const result=validateAdminUserCreation({login:fields.get('login'),nome:fields.get('nome'),email:fields.get('email'),perfil:fields.get('perfil'),unidades:fields.getAll('unidades'),status:'ATIVO',revisao:null,motivo:fields.get('motivo'),acessos_periodo});
     if(!result.ok){setError(result.message);if(result.field!=='formulario')form.current?.querySelector<HTMLElement>(`[name="${result.field}"]`)?.focus();return;}
     setSaving(true);setError('');setNotice('');
     try {const created=await api.createUser(result.value);setAccess(created.acesso??'');setNotice(created.criado?'Usuário incluído. Entregue o link para a pessoa definir a senha.':'Este cadastro já foi concluído. Nenhuma conta ou senha foi recriada.');setCreating(false);onDirty(!!created.acesso);setRetry(v=>v+1);}
@@ -48,14 +53,23 @@ export function UsersPanel({ api, unit, onDirty, onBusy }: { api: SettingsApi; u
     {data&&<>
       {situation&&<UserStatusPanel key={situation} api={api} id={situation} onDirty={onDirty} onBusy={setSaving} onClose={()=>setSituation(undefined)} onSaved={()=>{setSituation(undefined);setNotice('Situação atualizada. O acesso será conferido nas próximas operações.');setRetry(value=>value+1);}} />}
       {editing&&<UserEditPanel key={editing} api={api} id={editing} options={data} onDirty={onDirty} onBusy={setSaving} onClose={()=>setEditing(undefined)} onSaved={()=>{setEditing(undefined);setNotice('Cadastro atualizado. As permissões serão verificadas nas próximas chamadas às rotinas.');setRetry(value=>value+1);}} />}
-      {!creating&&!editing&&!situation&&data.pode_criar&&<button className="primary" disabled={loading||saving} onClick={()=>{if(access&&!window.confirm('O link anterior já foi entregue? Ao continuar ele sairá desta tela.'))return;setAccess('');setError('');setNotice('');setCreating(true);onDirty(false);}}>Novo usuário</button>}
+      {!creating&&!editing&&!situation&&data.pode_criar&&<button className="primary" disabled={loading||saving} onClick={()=>{if(access&&!window.confirm('O link anterior já foi entregue? Ao continuar ele sairá desta tela.'))return;setAccess('');setError('');setNotice('');setSelectedUnits(data.unidades.some(item=>item.id===unit)?[unit]:[]);setSelectedProfile(data.perfis.includes('ESTOQUISTA')?'ESTOQUISTA':data.perfis[0]??'');setCreating(true);onDirty(false);}}>Novo usuário</button>}
       {creating&&<form ref={form} className="card user-form" onChange={()=>onDirty(true)} onSubmit={event=>void save(event)}><h2>Novo usuário</h2><p>Preencha a identificação e selecione as unidades permitidas. A pessoa define a própria senha pelo link de primeiro acesso.</p>
         <fieldset disabled={saving} className="user-fields"><div className="form-grid">
           <div className="field"><label htmlFor="user-login">Nome de login *</label><input id="user-login" name="login" required minLength={3} maxLength={40} autoComplete="off" autoCapitalize="none" spellCheck={false} aria-describedby="user-login-hint"/><span className="hint" id="user-login-hint">Sem acentos ou espaços; pode usar ponto, hífen e sublinhado.</span></div>
           <label className="field">Nome de identificação *<input name="nome" required maxLength={200} autoComplete="name"/></label>
           <label className="field">Email *<input name="email" type="email" required maxLength={254} autoComplete="email"/></label>
-          <div className="field"><label htmlFor="user-profile">Perfil *</label><select id="user-profile" name="perfil" required defaultValue="ESTOQUISTA">{data.perfis.map(p=><option key={p} value={p}>{profiles[p]}</option>)}</select></div>
-        </div><fieldset className="user-units"><legend>Unidades permitidas *</legend>{data.unidades.map(u=><label key={u.id}><input name="unidades" type="checkbox" value={u.id} defaultChecked={u.id===unit}/>{u.codigo} — {u.nome}</label>)}</fieldset>
+          <div className="field"><label htmlFor="user-profile">Perfil *</label><select id="user-profile" name="perfil" required value={selectedProfile} onChange={event=>setSelectedProfile(event.target.value)}>{data.perfis.map(p=><option key={p} value={p}>{profiles[p]}</option>)}</select></div>
+        </div><fieldset className="user-units"><legend>Unidades permitidas *</legend>{data.unidades.map(u=><label key={u.id}><input name="unidades" type="checkbox" value={u.id} checked={selectedUnits.includes(u.id)} onChange={event=>{
+          const checked=event.target.checked;setSelectedUnits(previous=>checked?[...previous,u.id]:previous.filter(id=>id!==u.id));
+        }}/>{u.codigo} — {u.nome}</label>)}</fieldset>
+          {!!selectedUnits.length && <fieldset className="user-units"><legend>Acessos ao período de estoque</legend>
+            {data.unidades.filter(u=>selectedUnits.includes(u.id)).map(u=><div key={u.id} className="user-units">
+              <strong>{u.nome}</strong>
+              <label><input type="checkbox" name={`fechar-${u.id}`}/>Fechar mês de estoque em {u.nome}</label>
+              {selectedProfile==='GESTOR_CENTRAL' && <label><input type="checkbox" name={`reabrir-${u.id}`}/>Reabrir mês de estoque em {u.nome}</label>}
+            </div>)}
+          </fieldset>}
           <label className="field">Motivo do cadastro *<textarea name="motivo" required minLength={3} maxLength={500}/></label>
           <div className="actions"><button className="primary" type="submit">{saving?'Incluindo usuário…':'Incluir usuário'}</button><button type="button" onClick={()=>{if(!window.confirm('Cancelar este cadastro? Os campos preenchidos serão descartados.'))return;setCreating(false);onDirty(false);setError('');}}>Cancelar</button></div>
         </fieldset></form>}

@@ -59,6 +59,17 @@ test('usuários: administrador inclui com filiais e recebe link protegido; tabel
  for(const width of [360,1280]){await page.setViewportSize({width,height:900});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);await page.screenshot({path:test.info().outputPath(`usuarios-${width}.png`),fullPage:true});}
  page.once('dialog',dialog=>dialog.accept());await page.getByRole('button',{name:'Reemitir primeiro acesso para Pessoa sintética',exact:true}).click();await expect(page.getByLabel('Link de primeiro acesso',{exact:true})).toHaveValue(/token-reemitido/);expect(state.reissues).toHaveLength(1);
 });
+test('RF-008 seleciona acessos de estoque somente para a unidade marcada', async ({ page }) => {
+  const state = await setup(page);
+  await fill(page);
+  await expect(page.getByRole('checkbox', { name: 'Fechar mês de estoque em Unidade A' })).toHaveCount(0);
+  await expect(page.getByRole('checkbox', { name: 'Reabrir mês de estoque em Unidade B' })).toHaveCount(0);
+  await page.getByRole('checkbox', { name: 'Fechar mês de estoque em Unidade B' }).check();
+  await page.getByRole('button', { name: 'Incluir usuário', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Primeiro acesso', exact: true })).toBeVisible();
+  expect(state.submissions[0].acessos_periodo).toEqual([{ unidade_id: '2', fechar: true, reabrir: false }]);
+});
+
 test('usuários: conflito preserva formulário e permissão somente de consulta não oferece inclusão',async({page})=>{
  await setup(page,{conflict:true});await fill(page);await page.getByRole('button',{name:'Incluir usuário',exact:true}).click();await expect(page.getByRole('alert')).toContainText('já cadastrado');await expect(page.getByLabel('Nome de identificação *',{exact:true})).toHaveValue(' Pessoa sintética ');
 });

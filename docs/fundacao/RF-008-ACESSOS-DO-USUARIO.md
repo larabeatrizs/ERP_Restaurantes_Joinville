@@ -8,4 +8,10 @@
 - O [contrato compartilhado](../../packages/contracts/src/user-stock-period-access.ts) valida a seleção por unidade. Rejeita duplicidade, unidade fora dos vínculos escolhidos e reabertura para outros perfis. RN-012 continua regendo a relação entre perfil, unidade e operação.
 - Na integração, o Controller valida o pedido do Configurador. O serviço de identidade aplica a autorização administrativa. A persistência privada registra a seleção com auditoria e a operação de fechamento ou reabertura revalida o acesso e o vínculo ativo sob a trava RN-027.
 
-Este recorte entrega o contrato de seleção e seus testes. Formulário, persistência, edição de acessos e execução do fechamento continuam na [issue #84](https://github.com/larabeatrizs/ERP_Restaurantes_Joinville/issues/84) e na [issue #81](https://github.com/larabeatrizs/ERP_Restaurantes_Joinville/issues/81). A evolução dos demais acessos exige revisar cada operação e a transição de contas existentes.
+## Cadastro e persistência
+
+O formulário mostra escolhas para as unidades marcadas. Desmarcar a unidade remove suas escolhas do formulário. Mudar para um perfil diferente de gestor central remove a seleção de reabertura. A carga de criação passa pelo validador do serviço de identidade antes de qualquer chamada de provisionamento Auth. Uma seleção sem opções marcadas conserva o payload anterior, inclusive para retomadas de cadastro.
+
+O pedido normalizado integra a intenção de provisionamento. A conclusão grava os acessos em tabela privada com RLS e registra a seleção no evento CRIAR. A validação do banco e a gravação participam da mesma transação da criação do usuário no domínio. Remover o vínculo apaga o acesso daquela unidade, e a edição para outro perfil revoga sua reabertura.
+
+A edição explícita de acessos e a aplicação destas permissões nas operações continuam nas issues #84 e #81. A evolução dos demais acessos exige revisar cada operação e a transição de contas existentes.

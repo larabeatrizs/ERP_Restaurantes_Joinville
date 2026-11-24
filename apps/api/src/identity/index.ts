@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import { hasExactFields, isAdminUserDetail, isAdminUserSituation, isRecord, normalizeLogin, validPassword, validateAdminUserEdit, validateAdminUserSave, validateAdminUserSituation } from '@erp/contracts';
+import { hasExactFields, isAdminUserDetail, isAdminUserSituation, isRecord, normalizeLogin, validPassword, validateAdminUserCreation, validateAdminUserEdit, validateAdminUserSituation } from '@erp/contracts';
 
 export interface IdentityEnv {
   SUPABASE_URL: string; SUPABASE_PUBLISHABLE_KEY: string; SUPABASE_ADMIN_KEY: string;
@@ -94,7 +94,7 @@ export function createIdentityApp(fetcher: typeof fetch = fetch) {
         return Response.json({ ...snapshot, usuarios: users, pode_criar: snapshot.pode_criar === true && manualAllowed }, { headers });
       }
       if (!manualAllowed) throw new Problem(503);
-      const validated = validateAdminUserSave(await body());
+      const validated = validateAdminUserCreation(await body());
       if (!validated.ok || validated.value.revisao !== null || validated.value.status !== 'ATIVO') throw new Problem(422);
       const input = validated.value;
       if (syntheticOnly && !/^adm003-[^@]+@example\.invalid$/.test(input.email)) throw new Problem(403);
