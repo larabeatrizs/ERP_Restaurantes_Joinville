@@ -15,3 +15,9 @@ O formulário mostra escolhas para as unidades marcadas. Desmarcar a unidade rem
 O pedido normalizado integra a intenção de provisionamento. A conclusão grava os acessos em tabela privada com RLS e registra a seleção no evento CRIAR. A validação do banco e a gravação participam da mesma transação da criação do usuário no domínio. Remover o vínculo apaga o acesso daquela unidade, e a edição para outro perfil revoga sua reabertura.
 
 A edição explícita de acessos e a aplicação destas permissões nas operações continuam nas issues #84 e #81. A evolução dos demais acessos exige revisar cada operação e a transição de contas existentes.
+
+## Publicação no staging
+
+24/11/2026. Os quatro jobs da [CI da PR #86](https://github.com/larabeatrizs/ERP_Restaurantes_Joinville/actions/runs/45404043770) passaram. A versão publicada do [Configurador](https://erp-joinville-configurador.erp-restaurantes-joinville.workers.dev) é `1659f227-b863-4671-9ccc-be11a9863184` e a do serviço de identidade é `22ece5c1-9fac-4b30-92d2-ecd68d7fb883`, ambas a partir do commit `75f8f38`.
+
+As migrations `20261124135239` (trava mensal) e `20261124135240` (acessos) foram aplicadas na ordem e conferidas por hash. O bundle hospedado contém os campos do formulário e coincide com o build local. Listar e cadastrar usuários sem sessão retornou 401. A consulta administrativa em leitura confirmou que o administrador continua habilitado a criar usuários para duas unidades. A base preservou uma conta Auth, dois vínculos de unidade, zero movimentos e zero seleções de acesso ao período. Os testes de criação e gravação usaram dados sintéticos em ambiente descartável.
