@@ -26,4 +26,4 @@ Os testes comprovam que a confirmação de um rascunho e uma nova retirada falha
 
 A responsável confirmou que a unidade deve resolver recebimentos em rascunho e perdas aguardando aprovação na competência antes de fechar. A transição de fechamento verifica os recebimentos em rascunho dentro da trava exclusiva e antes de registrar a mudança. A criação de um rascunho consulta a guarda mensal antes de gravar. Assim, uma criação concorrente espera pelo fechamento ou termina antes da consulta de pendências.
 
-O teste local cobre rascunho da competência, rascunho de outro mês, fechamento após confirmação e recusa de novo rascunho. A checagem de perdas aguardando aprovação depende da implementação do RF-015. A função de fechamento permanece privada.
+O teste local cobre rascunho da competência, rascunho de outro mês, fechamento após confirmação e recusa de novo rascunho. O [registro pendente RF-015](RF-015-PERDAS.md) acrescenta a checagem de perdas aguardando aprovação sob a mesma trava. A função de fechamento permanece privada.

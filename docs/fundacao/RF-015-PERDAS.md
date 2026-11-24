@@ -15,3 +15,11 @@ O primeiro recorte é uma função de valoração e validação de entrada, sem 
 O contrato compartilhado passou a avaliar uma revisão usando fatos carregados pelo servidor. A avaliação exige vínculo ativo na unidade, nutricionista ou gestor substituto configurado, autor diferente do revisor (RN-009) e perda pendente. Uma rejeição produz somente o estado REJEITADA. Uma aprovação requer período aberto e saldo suficiente no lote/local e devolve a quantidade e o custo a registrar na baixa. Os testes cobrem aprovação, rejeição e negações por autoria, perfil, unidade, estado, período e saldo.
 
 Na transação, o servidor deve resolver perfil, configuração de substituição, estado do período, documento e saldo persistido. Adquirir as travas na ordem [período/unidade → documento → saldo](../dados/TRANSACOES_ESTOQUE.md). A função de contrato avalia um snapshot. A idempotência do comando e a persistência da baixa são responsabilidades da C2. O [fechamento RN-027](https://github.com/larabeatrizs/ERP_Restaurantes_Joinville/issues/81) acompanha o pré-requisito que impede baixas em competência fechada. O contrato vigente permanece restrito à política confirmada de Bucarein.
+
+## Registro pendente interno
+
+A migration adiciona catálogo privado de motivos e registro por lote, local e competência. A função interna modela o cenário do estoquista de Bucarein previsto no CA-022. Valida vínculo ativo, competência aberta, motivo ativo sem exigência de anexo e saldo suficiente. Persiste o custo histórico unitário e o produto exato da quantidade pelo custo. O estado inicial é PENDENTE.
+
+O comando aceita reenvio idêntico pela mesma chave e recusa a mesma chave com outros dados. Registro e auditoria são atômicos, com saldo e livro inalterados. O fechamento consulta as perdas pendentes sob a trava mensal. A migration deixa o catálogo sem dados iniciais. A disponibilidade operacional depende da configuração de motivos e permissões no Configurador e da implementação de aprovação, rejeição, baixa e anexos.
+
+O teste descartável registra 5 kg a R$ 8,00 com prejuízo de R$ 40,00, confirma reenvio sem duplicação, recusa saldo insuficiente e motivo que exige anexo e demonstra o bloqueio do fechamento pela perda pendente.
