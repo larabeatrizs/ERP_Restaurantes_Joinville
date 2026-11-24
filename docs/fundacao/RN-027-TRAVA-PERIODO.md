@@ -8,10 +8,16 @@ Para gravar na transação de negócio, a origem deve chamar a guarda antes de a
 
 No teste isolado, mês sem evento aceita, fechamento bloqueia, mês seguinte segue disponível e reabertura libera. Usuários autenticados comuns não executam a guarda diretamente. O teste nativo usa duas conexões para comprovar que a primeira verificação de um lançamento aguarda o fechamento e lê o estado após o commit.
 
-A guarda é interna e as origens vigentes ainda não a chamam. As próximas etapas são as operações de fechamento e reabertura, a integração por competência e a baixa de perdas. Em 24/11, a responsável definiu que o acesso ao fechamento será escolhido por pessoa e unidade no [cadastro de usuários do Configurador](RF-008-ACESSOS-DO-USUARIO.md). A reabertura é do gestor central conforme RN-027. O tratamento de documentos pendentes permanece em revisão.
+A guarda é interna. Em 24/11, a responsável definiu que o acesso ao fechamento será escolhido por pessoa e unidade no [cadastro de usuários do Configurador](RF-008-ACESSOS-DO-USUARIO.md). A reabertura é do gestor central conforme RN-027. O tratamento de documentos pendentes permanece em revisão.
 
 ## Transição interna do período
 
 A função privada de transição aplica os acessos cadastrados por pessoa e unidade. Revalida o vínculo, a concessão e o perfil sob as travas de edição administrativa e de competência. Fechar requer a concessão de fechamento. Reabrir requer a concessão de reabertura e o perfil atual de gestor central. A revisão é o ID do último evento observado, ou nula no primeiro fechamento. Revisão antiga ou estado incompatível retorna conflito, sem evento adicional. Cada transição executada acrescenta ator, estado, motivo e instante à trilha.
 
 O teste descartável exercita fechamento, reabertura, negações e auditoria. No teste PostgreSQL com duas conexões, o primeiro fechamento usa a função de transição e bloqueia a consulta concorrente do lançamento até o commit. A operação segue privada até as origens consumirem a guarda, com as respectivas datas de competência e o tratamento de pendências definidos.
+
+## Integração das primeiras origens
+
+A confirmação de recebimento (RF-012) verifica o período da data registrada no documento. A requisição rápida (RN-034) captura a data civil de São Paulo depois de resolver o reenvio, antes das travas de produto e saldo, e usa a mesma data na guarda e no documento. A guarda é adquirida antes de alterar o documento ou movimentar o saldo. As travas já usadas para comandos idempotentes e para a unidade são preservadas. A transição interna do período usa a chave de competência em modo exclusivo.
+
+Os testes comprovam que a confirmação de um rascunho e uma nova retirada falham com a competência fechada. Reenvios bem-sucedidos devolvem o resultado anterior e o livro conserva os dois movimentos originais. O fluxo de perdas RF-015 e a interface de fechamento seguem dependentes do tratamento operacional de pendências.

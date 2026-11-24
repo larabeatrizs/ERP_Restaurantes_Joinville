@@ -419,6 +419,32 @@ test('RN-027 mês sem registro abre, fechamento bloqueia a competência e reaber
   await sqlRejects('delete from erp_private.estoque_periodo_evento');
 }));
 
+test('RN-027 impede novos créditos e débitos em mês fechado e preserva reenvios concluídos', async () => actor(1, async () => {
+  await withdrawalSetup();
+  const p = await create();
+  const first = await receive(p.id);
+  const confirmed = await confirm(first.id);
+  const draft = await receive(p.id, { numero_nf: 'NF-SINTETICA-002' });
+  const withdrawalBody = withdrawalInput(p.id);
+  const recorded = await withdrawal('registrar', withdrawalBody);
+
+  await db.exec('reset role');
+  await db.query(`insert into erp_private.estoque_periodo_evento(unidade_id,mes,estado,ator_id,motivo)
+    select 1, mes, 'FECHADO', $1, 'Fechamento sintético'
+    from (select date_trunc('month',data_entrada)::date as mes from erp.entrada where id=$2
+      union select date_trunc('month',data_movimento)::date from erp.requisicao_rapida where unidade_id=1) meses`,
+    [uid(4), first.id]);
+  await become(1);
+
+  assert.deepEqual(await confirm(first.id), confirmed);
+  assert.deepEqual(await withdrawal('registrar', withdrawalBody), recorded);
+  await rejects('entrada_confirmar', { id: draft.id, chave: key(2) }, 'PT409');
+  await withdrawalReject('registrar', { ...withdrawalBody, chave: key(802) }, 'PT409');
+  await db.exec('reset role');
+  assert.equal((await db.query('select count(*)::int as n from erp.movimento_estoque')).rows[0].n, 2);
+  assert.equal((await db.query('select estado from erp.entrada where id=$1', [draft.id])).rows[0].estado, 'RASCUNHO');
+}));
+
 test('RN-027 exige acesso explícito e preserva a trilha de fechamento e reabertura', async () => actor(4, async () => {
   const closeMonth = "select erp_private.estoque_periodo_transicionar(1,'2026-11-01','FECHADO',null,'Fechamento sintético') id";
   await sqlRejects(closeMonth);
