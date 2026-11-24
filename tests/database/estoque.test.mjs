@@ -419,6 +419,31 @@ test('RN-027 mês sem registro abre, fechamento bloqueia a competência e reaber
   await sqlRejects('delete from erp_private.estoque_periodo_evento');
 }));
 
+test('RN-027 exige acesso explícito e preserva a trilha de fechamento e reabertura', async () => actor(4, async () => {
+  const closeMonth = "select erp_private.estoque_periodo_transicionar(1,'2026-11-01','FECHADO',null,'Fechamento sintético') id";
+  await sqlRejects(closeMonth);
+  await db.exec('set local role erp_stock_writer');
+  await sqlRejects(closeMonth, 'PT403');
+  await db.exec('reset role');
+  await db.query("insert into erp_private.usuario_acesso_periodo values($1,1,true,true)", [uid(4)]);
+  await db.exec('set local role erp_stock_writer');
+  const closed = (await db.query(closeMonth)).rows[0].id;
+  await sqlRejects(closeMonth, 'PT409');
+  await sqlRejects(`select erp_private.estoque_periodo_transicionar(1,'2026-11-01','REABERTO',${closed},'Reabertura sintética')`, 'PT403');
+  await sqlRejects("select erp_private.estoque_periodo_transicionar(2,'2026-11-01','FECHADO',null,'Outra unidade')", 'PT404');
+  await db.exec("reset role; insert into erp.perfil(codigo) values('GESTOR_CENTRAL')");
+  await db.query("update erp.usuario set perfil_id=(select id from erp.perfil where codigo='GESTOR_CENTRAL') where id=$1", [uid(4)]);
+  await db.exec('set local role erp_stock_writer');
+  await db.query("select erp_private.estoque_periodo_transicionar(1,'2026-11-01','REABERTO',$1,'Reabertura sintética')", [closed]);
+  await db.exec("select erp_private.estoque_periodo_exigir_aberto(1,'2026-11-12')");
+  await db.exec('reset role');
+  const result = await db.query('select estado,ator_id,motivo from erp_private.estoque_periodo_evento order by id');
+  assert.deepEqual(result.rows, [
+    { estado: 'FECHADO', ator_id: uid(4), motivo: 'Fechamento sintético' },
+    { estado: 'REABERTO', ator_id: uid(4), motivo: 'Reabertura sintética' },
+  ]);
+}));
+
 test('RN-027 primeira gravação aguarda o fechamento e lê o estado após a trava', {
   skip: !process.env.DATABASE_STOCK_TEST_URL, timeout: 15000,
 }, async () => {
@@ -428,9 +453,10 @@ test('RN-027 primeira gravação aguarda o fechamento e lê o estado após a tra
   let pending;
   try {
     await closer.query('begin');
-    await closer.query("select pg_advisory_xact_lock(erp_private.estoque_periodo_chave(1,'2098-07-01'))");
-    await closer.query(`insert into erp_private.estoque_periodo_evento(unidade_id,mes,estado,ator_id,motivo)
-      values(1,'2098-07-01','FECHADO',$1,'Fechamento concorrente sintético')`, [uid(4)]);
+    await closer.query("insert into erp_private.usuario_acesso_periodo values($1,1,true,false)", [uid(4)]);
+    await closer.query("select set_config('request.jwt.claim.sub',$1,true)", [uid(4)]);
+    await closer.query('set local role erp_stock_writer');
+    await closer.query("select erp_private.estoque_periodo_transicionar(1,'2098-07-01','FECHADO',null,'Fechamento concorrente sintético')");
     await writer.query('begin');
     await writer.query("select set_config('request.jwt.claim.sub',$1,true)", [uid(1)]);
     await writer.query('set local role erp_stock_writer');
@@ -450,6 +476,7 @@ test('RN-027 primeira gravação aguarda o fechamento e lê o estado após a tra
     if (pending) await pending;
     await writer.query('rollback');
     await closer.query("delete from erp_private.estoque_periodo_evento where unidade_id=1 and mes='2098-07-01'");
+    await closer.query('delete from erp_private.usuario_acesso_periodo where usuario_id=$1 and unidade_id=1', [uid(4)]);
     await Promise.all([closer.end(), writer.end()]);
   }
 });
