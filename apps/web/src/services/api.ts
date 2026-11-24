@@ -10,7 +10,7 @@ import type {
   UnitSummary,
 } from '@erp/contracts';
 import { isAdminUserDetail, isAdminUsersSnapshot, isAdminUserSituation } from '@erp/contracts';
-import type { AdminUserDetail, AdminUserEdit, AdminUsersSnapshot, AdminUserSave, AdminUserSituation, AdminUserSituationChange } from '@erp/contracts';
+import type { AdminUserCreation, AdminUserDetail, AdminUserEdit, AdminUsersSnapshot, AdminUserSituation, AdminUserSituationChange } from '@erp/contracts';
 export class RequestError extends Error {
   constructor(public status: number) {
     super('Não foi possível concluir a solicitação.');
@@ -49,7 +49,7 @@ export class SettingsApi {
     const data: unknown = await (await this.request(`/admin/usuarios?${new URLSearchParams({ q, offset: String(offset) })}`)).json();
     if (!isAdminUsersSnapshot(data)) throw new RequestError(503); return data;
   }
-  async createUser(input: AdminUserSave): Promise<{ criado: boolean; acesso: string | null }> {
+  async createUser(input: AdminUserCreation): Promise<{ criado: boolean; acesso: string | null }> {
     const data: unknown = await (await this.request('/admin/usuarios', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(input) })).json();
     return userAccess(data);
   }

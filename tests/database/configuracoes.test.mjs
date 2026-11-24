@@ -210,6 +210,26 @@ test('admin: preparar é idempotente, rejeita conflito/perfil/unidades e não cr
  assert.equal((await db.query('select count(*)::int n from erp.usuario')).rows[0].n,8);
  assert.equal((await db.query('select count(*)::int n from erp_private.usuario_login')).rows[0].n,0);
 }));
+test('RF-008 grava acessos no mesmo cadastro, audita e recusa reabertura para outro perfil', async () => adminTransaction(async () => {
+  await db.query('insert into auth.users(id) values($1),($2)', [uid(90), uid(91)]);
+  const access = [{ unidade_id: '1', fechar: true, reabrir: false }];
+  const op = await adminRpc('preparar', newUser({ acessos_periodo: access }));
+  await adminRpc('auth_criada', { operacao: op.operacao, auth_id: uid(90) });
+  assert.equal((await adminRpc('concluir', { operacao: op.operacao })).criado, true);
+  assert.equal((await adminRpc('concluir', { operacao: op.operacao })).criado, false);
+  const grants = await db.query('select unidade_id::text,fechar,reabrir from erp_private.usuario_acesso_periodo where usuario_id=$1', [uid(90)]);
+  assert.deepEqual(grants.rows, access);
+  const auditEntry = await db.query("select dados->'acessos_periodo' as acessos from erp_private.auditoria_usuario where usuario_id=$1", [uid(90)]);
+  assert.deepEqual(auditEntry.rows[0].acessos, access);
+  const bad = await adminRpc('preparar', newUser({ login: 'outro.usuario', email: 'outro@example.invalid',
+    acessos_periodo: [{ ...access[0], reabrir: true }] }));
+  await adminRpc('auth_criada', { operacao: bad.operacao, auth_id: uid(91) });
+  await adminError('concluir', { operacao: bad.operacao }, 'PT422');
+  assert.equal((await db.query('select id from erp.usuario where id=$1', [uid(91)])).rows.length, 0);
+  await db.exec('set local role service_role');
+  await expectSqlError('select * from erp_private.usuario_acesso_periodo', '42501');
+}));
+
 test('admin: conclusão atômica cria usuário pendente com vínculos e auditoria; repetição não duplica',async()=>adminTransaction(async()=>{
  await db.query('insert into auth.users(id) values($1)',[uid(90)]);
  const op=await adminRpc('preparar',newUser());await adminRpc('auth_criada',{operacao:op.operacao,auth_id:uid(90)});

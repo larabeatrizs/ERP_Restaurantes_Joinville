@@ -46,6 +46,14 @@ test('edição privada: payload indevido e negação/conflito não alteram Auth 
  for(const code of['PT403','PT412']){const app=createIdentityApp(async(resource)=>{const path=new URL(resource instanceof Request?resource.url:String(resource)).pathname;if(path==='/auth/v1/user')return Response.json({id:actor,aud:'authenticated',is_anonymous:false});return Response.json({code,message:'private SQL details'},{status:400});});const response=await app.fetch(new Request(`https://identity.internal/admin/usuarios/${target}`,{headers:{Authorization:'Bearer token'}}),env);assert.equal(response.status,code==='PT403'?403:412);assert.equal((await response.text()).includes('SQL'),false);}
  const h=harness();const response=await h.app.fetch(new Request(`https://identity.internal/admin/usuarios/${target}`,{method:'PATCH',headers:{Authorization:'Bearer token','Content-Type':'application/json'},body:JSON.stringify({nome:'Nome',perfil:'ADMIN',unidades:['1'],revisao:'1',motivo:'Teste',ator_id:target})}),env);assert.equal(response.status,422);assert.deepEqual(h.paths,['/auth/v1/user']);
 });
+test('RF-008 bloqueia concessão de reabertura inválida antes de criar a conta Auth', async () => {
+  const h = harness();
+  const value = { ...fixture, acessos_periodo: [{ unidade_id: '1', fechar: false, reabrir: true }] };
+  assert.equal((await h.app.fetch(request('/admin/usuarios', value), env)).status, 422);
+  assert.deepEqual(h.actions, ['autorizar']);
+  assert.ok(!h.paths.includes('/auth/v1/admin/users'));
+});
+
 test('identidade privada: cadastro novo entrega link só após conclusão e não envia email/senha',async()=>{
  const h=harness();const response=await h.app.fetch(request(),env);assert.equal(response.status,201);assert.equal(response.headers.get('Cache-Control'),'no-store');
  const result=await response.json();assert.match(result.acesso,/#definir-senha=token-sintetico/);assert.equal(JSON.stringify(result).includes(fixture.email),false);
