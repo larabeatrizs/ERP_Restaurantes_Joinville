@@ -445,6 +445,44 @@ test('RN-027 impede novos créditos e débitos em mês fechado e preserva reenvi
   assert.equal((await db.query('select estado from erp.entrada where id=$1', [draft.id])).rows[0].estado, 'RASCUNHO');
 }));
 
+test('RF-015 registra perda pendente uma vez, sem baixa, e impede fechar o mês', async () => actor(1, async () => {
+  const p = await create();
+  await confirm((await receive(p.id, { total_nota: null, itens: [line(p.id, { valor_unitario: '8' })] })).id);
+  const position = (await rpc('saldos')).saldos[0];
+  await db.exec("reset role; update erp.unidade set codigo='RP-BUCAREIN' where id=1");
+  await db.exec("insert into erp_private.perda_motivo(descricao,exige_anexo) values('Validade vencida',false),('Com anexo',true)");
+  await db.query('insert into erp_private.usuario_acesso_periodo values($1,1,true,false)', [uid(4)]);
+  await become(1);
+  const input = { lote_id: position.lote_id, camara_id: position.camara_id, data_registro: date,
+    quantidade: '5', motivo_id: '1', justificativa: '', chave: key(900) };
+  const register = async value => (await db.query("select erp_private.perda_registrar_pendente(1,$1::jsonb)::text as id", [JSON.stringify(value)])).rows[0].id;
+  await db.exec('savepoint loss_auth');
+  await assert.rejects(() => register(input), { code: '42501' });
+  await db.exec('rollback to savepoint loss_auth');
+  await db.exec('set local role erp_stock_writer');
+  const id = await register(input);
+  assert.equal(await register(input), id);
+  const invalid = [
+    [{ ...input, quantidade: '4' }, 'PT409'],
+    [{ ...input, quantidade: '21', chave: key(901) }, 'PT409'],
+    [{ ...input, motivo_id: '2', chave: key(902) }, 'PT422'],
+  ];
+  for (const [value, code] of invalid) {
+    await db.exec('savepoint loss_invalid');
+    await assert.rejects(() => register(value), { code });
+    await db.exec('rollback to savepoint loss_invalid');
+  }
+  await become(4);
+  await db.exec('set local role erp_stock_writer');
+  await sqlRejects("select erp_private.estoque_periodo_transicionar(1,'2026-01-01','FECHADO',null,'Fechamento sintético')", 'PT409');
+  await db.exec('reset role');
+  const losses = (await db.query('select estado,valor_prejuizo::text from erp_private.perda_estoque')).rows;
+  assert.deepEqual(losses, [{ estado: 'PENDENTE', valor_prejuizo: '40.000000000000' }]);
+  assert.equal((await db.query('select quantidade::text from erp.saldo_lote_local')).rows[0].quantidade, '20.000000');
+  assert.equal((await db.query('select count(*)::int n from erp.movimento_estoque')).rows[0].n, 1);
+  assert.equal((await db.query("select count(*)::int n from erp.auditoria_estoque where acao='perda_registrar'")).rows[0].n, 1);
+}));
+
 test('RN-027 exige resolver o rascunho da competência e bloqueia novos rascunhos após fechar', async () => actor(1, async () => {
   const p = await create();
   const pending = await receive(p.id);
