@@ -445,6 +445,28 @@ test('RN-027 impede novos créditos e débitos em mês fechado e preserva reenvi
   assert.equal((await db.query('select estado from erp.entrada where id=$1', [draft.id])).rows[0].estado, 'RASCUNHO');
 }));
 
+test('RN-027 exige resolver o rascunho da competência e bloqueia novos rascunhos após fechar', async () => actor(1, async () => {
+  const p = await create();
+  const pending = await receive(p.id);
+  await receive(p.id, { data_entrada: '2025-12-31', numero_nf: 'NF-OUTRO-MES' });
+  await db.exec('reset role');
+  await db.query('insert into erp_private.usuario_acesso_periodo values($1,1,true,false)', [uid(4)]);
+  await become(4);
+  await db.exec('set local role erp_stock_writer');
+  const closeMonth = "select erp_private.estoque_periodo_transicionar(1,'2026-01-01','FECHADO',null,'Fechamento sintético')";
+  await sqlRejects(closeMonth, 'PT409');
+  assert.equal((await db.query('select count(*)::int as n from erp_private.estoque_periodo_evento')).rows[0].n, 0);
+  await become(1);
+  await confirm(pending.id);
+  await become(4);
+  await db.exec('set local role erp_stock_writer');
+  await db.exec(closeMonth);
+  await become(1);
+  await rejects('entrada_criar', receipt(p.id, { numero_nf: 'NF-NOVO-RASCUNHO' }), 'PT409');
+  await db.exec('reset role');
+  assert.equal((await db.query("select count(*)::int as n from erp.entrada where numero_nf='NF-NOVO-RASCUNHO'")).rows[0].n, 0);
+}));
+
 test('RN-027 exige acesso explícito e preserva a trilha de fechamento e reabertura', async () => actor(4, async () => {
   const closeMonth = "select erp_private.estoque_periodo_transicionar(1,'2026-11-01','FECHADO',null,'Fechamento sintético') id";
   await sqlRejects(closeMonth);
