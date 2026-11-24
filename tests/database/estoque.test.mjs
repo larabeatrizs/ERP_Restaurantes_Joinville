@@ -399,6 +399,61 @@ async function catalog(action, data, unit = 1, client = db) {
 async function receive(id, extra) { return (await rpc('entrada_criar', receipt(id, extra))).entrada; }
 async function confirm(id, n = 1) { return (await rpc('entrada_confirmar', { id, chave: key(n) })).entrada; }
 
+test('RN-027 mês sem registro abre, fechamento bloqueia a competência e reabertura libera', async () => actor(1, async () => {
+  const check = "select erp_private.estoque_periodo_exigir_aberto(1,'2026-11-30')";
+  await sqlRejects(check);
+  await db.exec('set local role erp_stock_writer');
+  await db.exec(check);
+  await sqlRejects("select erp_private.estoque_periodo_exigir_aberto(2,'2026-11-30')", 'PT404');
+  await db.exec('reset role');
+  await db.query(`insert into erp_private.estoque_periodo_evento(unidade_id,mes,estado,ator_id,motivo)
+    values(1,'2026-11-01','FECHADO',$1,'Fechamento sintético')`, [uid(4)]);
+  await db.exec('set local role erp_stock_writer');
+  await sqlRejects(check, 'PT409');
+  await db.exec("select erp_private.estoque_periodo_exigir_aberto(1,'2026-12-01')");
+  await db.exec('reset role');
+  await db.query(`insert into erp_private.estoque_periodo_evento(unidade_id,mes,estado,ator_id,motivo)
+    values(1,'2026-11-01','REABERTO',$1,'Reabertura sintética')`, [uid(4)]);
+  await db.exec('set local role erp_stock_writer');
+  await db.exec(check);
+  await sqlRejects('delete from erp_private.estoque_periodo_evento');
+}));
+
+test('RN-027 primeira gravação aguarda o fechamento e lê o estado após a trava', {
+  skip: !process.env.DATABASE_STOCK_TEST_URL, timeout: 15000,
+}, async () => {
+  const closer = new pg.Client({ connectionString: process.env.DATABASE_STOCK_TEST_URL });
+  const writer = new pg.Client({ connectionString: process.env.DATABASE_STOCK_TEST_URL });
+  await Promise.all([closer.connect(), writer.connect()]);
+  let pending;
+  try {
+    await closer.query('begin');
+    await closer.query("select pg_advisory_xact_lock(erp_private.estoque_periodo_chave(1,'2098-07-01'))");
+    await closer.query(`insert into erp_private.estoque_periodo_evento(unidade_id,mes,estado,ator_id,motivo)
+      values(1,'2098-07-01','FECHADO',$1,'Fechamento concorrente sintético')`, [uid(4)]);
+    await writer.query('begin');
+    await writer.query("select set_config('request.jwt.claim.sub',$1,true)", [uid(1)]);
+    await writer.query('set local role erp_stock_writer');
+    pending = writer.query("select erp_private.estoque_periodo_exigir_aberto(1,'2098-07-31')")
+      .then(() => null, error => error);
+    const deadline = Date.now() + 3000;
+    let waiting = false;
+    while (!waiting && Date.now() < deadline) {
+      waiting = (await closer.query('select pg_backend_pid()=any(pg_blocking_pids($1)) as waiting', [writer.processID])).rows[0].waiting;
+      if (!waiting) await new Promise(resolve => setTimeout(resolve, 25));
+    }
+    assert.equal(waiting, true);
+    await closer.query('commit');
+    assert.equal((await pending)?.code, 'PT409');
+  } finally {
+    await closer.query('rollback');
+    if (pending) await pending;
+    await writer.query('rollback');
+    await closer.query("delete from erp_private.estoque_periodo_evento where unidade_id=1 and mes='2098-07-01'");
+    await Promise.all([closer.end(), writer.end()]);
+  }
+});
+
 test('RF-029 resolve condições atuais e envia cada tipo somente aos perfis da unidade', async () => actor(1, async () => {
   const p = await create();
   const dates = (await db.query(`select
