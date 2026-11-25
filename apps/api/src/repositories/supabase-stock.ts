@@ -105,7 +105,8 @@ function context(value: unknown): StockContext {
       if (!isRecord(row) || !isStockId(row.id) || !isText(row.nome, 200) || !isStorageType(row.tipo)) unavailable();
       return { id: row.id, nome: row.nome, tipo: row.tipo };
     }),
-    capacidades: { produto_escrever: capabilities.produto_escrever, produto_ciclo_vida: capabilities.produto_ciclo_vida, recebimento_escrever: capabilities.recebimento_escrever, divergencia_aprovar: capabilities.divergencia_aprovar },
+    capacidades: { produto_escrever: capabilities.produto_escrever, produto_ciclo_vida: capabilities.produto_ciclo_vida, recebimento_escrever: capabilities.recebimento_escrever, divergencia_aprovar: capabilities.divergencia_aprovar,
+      ...(typeof capabilities.perdas_consolidar === 'boolean' ? { perdas_consolidar: capabilities.perdas_consolidar } : {}) },
   };
 }
 

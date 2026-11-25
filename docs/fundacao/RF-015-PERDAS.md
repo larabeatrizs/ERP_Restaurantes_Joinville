@@ -58,4 +58,6 @@ A consulta em **Saldo** usa a data de registro da perda como competência. Exibe
 
 Os filtros opcionais de produto, categoria, lote, fornecedor e motivo combinam trechos de texto sem distinção entre maiúsculas e minúsculas. O mesmo recorte vale para os itens e os totais dos dois períodos. A prévia e as linhas do CSV identificam os filtros aplicados.
 
-O percentual sobre o valor consumido e o acesso consolidado seguem pendentes no RF-023. O catálogo depende do cadastramento de motivos pela administração. A política de Adhemar Garcia e a validação hospedada permanecem pendentes.
+A opção de consolidar unidades vinculadas está disponível para Admin, Gestor Central e Auditor com capacidade `ESTOQUE_LER`. O banco inclui somente unidades ativas vinculadas à conta e identifica a unidade de cada lote. O consolidado usa os mesmos filtros e a mesma competência da consulta por unidade.
+
+O percentual sobre o valor consumido segue pendente no RF-023. O catálogo depende do cadastramento de motivos pela administração. A política de Adhemar Garcia e a validação hospedada permanecem pendentes.

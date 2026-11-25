@@ -239,6 +239,7 @@ test('RF-023 compara perdas aprovadas e permite exportar o relatório', async ({
     } });
   });
   await navigate(page, 'Saldo');
+  await expect(page.getByRole('checkbox', { name: 'Consolidar unidades vinculadas' })).toHaveCount(0);
   await page.getByLabel('Mês das perdas').fill('2026-11');
   await page.getByLabel('Fornecedor do lote').fill(' Fornecedor A ');
   await page.getByLabel('Motivo da perda').fill('energia');
@@ -254,6 +255,28 @@ test('RF-023 compara perdas aprovadas e permite exportar o relatório', async ({
   expect(csv.suggestedFilename()).toMatch(/\.csv$/);
   expect(await readFile(await csv.path(), 'utf8')).toContain('Fornecedor: Fornecedor A · Motivo: energia');
   await expect(dialog.getByRole('button', { name: 'Imprimir / salvar PDF' })).toBeVisible();
+});
+
+test('RF-023 identifica a unidade de cada lote no consolidado autorizado', async ({ page }) => {
+  await setup(page, { capabilities: { perdas_consolidar: true } });
+  await page.route('**/estoque/relatorio-perdas?**', route => {
+    const url = new URL(route.request().url());
+    expect(url.searchParams.get('escopo')).toBe('consolidado');
+    return route.fulfill({ json: {
+      unidade_id: unit, inicio: '2026-11-01', inicio_anterior: '2026-10-01', periodicidade: 'mensal',
+      prejuizo_atual: '40', prejuizo_anterior: '0',
+      unidades: [{ id: unit, nome: 'Bucarein' }, { id: otherUnit, nome: 'Adhemar Garcia' }],
+      itens: [{ unidade_id: otherUnit, motivo: 'Avaria', lote: 'L-1', produto: 'Arroz', categoria: 'Mercearia', prejuizo: '40' }],
+    } });
+  });
+  await navigate(page, 'Saldo');
+  await page.getByLabel('Mês das perdas').fill('2026-11');
+  await page.getByRole('checkbox', { name: 'Consolidar unidades vinculadas' }).check();
+  await page.getByRole('button', { name: 'Consultar perdas', exact: true }).click();
+  const dialog = page.getByRole('dialog');
+  await expect(dialog).toContainText('Bucarein · Adhemar Garcia');
+  await expect(dialog.getByRole('columnheader', { name: 'Unidade do lote' })).toBeVisible();
+  await expect(dialog.getByRole('row', { name: /Avaria/ })).toContainText('Adhemar Garcia');
 });
 
 test('RF-027 apresenta validade, situação e valor em risco da unidade ativa', async ({ page }) => {

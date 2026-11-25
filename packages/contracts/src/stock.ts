@@ -41,7 +41,7 @@ export interface StockContext {
   categorias: { id: string; descricao: string; armazenamento_padrao: StorageType }[];
   fornecedores: { id: string; razao_social: string }[];
   locais: { id: string; nome: string; tipo: StorageType }[];
-  capacidades: { produto_escrever: boolean; produto_ciclo_vida: boolean; recebimento_escrever: boolean; divergencia_aprovar: boolean };
+  capacidades: { produto_escrever: boolean; produto_ciclo_vida: boolean; recebimento_escrever: boolean; divergencia_aprovar: boolean; perdas_consolidar?: boolean };
 }
 export interface StockBalance {
   produto_id: string; produto: string; unidade_medida: string; lote_id: string; lote: string;

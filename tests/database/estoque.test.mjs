@@ -666,6 +666,7 @@ test('RF-015 registra, revisa e reflete a baixa única no extrato', async () => 
     assert.deepEqual(excluded.itens, []);
   }
   assert.deepEqual((await lossReport('2026-01-01', 'mensal', { motivo: 'outro' })).itens, []);
+  await sqlRejects("select erp.estoque_perdas_relatorio(1,'listar','{\"inicio\":\"2026-01-01\",\"periodicidade\":\"mensal\",\"escopo\":\"consolidado\"}')", 'PT403');
   await sqlRejects(`select erp.estoque_perdas_relatorio(2,'listar','{"inicio":"2026-01-01","periodicidade":"mensal"}')`, 'PT404');
   await become(7);
   await sqlRejects(`select erp.estoque_perdas_relatorio(1,'listar','{"inicio":"2026-01-01","periodicidade":"mensal"}')`, 'PT403');
@@ -674,6 +675,25 @@ test('RF-015 registra, revisa e reflete a baixa única no extrato', async () => 
   assert.deepEqual(movement, [{ quantidade_delta: '-5.000000', valor_unitario_snapshot: '8.000000' }]);
   assert.equal((await db.query('select quantidade::text from erp.saldo_lote_local')).rows[0].quantidade, '15.000000');
   assert.equal((await db.query("select count(*)::int n from erp.auditoria_estoque where acao in ('perda_aprovar','perda_rejeitar')")).rows[0].n, 2);
+
+  await db.query('insert into erp.usuario_unidade values($1,2)', [uid(3)]);
+  await become(3);
+  assert.equal((await rpc('contexto')).capacidades.perdas_consolidar, true);
+  const reportFromSecondUnit = async scope => (await db.query(
+    "select erp.estoque_perdas_relatorio(2,'listar',$1::jsonb) as resultado",
+    [JSON.stringify({ inicio: '2026-01-01', periodicidade: 'mensal', ...scope })],
+  )).rows[0].resultado;
+  const consolidated = await reportFromSecondUnit({ escopo: 'consolidado' });
+  assert.deepEqual(consolidated.unidades.map(row => row.id), ['1', '2']);
+  assert.equal(consolidated.prejuizo_atual, '40.000000000000');
+  assert.equal(consolidated.itens[0].unidade_id, '1');
+  assert.equal((await reportFromSecondUnit({})).prejuizo_atual, '0');
+  await db.exec('reset role');
+  await db.query('delete from erp.usuario_unidade where usuario_id=$1 and unidade_id=1', [uid(3)]);
+  await become(3);
+  const limited = await reportFromSecondUnit({ escopo: 'consolidado' });
+  assert.deepEqual(limited.unidades.map(row => row.id), ['2']);
+  assert.equal(limited.prejuizo_atual, '0');
 }));
 
 test('RN-027 exige resolver o rascunho da competência e bloqueia novos rascunhos após fechar', async () => actor(1, async () => {
@@ -905,7 +925,7 @@ test('estoquista sem CONFIGURACAO_LER seleciona unidade e contexto autorizado', 
   assert.deepEqual((await db.query('select id::text from erp.unidade')).rows, [{ id: '1' }]);
   assert.deepEqual((await db.query('select * from erp.parametro_unidade')).rows, []);
   const ctx = await rpc('contexto'); assert.equal(ctx.medidas.length, 2); assert.equal(ctx.locais.length, 2);
-  assert.deepEqual(ctx.capacidades, { produto_escrever: true, produto_ciclo_vida: false, recebimento_escrever: true, divergencia_aprovar: false });
+  assert.deepEqual(ctx.capacidades, { produto_escrever: true, produto_ciclo_vida: false, recebimento_escrever: true, divergencia_aprovar: false, perdas_consolidar: false });
 }));
 
 test('produto persiste, busca normalizada, parâmetros locais e revisão otimista', async () => actor(1, async () => {

@@ -32,8 +32,11 @@ export function stockLossReport(data: StockLossReport, unit: string, userName: s
     .filter(field => query[field]).map(field => `${stockLossReportFilterLabels[field]}: ${query[field]}`);
   const filterSummary = filters.length ? ` Filtros: ${filters.join(' · ')}.` : '';
   const scope = `Competência ${period(data.inicio)} · ${money(data.prejuizo_atual)} em perdas aprovadas. Período anterior ${period(data.inicio_anterior)} · ${money(data.prejuizo_anterior)}.${filterSummary} Emitido por ${userName || 'Conta conectada'}.`;
-  return report('Perdas e descartes', unit, scope, ['Categoria', 'Produto', 'Lote', 'Motivo', 'Prejuízo'],
-    data.itens.map(row => [row.categoria, row.produto, row.lote, row.motivo, money(row.prejuizo)]));
+  const units = data.unidades && new Map(data.unidades.map(row => [row.id, row.nome]));
+  return report('Perdas e descartes', units ? [...units.values()].join(' · ') : unit, scope,
+    [...(units ? ['Unidade do lote'] : []), 'Categoria', 'Produto', 'Lote', 'Motivo', 'Prejuízo'],
+    data.itens.map(row => [...(units ? [units.get(row.unidade_id ?? '') ?? ''] : []),
+      row.categoria, row.produto, row.lote, row.motivo, money(row.prejuizo)]));
 }
 
 /** Pages use the current session and fail as a whole on an inconsistent read. */
