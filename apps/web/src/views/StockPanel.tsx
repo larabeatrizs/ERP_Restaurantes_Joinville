@@ -4,8 +4,8 @@ import { MeasureApi } from '../services/measure-api.ts';
 import { SupplierApi } from '../services/supplier-api.ts';
 import { CalendarApi } from '../services/calendar-api.ts';
 import { lazy, Suspense, useEffect, useState } from 'react';
-import type { StockContext, StockBalance, StockLossReportQuery, UnitSummary } from '@erp/contracts';
-import { filterBalances, balancesCsv, isStockLossReportQuery } from '@erp/contracts';
+import type { StockContext, StockBalance, StockLossReportFilter, StockLossReportQuery, UnitSummary } from '@erp/contracts';
+import { filterBalances, balancesCsv, isStockLossReportQuery, stockLossReportFilterFields } from '@erp/contracts';
 import { SettingsApi } from '../services/api.ts';
 import { StockApi, decimalLabel, stockError } from '../services/stock-api.ts';
 import { workspacePages } from './Workspace.tsx';
@@ -17,7 +17,7 @@ import { StockLossRegistrationPanel } from './StockLossRegistrationPanel.tsx';
 import { HomePanel } from './HomePanel.tsx';
 import { AccountPanel } from './AccountPanel.tsx';
 import { ReportPreview } from './ReportPreview.tsx';
-import { balanceReport, stockExpiryReport, stockLossReport, stockMinimumReport, stockValueReport } from '../services/stock-reports.ts';
+import { balanceReport, stockExpiryReport, stockLossReport, stockLossReportFilterLabels, stockMinimumReport, stockValueReport } from '../services/stock-reports.ts';
 import type { ConsultationReport } from '../services/stock-reports.ts';
 import { StockLedgerPanel } from './StockLedgerPanel.tsx';
 const CategoryPanel = lazy(() => import('./CategoryPanel.tsx').then(module => ({ default: module.CategoryPanel })));
@@ -122,6 +122,7 @@ function Balances({ api, unit, unitName, userName }: { api: StockApi; unit: stri
   const [consultation, setConsultation] = useState<'valor' | 'validade' | 'minimo' | 'perdas'>();
   const [lossPeriod, setLossPeriod] = useState<StockLossReportQuery['periodicidade']>('mensal');
   const [lossDate, setLossDate] = useState('');
+  const [lossFilters, setLossFilters] = useState<Partial<Record<StockLossReportFilter, string>>>({});
   const [reportError, setReportError] = useState('');
   useEffect(() => {
     let active = true; setLoading(true); setError('');
@@ -151,7 +152,8 @@ function Balances({ api, unit, unitName, userName }: { api: StockApi; unit: stri
   }
 
   async function openLossReport() {
-    const period = { inicio: lossPeriod === 'mensal' ? `${lossDate}-01` : `${lossDate}-01-01`, periodicidade: lossPeriod };
+    const filters = Object.fromEntries(Object.entries(lossFilters).map(([field, value]) => [field, value.trim()]).filter(([, value]) => value));
+    const period = { inicio: lossPeriod === 'mensal' ? `${lossDate}-01` : `${lossDate}-01-01`, periodicidade: lossPeriod, ...filters };
     if (!isStockLossReportQuery(period)) {
       setReportError('Informe um período válido para consultar as perdas.');
       return;
@@ -159,7 +161,7 @@ function Balances({ api, unit, unitName, userName }: { api: StockApi; unit: stri
     setReportError('');
     setConsultation('perdas');
     try {
-      setReport(stockLossReport(await api.lossReport(unit, period), unitName, userName));
+      setReport(stockLossReport(await api.lossReport(unit, period), unitName, userName, period));
     } catch {
       setReportError('Não foi possível consultar as perdas deste período.');
     } finally {
@@ -192,6 +194,12 @@ function Balances({ api, unit, unitName, userName }: { api: StockApi; unit: stri
           pattern={lossPeriod === 'anual' ? '[0-9]{4}' : undefined} maxLength={lossPeriod === 'anual' ? 4 : undefined}
           value={lossDate} disabled={!!consultation} onChange={event => setLossDate(event.target.value)} />
       </label>
+      {(Object.keys(stockLossReportFilterFields) as StockLossReportFilter[]).map(field => (
+        <label className="field" key={field}>{field === 'fornecedor' ? 'Fornecedor do lote' : `${stockLossReportFilterLabels[field]} da perda`}
+          <input value={lossFilters[field] ?? ''} maxLength={stockLossReportFilterFields[field]} disabled={!!consultation}
+            onChange={event => setLossFilters(current => ({ ...current, [field]: event.target.value }))} />
+        </label>
+      ))}
       <button disabled={!!consultation}>{consultation === 'perdas' ? 'Consultando perdas…' : 'Consultar perdas'}</button>
     </form>
     {!loading && !error && <p className="hint">{filtered.length} de {rows.length} posições da unidade selecionada. O CSV respeita a pesquisa.</p>}

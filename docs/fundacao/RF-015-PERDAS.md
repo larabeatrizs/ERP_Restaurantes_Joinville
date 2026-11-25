@@ -56,4 +56,6 @@ Se qualquer item for recusado, a transação desfaz todo o lançamento. Reenviar
 
 A consulta em **Saldo** usa a data de registro da perda como competência. Exibe o total aprovado do mês ou ano, o total do período anterior e o detalhamento por motivo, lote, produto e categoria do período selecionado. O cálculo usa o prejuízo histórico de cada perda. Descrições e categorias vêm dos cadastros atuais. A visão exige vínculo na unidade e capacidade `ESTOQUE_LER`. O relatório pode ser exportado em CSV ou impresso como PDF pelo navegador.
 
-O percentual sobre o valor consumido, os filtros por produto e categoria e o acesso consolidado seguem pendentes no RF-023. O catálogo depende do cadastramento de motivos pela administração. A política de Adhemar Garcia e a validação hospedada permanecem pendentes.
+Os filtros opcionais de produto, categoria, lote, fornecedor e motivo combinam trechos de texto sem distinção entre maiúsculas e minúsculas. O mesmo recorte vale para os itens e os totais dos dois períodos. A prévia e as linhas do CSV identificam os filtros aplicados.
+
+O percentual sobre o valor consumido e o acesso consolidado seguem pendentes no RF-023. O catálogo depende do cadastramento de motivos pela administração. A política de Adhemar Garcia e a validação hospedada permanecem pendentes.

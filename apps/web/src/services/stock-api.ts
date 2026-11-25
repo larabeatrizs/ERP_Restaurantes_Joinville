@@ -14,7 +14,8 @@ import type { StockLossReviewState, StockLossPanel, StockLossRegistration, Stock
 
 export class StockApi {
   async lossReport(unit: string, query: StockLossReportQuery): Promise<StockLossReport> {
-    const params = new URLSearchParams({ inicio: query.inicio, periodicidade: query.periodicidade });
+    const params = new URLSearchParams();
+    for (const [name, value] of Object.entries(query)) if (value !== undefined) params.set(name, value);
     const data = await this.request(unit, `/estoque/relatorio-perdas?${params}`);
     if (!isStockLossReport(data, unit, query)) throw new RequestError(503);
     return data;

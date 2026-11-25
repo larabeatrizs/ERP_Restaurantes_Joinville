@@ -230,6 +230,8 @@ test('RF-023 compara perdas aprovadas e permite exportar o relatório', async ({
     const url = new URL(route.request().url());
     expect(url.searchParams.get('inicio')).toBe('2026-11-01');
     expect(url.searchParams.get('periodicidade')).toBe('mensal');
+    expect(url.searchParams.get('fornecedor')).toBe('Fornecedor A');
+    expect(url.searchParams.get('motivo')).toBe('energia');
     return route.fulfill({ json: {
       unidade_id: unit, inicio: '2026-11-01', inicio_anterior: '2026-10-01', periodicidade: 'mensal',
       prejuizo_atual: '40.000000000000', prejuizo_anterior: '12.500000000000',
@@ -238,14 +240,19 @@ test('RF-023 compara perdas aprovadas e permite exportar o relatório', async ({
   });
   await navigate(page, 'Saldo');
   await page.getByLabel('Mês das perdas').fill('2026-11');
+  await page.getByLabel('Fornecedor do lote').fill(' Fornecedor A ');
+  await page.getByLabel('Motivo da perda').fill('energia');
   await page.getByRole('button', { name: 'Consultar perdas', exact: true }).click();
   const dialog = page.getByRole('dialog');
   await expect(dialog).toContainText('Competência 11/2026 · R$ 40,00');
   await expect(dialog).toContainText('Período anterior 10/2026 · R$ 12,50');
+  await expect(dialog).toContainText('Fornecedor: Fornecedor A · Motivo: energia');
   await expect(dialog.getByRole('row', { name: /Queda de energia/ })).toContainText('R$ 40,00');
   const download = page.waitForEvent('download');
   await dialog.getByRole('button', { name: 'Exportar relatório em CSV' }).click();
-  expect((await download).suggestedFilename()).toMatch(/\.csv$/);
+  const csv = await download;
+  expect(csv.suggestedFilename()).toMatch(/\.csv$/);
+  expect(await readFile(await csv.path(), 'utf8')).toContain('Fornecedor: Fornecedor A · Motivo: energia');
   await expect(dialog.getByRole('button', { name: 'Imprimir / salvar PDF' })).toBeVisible();
 });
 

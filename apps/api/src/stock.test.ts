@@ -41,7 +41,8 @@ function fixture(options: { authError?: Error; repositoryError?: Error } = {}) {
   const repository: StockRepository = {
     async lossReport(unit, query) {
       collect('lossReport', unit, query);
-      return { ...query, unidade_id: unit, inicio_anterior: '2025-12-01', prejuizo_atual: '40', prejuizo_anterior: '0', itens: [] };
+      return { inicio: query.inicio, periodicidade: query.periodicidade, unidade_id: unit,
+        inicio_anterior: '2025-12-01', prejuizo_atual: '40', prejuizo_anterior: '0', itens: [] };
     },
     async registerLossBatch(unit, value) { collect('registerLossBatch', unit, value); return { ids: ['1', '2'] }; },
     async lossAttachment(unit, id) { collect('lossAttachment', unit, id); return { mime: 'image/png', base64: 'iVBORw0KGgo=' }; },
@@ -84,9 +85,11 @@ test('RF-023 valida periodicidade, competência e parâmetros repetidos', async 
   assert.equal((await app.fetch(new Request(base + path))).status, 401);
   assert.equal((await app.fetch(request(path + '?inicio=2026-02-01&periodicidade=anual'))).status, 400);
   assert.equal((await app.fetch(request(path + '?inicio=2026-01-01&periodicidade=mensal&inicio=2025-01-01'))).status, 400);
-  const response = await app.fetch(request(path + '?inicio=2026-01-01&periodicidade=mensal'));
+  assert.equal((await app.fetch(request(path + '?inicio=2026-01-01&periodicidade=mensal&motivo=a&motivo=b'))).status, 400);
+  assert.equal((await app.fetch(request(path + '?inicio=2026-01-01&periodicidade=mensal&unidade=2'))).status, 400);
+  const response = await app.fetch(request(path + '?inicio=2026-01-01&periodicidade=mensal&motivo=vencida&produto=arroz'));
   assert.equal(response.status, 200);
-  assert.deepEqual(calls, [{ name: 'lossReport', args: ['1', { inicio: '2026-01-01', periodicidade: 'mensal' }] }]);
+  assert.deepEqual(calls, [{ name: 'lossReport', args: ['1', { inicio: '2026-01-01', periodicidade: 'mensal', motivo: 'vencida', produto: 'arroz' }] }]);
 });
 
 test('RF-015 encaminha o lote de perdas e recusa lotes repetidos', async () => {
