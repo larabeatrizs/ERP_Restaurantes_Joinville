@@ -64,18 +64,18 @@ O percentual sobre o valor consumido segue pendente no RF-023. O catálogo depen
 
 ## Base do percentual no RF-023
 
-**Decisão pendente da responsável pelo produto.** O DRS §11.2 pede o percentual do prejuízo sobre o valor consumido no período. O RF-013 usa o dia do consumo e distingue consumo de refeição, uso interno ou limpeza e outras saídas. O RN-034 permite que a cozinha retire insumos antes de existir vínculo com refeição. A [decisão DOM-05](../decisoes/DOM-001-PROPOSTAS.md) autoriza conciliar cada item com uma ou mais refeições, até o limite retirado e sem uma nova movimentação no estoque.
+**Decisão confirmada pela responsável em 25/11/2026:** somente consumo vinculado a refeições compõe o valor consumido. Nas requisições rápidas, entram as parcelas conciliadas com refeições. Retiradas sem vínculo e parcelas ainda não alocadas ficam fora do cálculo.
 
-| Opção para revisão | Consequência |
-| --- | --- |
-| Consumo vinculado a refeições | Considera a saída de consumo e a fração de cada retirada efetivamente vinculada a refeições. Depende de persistir as saídas RF-013 e a conciliação [EST-002](EST-002-REQUISICAO-RAPIDA.md#contrato-de-conciliação-c1). |
-| Incluir requisições rápidas ainda sem vínculo | Considera retiradas anteriores à conciliação. Requer decidir como tratar quantidades não alocadas, contestações, devoluções e a competência de uma refeição em outro mês. A alocação posterior precisa evitar contagem em duplicidade. |
+O DRS §11.2 pede o percentual do prejuízo sobre o valor consumido no período. O RF-013 usa o dia do consumo e distingue consumo de refeição, uso interno ou limpeza e outras saídas. O RN-034 permite a retirada antes de existir vínculo com refeição. A [decisão DOM-05](../decisoes/DOM-001-PROPOSTAS.md) permite conciliar cada item com uma ou mais refeições, até o limite retirado e sem nova movimentação no estoque.
 
-Para validar o contrato escolhido, verificar que a seleção de unidades e o intervalo da consulta valem para numerador e denominador. Em períodos consolidados, a proposta é dividir a soma dos prejuízos pela soma dos valores consumidos. Ainda precisam de definição os efeitos dos filtros de lote, fornecedor e motivo no denominador e a exibição quando o denominador é zero ou indisponível.
+A implementação depende de refeições de cardápio persistidas, das saídas de consumo RF-013 e da conciliação [EST-002](EST-002-REQUISICAO-RAPIDA.md#contrato-de-conciliação-c1), acompanhada na [issue #52](https://github.com/larabeatrizs/ERP_Restaurantes_Joinville/issues/52). As migrations atuais têm calendário e requisições rápidas, mas ainda carecem de refeições de cardápio e dos vínculos de consumo. O relatório existente segue com totais de prejuízo e comparação entre períodos.
+
+Para validar o cálculo, verificar que a seleção de unidades e o intervalo da consulta valem para numerador e denominador. Em períodos consolidados, a proposta é dividir a soma dos prejuízos pela soma dos valores consumidos. Ainda precisam de definição os efeitos dos filtros de lote, fornecedor e motivo, o tratamento de contestações, devoluções e alocações em outro mês, e a exibição com denominador zero ou indisponível.
 
 | Cenário para teste | Evidência esperada após definição |
 | --- | --- |
 | R$ 40,00 de perda aprovada e R$ 200,00 de consumo elegível | 20,00% na competência correspondente. |
 | Uma retirada distribuída em duas refeições | O custo da mesma quantidade aparece uma vez. A soma das frações permanece limitada à retirada. |
-| Retirada sem conciliação, quantidade parcial e mudança de competência | Cada parcela entra ou fica fora conforme a política aprovada, com a data de referência explícita. |
+| Retirada sem conciliação ou com alocação parcial | Apenas a fração vinculada entra no denominador. |
+| Refeição em competência diferente da retirada | O teste usa a data de referência que vier a ser definida para esse cenário. |
 | Denominador zero ou sem fonte de dados | Estado definido no contrato, distinto de prejuízo zero com consumo positivo. |
