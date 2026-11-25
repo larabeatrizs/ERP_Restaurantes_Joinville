@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import { isImportedProducts, isStockAlerts, isStockExpiry, isStockLedger, isStockLossPanel } from '@erp/contracts';
+import { isImportedProducts, isStockAlerts, isStockExpiry, isStockLedger, isStockLossPanel, isStockLossRegistrationContext } from '@erp/contracts';
 import { isEntradaInput, isEntradaItemInput, isIsoDate, isProdutoInput, isRecord, isStockDecimal, isStockId, isStorageType, isText, productInputFields } from '@erp/contracts';
 import type { CatalogProduct, Product, Receipt, ReceiptItem, StockBalance, StockContext } from '@erp/contracts';
 import type { StockRuntimeEnv, StockSession } from './stock-repository.ts';
@@ -132,6 +132,18 @@ export function createSupabaseStockSession(env: StockRuntimeEnv, token: string, 
       if (error || !data.user || data.user.is_anonymous || data.user.aud !== 'authenticated') throw new ApiError(401, 'UNAUTHORIZED', 'Sessão inválida ou expirada.');
     },
     repository: {
+      async lossRegistrationContext(unit) {
+        const result = await client.schema('erp').rpc('perda_registro_web', { p_unidade: unit, p_dados: null });
+        translate(result.error, result.status);
+        if (!isStockLossRegistrationContext(result.data, unit)) unavailable();
+        return result.data;
+      },
+      async registerLoss(unit, input) {
+        const result = await client.schema('erp').rpc('perda_registro_web', { p_unidade: unit, p_dados: input });
+        translate(result.error, result.status);
+        if (!isRecord(result.data) || !isStockId(result.data.id)) unavailable();
+        return { id: result.data.id };
+      },
       async pendingLosses(unit) {
         const result = await client.schema('erp').rpc('perda_painel', { p_unidade: unit, p_perda: null, p_decisao: null });
         translate(result.error, result.status);

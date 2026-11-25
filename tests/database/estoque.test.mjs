@@ -456,11 +456,25 @@ test('RF-015 registra, revisa e reflete a baixa única no extrato', async () => 
   const input = { lote_id: position.lote_id, camara_id: position.camara_id, data_registro: date,
     quantidade: '5', motivo_id: '1', justificativa: '', chave: key(900) };
   const register = async value => (await db.query("select erp_private.perda_registrar_pendente(1,$1::jsonb)::text as id", [JSON.stringify(value)])).rows[0].id;
+  const web = async (value, unit = 1) => (await db.query(
+    'select erp.perda_registro_web($1,$2::jsonb) as result', [unit, value === null ? null : JSON.stringify(value)],
+  )).rows[0].result;
+  const context = await web(null);
+  assert.equal(context.unidade_id, '1');
+  assert.deepEqual(context.motivos, [{ id: '1', descricao: 'Validade vencida' }]);
+  assert.deepEqual(context.posicoes.map(row => [row.lote_id, row.camara_id, row.quantidade]), [
+    [input.lote_id, input.camara_id, '20.000000'],
+  ]);
+  await sqlRejects('select erp.perda_registro_web(2,null)', 'PT404');
+  await become(7);
+  await sqlRejects('select erp.perda_registro_web(1,null)', 'PT403');
+  await become(1);
+  const { id } = await web(input);
+  assert.deepEqual(await web(input), { id });
   await db.exec('savepoint loss_auth');
   await assert.rejects(() => register(input), { code: '42501' });
   await db.exec('rollback to savepoint loss_auth');
   await db.exec('set local role erp_stock_writer');
-  const id = await register(input);
   assert.equal(await register(input), id);
   const invalid = [
     [{ ...input, quantidade: '4' }, 'PT409'],

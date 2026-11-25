@@ -39,6 +39,8 @@ function fixture(options: { authError?: Error; repositoryError?: Error } = {}) {
     if (options.repositoryError) throw options.repositoryError;
   };
   const repository: StockRepository = {
+    async lossRegistrationContext(unit) { collect('lossRegistrationContext', unit); return { unidade_id: unit, data_referencia: '2026-11-25', motivos: [], posicoes: [] }; },
+    async registerLoss(unit, value) { collect('registerLoss', unit, value); return { id: product.id }; },
     async pendingLosses(unit) { collect('pendingLosses', unit); return { unidade_id: unit, perdas: [] }; },
     async reviewLoss(unit, id, decision) { collect('reviewLoss', unit, id, decision); return { id, estado: decision }; },
     async context(unit) { collect('context', unit); return context; },
@@ -69,6 +71,23 @@ function fixture(options: { authError?: Error; repositoryError?: Error } = {}) {
     return { repository, async authenticate() { if (options.authError) throw options.authError; } };
   }) };
 }
+
+test('RF-015 valida o registro por lote sem aceitar autoria ou estado do cliente', async () => {
+  const { app, calls } = fixture();
+  const path = '/estoque/perdas/registro';
+  const payload = { lote_id: product.id, camara_id: '1', data_registro: '2026-11-25', quantidade: '5', motivo_id: '1', justificativa: '', chave: key };
+  assert.equal((await app.fetch(new Request(base + path))).status, 401);
+  assert.equal((await app.fetch(request(path, 'POST', { ...payload, estado: 'APROVADA' }))).status, 422);
+  assert.equal((await app.fetch(request(path, 'POST', { ...payload, quantidade: 5 }))).status, 422);
+  assert.equal((await app.fetch(request(path))).status, 200);
+  const response = await app.fetch(request(path, 'POST', payload));
+  assert.equal(response.status, 201);
+  assert.deepEqual(await response.json(), { id: product.id });
+  assert.deepEqual(calls, [
+    { name: 'lossRegistrationContext', args: ['1'] },
+    { name: 'registerLoss', args: ['1', payload] },
+  ]);
+});
 
 test('RF-015 autentica a consulta e aceita somente uma decisão válida sobre a perda indicada', async () => {
   const { app, calls } = fixture();
