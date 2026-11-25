@@ -479,18 +479,20 @@ test('RF-015 registra, revisa e reflete a baixa única no extrato', async () => 
   await confirm((await receive(p.id, { total_nota: null, itens: [line(p.id, { valor_unitario: '8' })] })).id);
   const position = (await rpc('saldos')).saldos[0];
   await db.exec("reset role; update erp.unidade set codigo='RP-BUCAREIN' where id=1");
-  await db.exec("insert into erp_private.perda_motivo(descricao,exige_anexo) values('Validade vencida',false),('Com anexo',true)");
+  const { rows: reasons } = await db.query("insert into erp_private.perda_motivo(descricao,exige_anexo) values('Validade vencida',false),('Com anexo',true) returning id::text,exige_anexo");
+  const reasonId = reasons.find(row => !row.exige_anexo).id;
+  const attachmentReasonId = reasons.find(row => row.exige_anexo).id;
   await db.query('insert into erp_private.usuario_acesso_periodo values($1,1,true,false)', [uid(4)]);
   await become(1);
   const input = { lote_id: position.lote_id, camara_id: position.camara_id, data_registro: date,
-    quantidade: '5', motivo_id: '1', justificativa: '', chave: key(900) };
+    quantidade: '5', motivo_id: reasonId, justificativa: '', chave: key(900) };
   const register = async value => (await db.query("select erp_private.perda_registrar_pendente(1,$1::jsonb)::text as id", [JSON.stringify(value)])).rows[0].id;
   const web = async (value, unit = 1) => (await db.query(
     'select erp.perda_registro_web($1,$2::jsonb) as result', [unit, value === null ? null : JSON.stringify(value)],
   )).rows[0].result;
   const context = await web(null);
   assert.equal(context.unidade_id, '1');
-  assert.deepEqual(context.motivos, [{ id: '1', descricao: 'Validade vencida' }]);
+  assert.deepEqual(context.motivos, [{ id: reasonId, descricao: 'Validade vencida' }]);
   assert.deepEqual(context.posicoes.map(row => [row.lote_id, row.camara_id, row.quantidade]), [
     [input.lote_id, input.camara_id, '20.000000'],
   ]);
@@ -508,7 +510,7 @@ test('RF-015 registra, revisa e reflete a baixa única no extrato', async () => 
   const invalid = [
     [{ ...input, quantidade: '4' }, 'PT409'],
     [{ ...input, quantidade: '21', chave: key(901) }, 'PT409'],
-    [{ ...input, motivo_id: '2', chave: key(902) }, 'PT422'],
+    [{ ...input, motivo_id: attachmentReasonId, chave: key(902) }, 'PT422'],
   ];
   for (const [value, code] of invalid) {
     await db.exec('savepoint loss_invalid');
