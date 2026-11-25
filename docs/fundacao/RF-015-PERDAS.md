@@ -23,3 +23,11 @@ A migration adiciona catálogo privado de motivos e registro por lote, local e c
 O comando aceita reenvio idêntico pela mesma chave e recusa a mesma chave com outros dados. Registro e auditoria são atômicos, com saldo e livro inalterados. O fechamento consulta as perdas pendentes sob a trava mensal. A migration deixa o catálogo sem dados iniciais. A disponibilidade operacional depende da configuração de motivos e permissões no Configurador e da implementação de aprovação, rejeição, baixa e anexos.
 
 O teste descartável registra 5 kg a R$ 8,00 com prejuízo de R$ 40,00, confirma reenvio sem duplicação, recusa saldo insuficiente e motivo que exige anexo e demonstra o bloqueio do fechamento pela perda pendente.
+
+## Revisão interna em Bucarein
+
+A migration de revisão permite que a nutricionista vinculada à unidade ou o gestor vinculado e designado como substituto revise uma perda de outra pessoa. A designação fica em uma tabela privada por unidade, inicialmente vazia. O comando interno serializa a decisão sob a trava mensal. Na aprovação, revalida a competência e o saldo e grava a baixa com o custo original. A rejeição resolve a pendência e preserva o saldo. O reenvio da mesma decisão pelo mesmo revisor devolve o resultado anterior.
+
+O extrato RF-017 apresenta a baixa como **Perda aprovada**, inclusive no filtro e na exportação. O teste descartável verifica a baixa de 5 kg a R$ 8,00, o saldo final de 15 kg, a segregação por autor e perfil, o reenvio, a rejeição e o rollback quando a auditoria falha.
+
+A jornada de RF-015 ainda depende de API e tela operacionais, cadastro de motivos e substituto no Configurador, anexos, lançamento em lote e validação hospedada. A política de Adhemar Garcia e a integração com RF-023 permanecem pendentes.

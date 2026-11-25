@@ -6,7 +6,7 @@ import type { StockApi } from '../services/stock-api.ts';
 import { PaginationArrow } from './PaginationArrow.tsx';
 import { Skeleton } from './Skeleton.tsx';
 
-const movements = { ENTRADA: 'Entrada confirmada', REQUISICAO_RAPIDA: 'Requisição rápida' };
+const movements = { ENTRADA: 'Entrada confirmada', REQUISICAO_RAPIDA: 'Requisição rápida', PERDA: 'Perda aprovada' };
 const dateTime = new Intl.DateTimeFormat('pt-BR', {
   dateStyle: 'short', timeStyle: 'medium', timeZone: 'America/Sao_Paulo',
 });

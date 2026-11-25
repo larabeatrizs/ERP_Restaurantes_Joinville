@@ -445,7 +445,7 @@ test('RN-027 impede novos créditos e débitos em mês fechado e preserva reenvi
   assert.equal((await db.query('select estado from erp.entrada where id=$1', [draft.id])).rows[0].estado, 'RASCUNHO');
 }));
 
-test('RF-015 registra perda pendente uma vez, sem baixa, e impede fechar o mês', async () => actor(1, async () => {
+test('RF-015 registra, revisa e reflete a baixa única no extrato', async () => actor(1, async () => {
   const p = await create();
   await confirm((await receive(p.id, { total_nota: null, itens: [line(p.id, { valor_unitario: '8' })] })).id);
   const position = (await rpc('saldos')).saldos[0];
@@ -481,6 +481,62 @@ test('RF-015 registra perda pendente uma vez, sem baixa, e impede fechar o mês'
   assert.equal((await db.query('select quantidade::text from erp.saldo_lote_local')).rows[0].quantidade, '20.000000');
   assert.equal((await db.query('select count(*)::int n from erp.movimento_estoque')).rows[0].n, 1);
   assert.equal((await db.query("select count(*)::int n from erp.auditoria_estoque where acao='perda_registrar'")).rows[0].n, 1);
+
+  const review = (loss, decision) => `select erp_private.perda_revisar(1,${loss},'${decision}') as estado`;
+  await become(7);
+  await sqlRejects(review(id, 'APROVADA'), '42501');
+  await become(4);
+  await db.exec('set local role erp_stock_writer');
+  await sqlRejects(review(id, 'APROVADA'), 'PT403');
+
+  await become(1);
+  await db.exec('set local role erp_stock_writer');
+  const competing = await register({ ...input, quantidade: '20', chave: key(903) });
+  await db.exec('reset role');
+  await db.query('insert into erp_private.perda_substituto values(1,$1)', [uid(4)]);
+  await db.query('update erp.usuario set perfil_id=4 where id=$1', [uid(1)]);
+  await become(1);
+  await db.exec('set local role erp_stock_writer');
+  await sqlRejects(review(id, 'APROVADA'), 'PT403');
+
+  await db.exec("reset role; alter table erp.auditoria_estoque add constraint perda_auditoria_teste check (acao<>'perda_aprovar')");
+  await become(7);
+  await db.exec('set local role erp_stock_writer');
+  await sqlRejects(review(id, 'APROVADA'), '23514');
+  await db.exec('reset role');
+  assert.equal((await db.query('select estado from erp_private.perda_estoque where id=$1',[id])).rows[0].estado, 'PENDENTE');
+  assert.equal((await db.query('select quantidade::text from erp.saldo_lote_local')).rows[0].quantidade, '20.000000');
+  assert.equal((await db.query('select count(*)::int n from erp.movimento_estoque where perda_id is not null')).rows[0].n, 0);
+  await db.exec('alter table erp.auditoria_estoque drop constraint perda_auditoria_teste');
+
+  await become(7);
+  await db.exec('set local role erp_stock_writer');
+  assert.equal((await db.query(review(id, 'APROVADA'))).rows[0].estado, 'APROVADA');
+  assert.equal((await db.query(review(id, 'APROVADA'))).rows[0].estado, 'APROVADA');
+  await sqlRejects(review(id, 'REJEITADA'), 'PT409');
+  await sqlRejects(review(competing, 'APROVADA'), 'PT409');
+  await become(4);
+  await db.exec('set local role erp_stock_writer');
+  assert.equal((await db.query(review(competing, 'REJEITADA'))).rows[0].estado, 'REJEITADA');
+  await db.exec("select erp_private.estoque_periodo_transicionar(1,'2026-01-01','FECHADO',null,'Fechamento sintético')");
+  await become(7);
+  await db.exec('set local role erp_stock_writer');
+  assert.equal((await db.query(review(id, 'APROVADA'))).rows[0].estado, 'APROVADA');
+
+  await become(4);
+  const statement = (await db.query(
+    "select erp.estoque_extrato(1,'exportar',$1::jsonb) as extrato",
+    [JSON.stringify({ produto_id: p.id, tipo: 'PERDA' })],
+  )).rows[0].extrato;
+  assert.equal(statement.total, 1);
+  assert.equal(statement.itens[0].tipo, 'PERDA');
+  assert.equal(statement.itens[0].quantidade, '-5.000000');
+  assert.equal(statement.itens[0].saldo_apos, '15.000000');
+  await db.exec('reset role');
+  const movement = (await db.query('select quantidade_delta::text, valor_unitario_snapshot::text from erp.movimento_estoque where perda_id is not null')).rows;
+  assert.deepEqual(movement, [{ quantidade_delta: '-5.000000', valor_unitario_snapshot: '8.000000' }]);
+  assert.equal((await db.query('select quantidade::text from erp.saldo_lote_local')).rows[0].quantidade, '15.000000');
+  assert.equal((await db.query("select count(*)::int n from erp.auditoria_estoque where acao in ('perda_aprovar','perda_rejeitar')")).rows[0].n, 2);
 }));
 
 test('RN-027 exige resolver o rascunho da competência e bloqueia novos rascunhos após fechar', async () => actor(1, async () => {
