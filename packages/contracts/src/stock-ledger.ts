@@ -1,7 +1,11 @@
 import { isRecord } from './index.ts';
 import { hasExactFields, isIsoDate, isStockDecimal, isStockId, isText } from './stock.ts';
 
-export type StockMovementType = 'ENTRADA' | 'REQUISICAO_RAPIDA';
+export type StockMovementType = 'ENTRADA' | 'REQUISICAO_RAPIDA' | 'PERDA';
+
+function isMovementType(value: unknown): value is StockMovementType {
+  return value === 'ENTRADA' || value === 'REQUISICAO_RAPIDA' || value === 'PERDA';
+}
 
 export interface StockLedgerFilters {
   produto_id: string;
@@ -50,7 +54,7 @@ export function isStockLedgerFilters(value: unknown): value is StockLedgerFilter
   if (lote_id !== undefined && !isStockId(lote_id)) return false;
   if (data_inicio !== undefined && !isIsoDate(data_inicio)) return false;
   if (data_fim !== undefined && !isIsoDate(data_fim)) return false;
-  if (tipo !== undefined && tipo !== 'ENTRADA' && tipo !== 'REQUISICAO_RAPIDA') return false;
+  if (tipo !== undefined && !isMovementType(tipo)) return false;
 
   return data_inicio === undefined || data_fim === undefined || data_inicio <= data_fim;
 }
@@ -60,11 +64,11 @@ function isMovement(value: unknown, query: StockLedgerQuery): value is StockLedg
     && hasExactFields(value, ['id', 'ocorrido_em', 'lote_id', 'lote', 'local', 'tipo', 'quantidade', 'saldo_apos'])
     && isStockId(value.id) && isStockId(value.lote_id) && (!query.lote_id || value.lote_id === query.lote_id)
     && isText(value.lote, 100) && isText(value.local, 200)
-    && (value.tipo === 'ENTRADA' || value.tipo === 'REQUISICAO_RAPIDA') && (!query.tipo || value.tipo === query.tipo)
+    && isMovementType(value.tipo) && (!query.tipo || value.tipo === query.tipo)
     && typeof value.ocorrido_em === 'string' && /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d{6}Z$/.test(value.ocorrido_em)
     && isIsoDate(value.ocorrido_em.slice(0, 10)) && Number.isFinite(Date.parse(value.ocorrido_em))
     && isStockDecimal(value.quantidade, { signed: true }) && /[1-9]/.test(value.quantidade)
-    && (value.quantidade.startsWith('-') === (value.tipo === 'REQUISICAO_RAPIDA'))
+    && (value.quantidade.startsWith('-') === (value.tipo !== 'ENTRADA'))
     && isStockDecimal(value.saldo_apos, { calculated: true, signed: true });
 }
 
