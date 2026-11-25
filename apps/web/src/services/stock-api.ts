@@ -7,10 +7,19 @@ import { isWithdrawal,isWithdrawalPanel } from '@erp/contracts';
 import type { WithdrawalInput,WithdrawalReview,Withdrawal,WithdrawalPanel } from '@erp/contracts';
 import { isStockId, isStockLossPanel, isStockLossRegistrationContext } from '@erp/contracts';
 import { isStockLossBatchResult } from '@erp/contracts';
+import { isStockLossReport } from '@erp/contracts';
+import type { StockLossReport, StockLossReportQuery } from '@erp/contracts';
 import type { StockLossBatchRegistration } from '@erp/contracts';
 import type { StockLossReviewState, StockLossPanel, StockLossRegistration, StockLossRegistrationContext } from '@erp/contracts';
 
 export class StockApi {
+  async lossReport(unit: string, query: StockLossReportQuery): Promise<StockLossReport> {
+    const params = new URLSearchParams({ inicio: query.inicio, periodicidade: query.periodicidade });
+    const data = await this.request(unit, `/estoque/relatorio-perdas?${params}`);
+    if (!isStockLossReport(data, unit, query)) throw new RequestError(503);
+    return data;
+  }
+
   async registerLossBatch(unit: string, input: StockLossBatchRegistration): Promise<string[]> {
     const data = await this.request(unit, '/estoque/perdas/lote', input);
     if (!isStockLossBatchResult(data, input.itens.length)) throw new RequestError(503);

@@ -4,8 +4,8 @@ import { MeasureApi } from '../services/measure-api.ts';
 import { SupplierApi } from '../services/supplier-api.ts';
 import { CalendarApi } from '../services/calendar-api.ts';
 import { lazy, Suspense, useEffect, useState } from 'react';
-import type { StockContext, StockBalance, UnitSummary } from '@erp/contracts';
-import { filterBalances, balancesCsv } from '@erp/contracts';
+import type { StockContext, StockBalance, StockLossReportQuery, UnitSummary } from '@erp/contracts';
+import { filterBalances, balancesCsv, isStockLossReportQuery } from '@erp/contracts';
 import { SettingsApi } from '../services/api.ts';
 import { StockApi, decimalLabel, stockError } from '../services/stock-api.ts';
 import { workspacePages } from './Workspace.tsx';
@@ -17,7 +17,7 @@ import { StockLossRegistrationPanel } from './StockLossRegistrationPanel.tsx';
 import { HomePanel } from './HomePanel.tsx';
 import { AccountPanel } from './AccountPanel.tsx';
 import { ReportPreview } from './ReportPreview.tsx';
-import { balanceReport, stockExpiryReport, stockMinimumReport, stockValueReport } from '../services/stock-reports.ts';
+import { balanceReport, stockExpiryReport, stockLossReport, stockMinimumReport, stockValueReport } from '../services/stock-reports.ts';
 import type { ConsultationReport } from '../services/stock-reports.ts';
 import { StockLedgerPanel } from './StockLedgerPanel.tsx';
 const CategoryPanel = lazy(() => import('./CategoryPanel.tsx').then(module => ({ default: module.CategoryPanel })));
@@ -105,13 +105,13 @@ export function StockPanel({ api, stock, categories, measures, suppliers, calend
         {page === 'categorias' && <Suspense fallback={<Skeleton label="Carregando categorias…" />}><CategoryPanel key={unit} api={categories} unit={unit} onDirty={setDirty} onBusy={setBusy} /></Suspense>}
         {page === 'produtos' && <ProductPanel key={unit} api={stock} unit={unit} unitName={units.find(item => item.id === unit)?.nome ?? ''} context={context} onDirty={setDirty} onBusy={setBusy} />}
         {page === 'recebimentos' && <ReceiptPanel key={unit} api={stock} unit={unit} unitName={units.find(item => item.id === unit)?.nome ?? ''} context={context} onDirty={setDirty} onBusy={setBusy} />}
-        {page === 'saldo' && <Balances key={unit} api={stock} unit={unit} unitName={units.find(item => item.id === unit)?.nome ?? ''} />}
+        {page === 'saldo' && <Balances key={unit} api={stock} unit={unit} unitName={units.find(item => item.id === unit)?.nome ?? ''} userName={userName} />}
       </>}
     </main>
   </div>;
 }
 
-function Balances({ api, unit, unitName }: { api: StockApi; unit: string; unitName: string }) {
+function Balances({ api, unit, unitName, userName }: { api: StockApi; unit: string; unitName: string; userName: string }) {
   const [ledgerProduct, setLedgerProduct] = useState<StockBalance>();
   const [report, setReport] = useState<ConsultationReport>();
   const [rows, setRows] = useState<StockBalance[]>([]);
@@ -119,7 +119,9 @@ function Balances({ api, unit, unitName }: { api: StockApi; unit: string; unitNa
   const [error, setError] = useState('');
   const [retry, setRetry] = useState(0);
   const [query, setQuery] = useState('');
-  const [consultation, setConsultation] = useState<'valor' | 'validade' | 'minimo'>();
+  const [consultation, setConsultation] = useState<'valor' | 'validade' | 'minimo' | 'perdas'>();
+  const [lossPeriod, setLossPeriod] = useState<StockLossReportQuery['periodicidade']>('mensal');
+  const [lossDate, setLossDate] = useState('');
   const [reportError, setReportError] = useState('');
   useEffect(() => {
     let active = true; setLoading(true); setError('');
@@ -147,6 +149,23 @@ function Balances({ api, unit, unitName }: { api: StockApi; unit: string; unitNa
       setConsultation(undefined);
     }
   }
+
+  async function openLossReport() {
+    const period = { inicio: lossPeriod === 'mensal' ? `${lossDate}-01` : `${lossDate}-01-01`, periodicidade: lossPeriod };
+    if (!isStockLossReportQuery(period)) {
+      setReportError('Informe um período válido para consultar as perdas.');
+      return;
+    }
+    setReportError('');
+    setConsultation('perdas');
+    try {
+      setReport(stockLossReport(await api.lossReport(unit, period), unitName, userName));
+    } catch {
+      setReportError('Não foi possível consultar as perdas deste período.');
+    } finally {
+      setConsultation(undefined);
+    }
+  }
   if (ledgerProduct) return <StockLedgerPanel api={api} unit={unit} product={ledgerProduct}
     positions={rows.filter(row => row.produto_id === ledgerProduct.produto_id)}
     onClose={() => setLedgerProduct(undefined)} />;
@@ -161,6 +180,20 @@ function Balances({ api, unit, unitName }: { api: StockApi; unit: string; unitNa
       <button disabled={!!consultation} onClick={() => void openConsultation('validade')}>{consultation === 'validade' ? 'Consultando vencimentos…' : 'Consultar vencimentos'}</button>
       <button disabled={!!consultation} onClick={() => void openConsultation('minimo')}>{consultation === 'minimo' ? 'Consultando mínimo…' : 'Consultar estoque mínimo'}</button>
     </div>
+    <form className="filters" aria-label="Consulta de perdas" onSubmit={event => { event.preventDefault(); void openLossReport(); }}>
+      <label className="field"><span id="perdas-periodicidade-label">Periodicidade das perdas</span>
+        <select aria-labelledby="perdas-periodicidade-label" value={lossPeriod} disabled={!!consultation}
+          onChange={event => { setLossPeriod(event.target.value === 'anual' ? 'anual' : 'mensal'); setLossDate(''); }}>
+          <option value="mensal">Mensal</option><option value="anual">Anual</option>
+        </select>
+      </label>
+      <label className="field">{lossPeriod === 'mensal' ? 'Mês das perdas' : 'Ano das perdas'}
+        <input required type={lossPeriod === 'mensal' ? 'month' : 'text'} inputMode={lossPeriod === 'anual' ? 'numeric' : undefined}
+          pattern={lossPeriod === 'anual' ? '[0-9]{4}' : undefined} maxLength={lossPeriod === 'anual' ? 4 : undefined}
+          value={lossDate} disabled={!!consultation} onChange={event => setLossDate(event.target.value)} />
+      </label>
+      <button disabled={!!consultation}>{consultation === 'perdas' ? 'Consultando perdas…' : 'Consultar perdas'}</button>
+    </form>
     {!loading && !error && <p className="hint">{filtered.length} de {rows.length} posições da unidade selecionada. O CSV respeita a pesquisa.</p>}
     {loading ? <p role="status">Consultando saldos…</p> : !error && !rows.length ? <p className="empty">Nenhum saldo registrado nesta unidade.</p> : !error && !filtered.length ? <p className="empty">Nenhum saldo corresponde à pesquisa.</p> : !error && <div className="table-wrap" tabIndex={0} aria-label="Saldos por lote e local"><table>
       <thead><tr><th>Produto</th><th>Lote</th><th>Validade</th><th>Local</th><th>Saldo</th><th>Valor unitário</th><th>Ações</th></tr></thead>

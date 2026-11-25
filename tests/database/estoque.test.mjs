@@ -640,6 +640,26 @@ test('RF-015 registra, revisa e reflete a baixa única no extrato', async () => 
   assert.equal(statement.itens[0].tipo, 'PERDA');
   assert.equal(statement.itens[0].quantidade, '-5.000000');
   assert.equal(statement.itens[0].saldo_apos, '15.000000');
+  const lossReport = async (inicio, periodicidade) => (await db.query(
+    "select erp.estoque_perdas_relatorio(1,'listar',$1::jsonb) as resultado",
+    [JSON.stringify({ inicio, periodicidade })],
+  )).rows[0].resultado;
+  const monthly = await lossReport('2026-01-01', 'mensal');
+  assert.equal(monthly.prejuizo_atual, '40.000000000000');
+  assert.equal(monthly.prejuizo_anterior, '0');
+  assert.equal(monthly.inicio_anterior, '2025-12-01');
+  assert.deepEqual(monthly.itens, [{
+    motivo: 'Validade vencida', lote: position.lote, produto: position.produto,
+    categoria: 'Mercearia', prejuizo: '40.000000000000',
+  }]);
+  const comparison = await lossReport('2026-02-01', 'mensal');
+  assert.equal(comparison.prejuizo_atual, '0');
+  assert.equal(comparison.prejuizo_anterior, '40.000000000000');
+  assert.deepEqual(comparison.itens, []);
+  assert.equal((await lossReport('2027-01-01', 'anual')).prejuizo_anterior, '40.000000000000');
+  await sqlRejects(`select erp.estoque_perdas_relatorio(2,'listar','{"inicio":"2026-01-01","periodicidade":"mensal"}')`, 'PT404');
+  await become(7);
+  await sqlRejects(`select erp.estoque_perdas_relatorio(1,'listar','{"inicio":"2026-01-01","periodicidade":"mensal"}')`, 'PT403');
   await db.exec('reset role');
   const movement = (await db.query('select quantidade_delta::text, valor_unitario_snapshot::text from erp.movimento_estoque where perda_id is not null')).rows;
   assert.deepEqual(movement, [{ quantidade_delta: '-5.000000', valor_unitario_snapshot: '8.000000' }]);

@@ -52,4 +52,8 @@ O estoquista de Bucarein pode selecionar de 2 a 20 lotes de uma câmara, informa
 
 Se qualquer item for recusado, a transação desfaz todo o lançamento. Reenviar a mesma chave e os mesmos dados devolve as perdas originais, inclusive se a ordem dos lotes mudar. Nenhum saldo é movimentado no registro.
 
-O catálogo depende do cadastramento de motivos pela administração. A política de Adhemar Garcia, a integração com RF-023 e a validação hospedada permanecem pendentes.
+## Perdas aprovadas no relatório RF-023
+
+A consulta em **Saldo** usa a data de registro da perda como competência. Exibe o total aprovado do mês ou ano, o total do período anterior e o detalhamento por motivo, lote, produto e categoria do período selecionado. O cálculo usa o prejuízo histórico de cada perda. Descrições e categorias vêm dos cadastros atuais. A visão exige vínculo na unidade e capacidade `ESTOQUE_LER`. O relatório pode ser exportado em CSV ou impresso como PDF pelo navegador.
+
+O percentual sobre o valor consumido, os filtros por produto e categoria e o acesso consolidado seguem pendentes no RF-023. O catálogo depende do cadastramento de motivos pela administração. A política de Adhemar Garcia e a validação hospedada permanecem pendentes.
