@@ -445,6 +445,56 @@ test('RN-027 impede novos créditos e débitos em mês fechado e preserva reenvi
   assert.equal((await db.query('select estado from erp.entrada where id=$1', [draft.id])).rows[0].estado, 'RASCUNHO');
 }));
 
+test('RF-009 usa o calendário para validar e registrar rascunhos uma única vez', async () => actor(7, async () => {
+  await db.exec(`reset role;
+    insert into erp.calendario_unidade(unidade_id,atende_feriados) values (1,false),(2,true);
+    insert into erp.calendario_semanal values (1,4),(1,5),(2,5),(2,6);
+    insert into erp.refeicao_habilitada(unidade_id,tipo,inicio,fim) values
+      (1,'ALMOCO','11:00','14:00'),(2,'CAFE_MANHA','07:00','09:00'),(2,'ALMOCO','11:00','14:00'),(2,'JANTAR','17:00','19:00');
+    insert into erp.calendario_excecao values
+      (1,'2026-11-26','FERIADO','Feriado sintético'),(1,'2026-11-28','ESPECIAL','Evento sintético');
+    insert into erp.calendario_refeicao_especial(unidade_id,data,tipo,inicio,fim)
+      values (1,'2026-11-28','CAFE_MANHA','07:00','09:00');
+  `);
+  await db.query('insert into erp.usuario_unidade values($1,2)', [uid(7)]);
+  await become(7);
+  const period = { inicio: '2026-11-26', fim: '2026-11-29', tipo_periodo: 'SEMANAL' };
+  const draft = async (unit, action, input) => (await db.query(
+    'select erp_private.cardapio_rascunho($1,$2,$3::jsonb) as resultado', [unit, action, JSON.stringify(input)],
+  )).rows[0].resultado;
+  await sqlRejects(`select erp_private.cardapio_rascunho(1,'grade','${JSON.stringify(period)}')`, '42501');
+  await db.exec('set local role erp_stock_writer');
+  assert.deepEqual((await draft(1, 'grade', period)).refeicoes, [
+    { data: '2026-11-27', tipo_refeicao: 'ALMOCO' }, { data: '2026-11-28', tipo_refeicao: 'CAFE_MANHA' },
+  ]);
+  assert.equal((await draft(2, 'grade', period)).refeicoes.length, 6);
+  const input = { ...period, chave: key(970), refeicoes: [
+    { data: '2026-11-27', tipo_refeicao: 'ALMOCO', estimadas: 200 },
+    { data: '2026-11-28', tipo_refeicao: 'CAFE_MANHA', estimadas: 75 },
+  ] };
+  const invalid = { ...input, refeicoes: [input.refeicoes[0], { ...input.refeicoes[1], tipo_refeicao: 'JANTAR' }] };
+  await sqlRejects(`select erp_private.cardapio_rascunho(1,'criar','${JSON.stringify(invalid)}')`, 'PT422');
+  await db.exec("reset role; alter table erp.auditoria_estoque add constraint rascunho_auditoria_teste check (acao<>'cardapio_criar_rascunho')");
+  await db.exec('set local role erp_stock_writer');
+  await sqlRejects(`select erp_private.cardapio_rascunho(1,'criar','${JSON.stringify(input)}')`, '23514');
+  for (const table of ['cardapio', 'cardapio_versao', 'cardapio_dia', 'cardapio_refeicao']) {
+    assert.equal((await db.query(`select count(*)::int as total from erp.${table}`)).rows[0].total, 0);
+  }
+  await db.exec('reset role; alter table erp.auditoria_estoque drop constraint rascunho_auditoria_teste');
+  await db.exec('set local role erp_stock_writer');
+  const result = await draft(1, 'criar', input);
+  assert.deepEqual(await draft(1, 'criar', { ...input, refeicoes: [...input.refeicoes].reverse() }), result);
+  const changed = { ...input, refeicoes: [{ ...input.refeicoes[0], estimadas: 201 }, input.refeicoes[1]] };
+  await sqlRejects(`select erp_private.cardapio_rascunho(1,'criar','${JSON.stringify(changed)}')`, 'PT409');
+  await become(1);
+  await db.exec('set local role erp_stock_writer');
+  await sqlRejects(`select erp_private.cardapio_rascunho(1,'criar','${JSON.stringify(input)}')`, 'PT403');
+  await db.exec('reset role');
+  assert.deepEqual((await db.query('select estado from erp.cardapio_versao')).rows, [{ estado: 'RASCUNHO' }]);
+  assert.equal((await db.query('select count(*)::int n from erp.cardapio_refeicao')).rows[0].n, 2);
+  assert.equal((await db.query("select count(*)::int n from erp.auditoria_estoque where acao='cardapio_criar_rascunho'")).rows[0].n, 1);
+}));
+
 test('RF-009 persiste refeições por versão e impede vínculo cruzado ou data fora do período', async () => actor(7, async () => {
   await sqlRejects('select * from erp.cardapio_refeicao', '42501');
   await db.exec('reset role');
