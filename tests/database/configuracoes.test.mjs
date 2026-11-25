@@ -96,6 +96,7 @@ test('verificador da fundação confere RLS, grants e escritor restrito no labor
     ['erp_private', 'estoque_vencimentos', 'erp_stock_writer'],
     ['erp_private', 'fornecedor_operacao', 'erp_stock_writer'],
     ['erp_private', 'medida_operacao', 'erp_stock_writer'],
+    ['erp_private', 'perda_painel', 'erp_stock_writer'],
     ['erp_private', 'produto_ciclo_operacao', 'erp_stock_writer'],
     ['erp_private', 'produto_exclusao_motivo', 'erp_product_reference_reader'],
     ['erp_private', 'produto_importado_operacao', 'erp_stock_writer'],
@@ -442,6 +443,7 @@ test('RLS nas tabelas e somente funções privilegiadas conhecidas com executore
     ['admin_usuarios_servico','erp_user_admin'],
     ['requisicao_operacao','erp_stock_writer'],
     ['requisicao_painel','erp_stock_writer'],
+    ['perda_painel','erp_stock_writer'],
     ['produto_importado_operacao','erp_stock_writer'],
     ['atualizar_configuracao', 'erp_config_writer'], ['calendario_operacao','erp_stock_writer'], ['catalogo_unidade', 'erp_stock_writer'], ['categoria_operacao', 'erp_stock_writer'], ['estoque_alertas', 'erp_stock_writer'], ['estoque_extrato', 'erp_stock_writer'], ['estoque_operacao', 'erp_stock_writer'], ['estoque_vencimentos', 'erp_stock_writer'], ['fornecedor_operacao', 'erp_stock_writer'], ['medida_operacao', 'erp_stock_writer'], ['produto_ciclo_operacao','erp_stock_writer'], ['produto_exclusao_motivo','erp_product_reference_reader'], ['usuario_login_salvar','erp_identity_writer'],
   ].sort());

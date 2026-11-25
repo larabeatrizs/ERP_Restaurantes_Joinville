@@ -509,6 +509,21 @@ test('RF-015 registra, revisa e reflete a baixa única no extrato', async () => 
   assert.equal((await db.query('select count(*)::int n from erp.movimento_estoque where perda_id is not null')).rows[0].n, 0);
   await db.exec('alter table erp.auditoria_estoque drop constraint perda_auditoria_teste');
 
+  const panel = 'select erp.perda_painel(1,null,null) as painel';
+  await become(1);
+  assert.deepEqual((await db.query(panel)).rows[0].painel.perdas.map(row => row.id), []);
+  await become(3);
+  await sqlRejects(panel, 'PT403');
+  await become(7);
+  await sqlRejects('select erp.perda_painel(2,null,null)', 'PT404');
+  const pendingRows = (await db.query(panel)).rows[0].painel.perdas;
+  assert.deepEqual(pendingRows.map(row => row.id), [id, competing]);
+  assert.equal(pendingRows[0].valor_prejuizo, '40.000000000000');
+  assert.equal(pendingRows[0].motivo, 'Validade vencida');
+  const approved = (await db.query("select erp.perda_painel(1,$1,'APROVADA') as resultado", [id])).rows[0].resultado;
+  assert.deepEqual(approved, { id, estado: 'APROVADA' });
+  assert.deepEqual((await db.query(panel)).rows[0].painel.perdas.map(row => row.id), [competing]);
+
   await become(7);
   await db.exec('set local role erp_stock_writer');
   assert.equal((await db.query(review(id, 'APROVADA'))).rows[0].estado, 'APROVADA');
