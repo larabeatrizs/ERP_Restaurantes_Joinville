@@ -224,6 +224,31 @@ test('RF-021 soma posições, destaca igualdade e informa falta de produto sem p
   await expect(beans.getByRole('cell').nth(5)).toHaveText('2');
 });
 
+test('RF-023 compara perdas aprovadas e permite exportar o relatório', async ({ page }) => {
+  await setup(page);
+  await page.route('**/estoque/relatorio-perdas?**', route => {
+    const url = new URL(route.request().url());
+    expect(url.searchParams.get('inicio')).toBe('2026-11-01');
+    expect(url.searchParams.get('periodicidade')).toBe('mensal');
+    return route.fulfill({ json: {
+      unidade_id: unit, inicio: '2026-11-01', inicio_anterior: '2026-10-01', periodicidade: 'mensal',
+      prejuizo_atual: '40.000000000000', prejuizo_anterior: '12.500000000000',
+      itens: [{ motivo: 'Queda de energia', lote: 'L-1', produto: 'Arroz', categoria: 'Mercearia', prejuizo: '40.000000000000' }],
+    } });
+  });
+  await navigate(page, 'Saldo');
+  await page.getByLabel('Mês das perdas').fill('2026-11');
+  await page.getByRole('button', { name: 'Consultar perdas', exact: true }).click();
+  const dialog = page.getByRole('dialog');
+  await expect(dialog).toContainText('Competência 11/2026 · R$ 40,00');
+  await expect(dialog).toContainText('Período anterior 10/2026 · R$ 12,50');
+  await expect(dialog.getByRole('row', { name: /Queda de energia/ })).toContainText('R$ 40,00');
+  const download = page.waitForEvent('download');
+  await dialog.getByRole('button', { name: 'Exportar relatório em CSV' }).click();
+  expect((await download).suggestedFilename()).toMatch(/\.csv$/);
+  await expect(dialog.getByRole('button', { name: 'Imprimir / salvar PDF' })).toBeVisible();
+});
+
 test('RF-027 apresenta validade, situação e valor em risco da unidade ativa', async ({ page }) => {
   const lot = { lote_id: '20', lote: 'L-VENCIDO', produto: product.descricao, validade: '2026-11-22',
     unidade_medida: 'kg', quantidade: '5', valor_unitario: '8', situacao: 'VENCIDO' };

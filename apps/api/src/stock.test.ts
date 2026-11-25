@@ -39,6 +39,10 @@ function fixture(options: { authError?: Error; repositoryError?: Error } = {}) {
     if (options.repositoryError) throw options.repositoryError;
   };
   const repository: StockRepository = {
+    async lossReport(unit, query) {
+      collect('lossReport', unit, query);
+      return { ...query, unidade_id: unit, inicio_anterior: '2025-12-01', prejuizo_atual: '40', prejuizo_anterior: '0', itens: [] };
+    },
     async registerLossBatch(unit, value) { collect('registerLossBatch', unit, value); return { ids: ['1', '2'] }; },
     async lossAttachment(unit, id) { collect('lossAttachment', unit, id); return { mime: 'image/png', base64: 'iVBORw0KGgo=' }; },
     async lossRegistrationContext(unit) { collect('lossRegistrationContext', unit); return { unidade_id: unit, data_referencia: '2026-11-25', motivos: [], posicoes: [] }; },
@@ -73,6 +77,17 @@ function fixture(options: { authError?: Error; repositoryError?: Error } = {}) {
     return { repository, async authenticate() { if (options.authError) throw options.authError; } };
   }) };
 }
+
+test('RF-023 valida periodicidade, competência e parâmetros repetidos', async () => {
+  const { app, calls } = fixture();
+  const path = '/estoque/relatorio-perdas';
+  assert.equal((await app.fetch(new Request(base + path))).status, 401);
+  assert.equal((await app.fetch(request(path + '?inicio=2026-02-01&periodicidade=anual'))).status, 400);
+  assert.equal((await app.fetch(request(path + '?inicio=2026-01-01&periodicidade=mensal&inicio=2025-01-01'))).status, 400);
+  const response = await app.fetch(request(path + '?inicio=2026-01-01&periodicidade=mensal'));
+  assert.equal(response.status, 200);
+  assert.deepEqual(calls, [{ name: 'lossReport', args: ['1', { inicio: '2026-01-01', periodicidade: 'mensal' }] }]);
+});
 
 test('RF-015 encaminha o lote de perdas e recusa lotes repetidos', async () => {
   const { app, calls } = fixture();

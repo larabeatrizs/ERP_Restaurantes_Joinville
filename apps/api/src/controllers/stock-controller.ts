@@ -1,4 +1,5 @@
 import { readJson } from './read-json.ts';
+import { isStockLossReportQuery } from '@erp/contracts';
 import { hasExactFields, isEntradaInput, isProductLinkInput, isProdutoInput, isRecord, isStockId, isText } from '@erp/contracts';
 import { isStockLedgerFilters, isStockLossDecision, isStockLossRegistration, isStockLossBatchRegistration, stockLossAttachmentMaxBytes } from '@erp/contracts';
 import type { ProductQuery, ProductResult, StockLedgerQuery } from '@erp/contracts';
@@ -58,6 +59,14 @@ export async function stockController(request: Request, env: StockRuntimeEnv, un
   const session = factory(env, token);
   await session.authenticate();
   const service = new StockService(session.repository);
+  if (route === 'estoque/relatorio-perdas') {
+    const params = new URL(request.url).searchParams;
+    const query = Object.fromEntries(params);
+    if (params.size !== 2 || !isStockLossReportQuery(query)) throw new ApiError(400, 'INVALID_QUERY', 'Período inválido.');
+    const report = session.repository.lossReport;
+    if (!report) throw new ApiError(503, 'SERVICE_UNAVAILABLE', 'Relatório de perdas indisponível.');
+    return reply(await report(unit, query));
+  }
   if (lossAttachment) {
     if (new URL(request.url).search) throw new ApiError(400, 'INVALID_QUERY', 'Filtros inválidos.');
     if (!isStockId(lossAttachment)) throw new ApiError(400, 'INVALID_ID', 'Identificador inválido.');
