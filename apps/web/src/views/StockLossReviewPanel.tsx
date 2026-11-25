@@ -68,6 +68,26 @@ export function StockLossReviewPanel({ api, unit, onBusy }: {
     }
   }
 
+  async function downloadPhoto(id: string) {
+    setSaving(true);
+    onBusy(true);
+    setError('');
+    try {
+      const photo = await api.lossAttachment(unit, id);
+      const url = URL.createObjectURL(photo);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `perda-${id}.${photo.type === 'image/jpeg' ? 'jpg' : 'png'}`;
+      link.click();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (err) {
+      setError(lossError(err));
+    } finally {
+      setSaving(false);
+      onBusy(false);
+    }
+  }
+
   return <section className="card" aria-label="Perdas pendentes">
     <h2>Perdas pendentes</h2>
     {message && <p role="status" className="notice">{message}</p>}
@@ -85,6 +105,7 @@ export function StockLossReviewPanel({ api, unit, onBusy }: {
           <td>{decimalLabel(row.quantidade)} {row.unidade_medida}</td>
           <td>R$ {decimalLabel(row.valor_prejuizo, 2)}</td>
           <td><div className="actions">
+            {row.tem_anexo && <button type="button" disabled={saving} aria-label={`Baixar foto da perda ${row.id}`} onClick={() => void downloadPhoto(row.id)}>Baixar foto</button>}
             <button type="button" disabled={saving} aria-label={`Aprovar perda ${row.id}`} onClick={() => void review(row, 'APROVADA')}>Aprovar</button>
             <button type="button" disabled={saving} aria-label={`Rejeitar perda ${row.id}`} onClick={() => void review(row, 'REJEITADA')}>Rejeitar</button>
           </div></td>

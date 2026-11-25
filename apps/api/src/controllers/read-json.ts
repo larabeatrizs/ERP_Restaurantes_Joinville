@@ -1,6 +1,6 @@
 import { ApiError } from '../errors.ts';
 
-export async function readJson(request: Request): Promise<unknown> {
+export async function readJson(request: Request, maxBytes = 65536): Promise<unknown> {
   if (!/^application\/json(?:\s*;|$)/i.test(request.headers.get('Content-Type') ?? '')) throw new ApiError(415, 'UNSUPPORTED_MEDIA_TYPE', 'Use application/json.');
   if (!request.body) throw new ApiError(400, 'INVALID_JSON', 'Informe um objeto JSON.');
   const reader = request.body.getReader();
@@ -12,9 +12,9 @@ export async function readJson(request: Request): Promise<unknown> {
       const chunk = await reader.read();
       if (chunk.done) break;
       size += chunk.value.byteLength;
-      if (size > 65536) {
+      if (size > maxBytes) {
         await reader.cancel();
-        throw new ApiError(413, 'PAYLOAD_TOO_LARGE', 'O conteúdo excede 64 KiB.');
+        throw new ApiError(413, 'PAYLOAD_TOO_LARGE', maxBytes === 65536 ? 'O conteúdo excede 64 KiB.' : 'O conteúdo excede o limite de envio.');
       }
       text += decoder.decode(chunk.value, { stream: true });
     }

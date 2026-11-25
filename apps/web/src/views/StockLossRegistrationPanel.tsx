@@ -1,12 +1,21 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
-import { isStockLossRegistration, valueStockLoss } from '@erp/contracts';
+import { isStockLossAttachment, isStockLossRegistration, stockLossAttachmentMaxBytes, valueStockLoss } from '@erp/contracts';
 import type { StockLossRegistration, StockLossRegistrationContext } from '@erp/contracts';
 import { RequestError } from '../services/api.ts';
 import { decimalLabel } from '../services/stock-api.ts';
 import type { StockApi } from '../services/stock-api.ts';
 import { Skeleton } from './Skeleton.tsx';
 import { StockLossReviewPanel } from './StockLossReviewPanel.tsx';
+
+function readPhoto(file: File): Promise<unknown> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(reader.error);
+    reader.onload = () => resolve({ mime: file.type, base64: String(reader.result).split(',')[1] });
+    reader.readAsDataURL(file);
+  });
+}
 
 export function StockLossRegistrationPanel({ api, unit, onBusy, onDirty }: {
   api: StockApi;
@@ -23,6 +32,8 @@ export function StockLossRegistrationPanel({ api, unit, onBusy, onDirty }: {
   const [quantity, setQuantity] = useState('');
   const [reason, setReason] = useState('');
   const [notes, setNotes] = useState('');
+  const [photo, setPhoto] = useState<File>();
+  const photoInput = useRef<HTMLInputElement>(null);
   const [pending, setPending] = useState<StockLossRegistration>();
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -47,18 +58,24 @@ export function StockLossRegistrationPanel({ api, unit, onBusy, onDirty }: {
   const normalized = quantity.trim().replace(',', '.');
   const estimate = position && valueStockLoss(normalized, position.quantidade, position.valor_unitario);
   const locked = saving || !!pending;
+  const requiresPhoto = context?.motivos.find(row => row.id === reason)?.exige_anexo === true;
 
   async function submit(event: FormEvent) {
     event.preventDefault();
-    const input = pending ?? {
+    const draft = pending ?? {
       lote_id: position?.lote_id ?? '', camara_id: position?.camara_id ?? '',
       data_registro: date, quantidade: normalized, motivo_id: reason,
       justificativa: notes.trim(), chave: crypto.randomUUID(),
     };
-    if (!isStockLossRegistration(input) || (!pending && (!estimate?.ok || date > (context?.data_referencia ?? '')))) {
+    if (!isStockLossRegistration(draft) || (!pending && (!estimate?.ok || date > (context?.data_referencia ?? '')))) {
       setError(estimate && !estimate.ok && estimate.motivo === 'SALDO_INSUFICIENTE'
         ? 'A quantidade excede o saldo do lote neste local.'
         : 'Confira o lote, a data, a quantidade e o motivo.');
+      return;
+    }
+    if (!pending && ((requiresPhoto && !photo) || (photo && (photo.size > stockLossAttachmentMaxBytes
+      || !['image/jpeg', 'image/png'].includes(photo.type))))) {
+      setError('Selecione uma foto JPEG ou PNG de até 2 MiB.');
       return;
     }
 
@@ -66,7 +83,16 @@ export function StockLossRegistrationPanel({ api, unit, onBusy, onDirty }: {
     onBusy(true);
     setRegistered('');
     setError('');
+    let input: StockLossRegistration = draft;
     try {
+      if (photo && !pending) {
+        const attachment = await readPhoto(photo).catch(() => undefined);
+        if (!isStockLossAttachment(attachment)) {
+          setError('Não foi possível ler a foto. Selecione o arquivo novamente.');
+          return;
+        }
+        input = { ...draft, anexo: attachment };
+      }
       setRegistered(await api.registerLoss(unit, input));
       setPending(undefined);
       setPositionKey('');
@@ -74,6 +100,8 @@ export function StockLossRegistrationPanel({ api, unit, onBusy, onDirty }: {
       setQuantity('');
       setReason('');
       setNotes('');
+      setPhoto(undefined);
+      if (photoInput.current) photoInput.current.value = '';
       onDirty(false);
     } catch (err) {
       if (pending || !(err instanceof RequestError) || err.status >= 500) {
@@ -102,7 +130,7 @@ export function StockLossRegistrationPanel({ api, unit, onBusy, onDirty }: {
     {registered && <p role="status" className="notice">Perda #{registered} registrada. Aguarda revisão para movimentar o estoque.</p>}
     {error && <p role="alert" className="notice error">{error}</p>}
     {!context.posicoes.length && <p>Nenhum lote com saldo disponível nesta unidade.</p>}
-    {!context.motivos.length && <p>Nenhum motivo ativo disponível para registro sem anexo.</p>}
+    {!context.motivos.length && <p>Nenhum motivo ativo disponível para registro.</p>}
     {!!context.posicoes.length && !!context.motivos.length && <form onSubmit={event => void submit(event)} onChange={() => onDirty(true)}>
       <fieldset disabled={locked}>
         <label className="field"><span id="perda-lote-label">Lote e local</span>
@@ -120,6 +148,11 @@ export function StockLossRegistrationPanel({ api, unit, onBusy, onDirty }: {
           {context.motivos.map(row => <option key={row.id} value={row.id}>{row.descricao}</option>)}
         </select></label>
         <label className="field">Justificativa<textarea maxLength={2000} value={notes} onChange={event => setNotes(event.target.value)} /></label>
+        <label className="field">{requiresPhoto ? 'Foto obrigatória' : 'Foto'}
+          <input ref={photoInput} type="file" accept="image/jpeg,image/png" required={requiresPhoto}
+            onChange={event => setPhoto(event.target.files?.[0])} />
+          <span className="hint">JPEG ou PNG, até 2 MiB.</span>
+        </label>
       </fieldset>
       {estimate?.ok && <p>Prejuízo estimado de R$ {decimalLabel(estimate.valor_prejuizo, 2)}</p>}
       <div className="actions footer-actions">

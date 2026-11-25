@@ -1,5 +1,6 @@
 import { test,expect } from '@playwright/test';
 const actor='10000000-0000-4000-8000-000000000001';
+const lossPhoto = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aVYQAAAAASUVORK5CYII=';
 const row=(unit='1')=>({id:'1',unidade_id:unit,produto_id:'2',quantidade:'5.000000',solicitante_id:'10000000-0000-4000-8000-000000000002',retirado_por:'Pessoa sintética',data_movimento:'2026-11-17',modo_snapshot:'POSTERIOR',configuracao_revisao:'1',estado:'REGISTRADA',revisao:'1',conferido_por:null,motivo:'',itens:[{id:'1',lote_id:'3',camara_id:'4',quantidade:'5.000000'}]});
 async function setup(page,options={}){
  const state={writes:[],rows:options.rows??[],fail:options.fail??false};
@@ -38,7 +39,7 @@ test('RF-015 aprova e rejeita perdas de Bucarein, com atualização da fila', as
   const loss = {
     id: '11', produto: 'Arroz', lote: 'L1', local: 'Almoxarifado', unidade_medida: 'KG',
     data_registro: '2026-11-24', motivo: 'Validade vencida', justificativa: '',
-    quantidade: '5.000000', valor_prejuizo: '40.000000000000',
+    quantidade: '5.000000', valor_prejuizo: '40.000000000000', tem_anexo: true,
   };
   let rows = [loss, { ...loss, id: '12', lote: 'L2' }];
   const decisions = [];
@@ -46,6 +47,7 @@ test('RF-015 aprova e rejeita perdas de Bucarein, com atualização da fila', as
     const request = route.request();
     const path = new URL(request.url()).pathname;
     if (path.endsWith('/registro')) return route.fulfill({ status: 403, json: {} });
+    if (path.endsWith('/11/anexo')) return route.fulfill({ contentType: 'image/png', body: Buffer.from(lossPhoto, 'base64') });
     if (request.method() === 'GET') {
       expect(path).toBe('/api/unidades/1/estoque/perdas');
       return route.fulfill({ json: { unidade_id: '1', perdas: rows } });
@@ -58,6 +60,9 @@ test('RF-015 aprova e rejeita perdas de Bucarein, com atualização da fila', as
   });
   await page.getByRole('link', { name: 'Perdas', exact: true }).click();
   await expect(page.getByRole('cell', { name: 'R$ 40,00' })).toHaveCount(2);
+  const download = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Baixar foto da perda 11' }).click();
+  expect((await download).suggestedFilename()).toBe('perda-11.png');
   await page.getByRole('button', { name: 'Aprovar perda 11' }).click();
   await expect(page.getByRole('status').filter({ hasText: 'baixa foi registrada' })).toBeVisible();
   await page.getByRole('button', { name: 'Rejeitar perda 12' }).click();
@@ -74,7 +79,7 @@ test('RF-015 estima o prejuízo e repete a mesma chave após resposta incerta', 
   await page.route('**/api/unidades/1/estoque/perdas/registro', route => {
     const request = route.request();
     if (request.method() === 'GET') return route.fulfill({ json: {
-      unidade_id: '1', data_referencia: '2026-11-25', motivos: [{ id: '1', descricao: 'Validade vencida' }],
+      unidade_id: '1', data_referencia: '2026-11-25', motivos: [{ id: '1', descricao: 'Validade vencida', exige_anexo: true }],
       posicoes: [{ lote_id: '1', camara_id: '1', produto: 'Arroz', lote: 'L1', local: 'Almoxarifado',
         unidade_medida: 'KG', quantidade: '20.000000', valor_unitario: '8.000000' }],
     } });
@@ -87,6 +92,7 @@ test('RF-015 estima o prejuízo e repete a mesma chave após resposta incerta', 
   await page.getByLabel('Lote e local').selectOption('1:1');
   await page.getByLabel('Quantidade').fill('5,0');
   await page.getByLabel('Motivo', { exact: true }).selectOption('1');
+  await page.getByLabel('Foto obrigatória').setInputFiles({ name: 'perda.png', mimeType: 'image/png', buffer: Buffer.from(lossPhoto, 'base64') });
   await expect(page.getByText('Prejuízo estimado de R$ 40,00')).toBeVisible();
   await page.getByRole('button', { name: 'Registrar perda', exact: true }).click();
   await expect(page.getByLabel('Quantidade')).toBeDisabled();
@@ -94,4 +100,5 @@ test('RF-015 estima o prejuízo e repete a mesma chave após resposta incerta', 
   await expect(page.getByRole('status').filter({ hasText: 'Perda #12 registrada' })).toBeVisible();
   expect(writes).toHaveLength(2);
   expect(writes[0]).toEqual(writes[1]);
+  expect(writes[0].anexo).toEqual({ mime: 'image/png', base64: lossPhoto });
 });

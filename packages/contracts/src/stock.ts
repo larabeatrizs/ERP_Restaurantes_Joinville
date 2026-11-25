@@ -56,7 +56,9 @@ export interface ReceiptResult { entrada: Receipt }
 
 export const productInputFields = ['descricao', 'complemento', 'unidade_medida_id', 'categoria_id', 'perecivel', 'armazenamento', 'fator_correcao', 'apresentacao_compra', 'quantidade_apresentacao', 'estoque_minimo', 'estoque_maximo', 'ponto_reposicao', 'status'] as const;
 const itemFields = ['produto_id', 'quantidade', 'valor_unitario', 'numero_lote', 'validade', 'camara_id', 'temperatura', 'aspecto_embalagem', 'conformidade', 'motivo'] as const;
-export function hasExactFields(value: Record<string, unknown>, fields: readonly string[]): boolean {
+export function hasExactFields(value: Record<string, unknown>, fields: readonly string[], optional: readonly string[] = []): boolean {
+  if (optional.length) return fields.every(field => Object.hasOwn(value, field))
+    && Object.keys(value).every(field => fields.includes(field) || optional.includes(field));
   return Object.keys(value).length === fields.length && fields.every(field => Object.hasOwn(value, field));
 }
 export function isText(value: unknown, max: number, empty = false): value is string {
