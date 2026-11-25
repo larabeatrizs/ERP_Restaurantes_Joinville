@@ -4,6 +4,7 @@ import type { StockLossReviewState, StockLossPanel, StockLossRegistration, Stock
 
 export interface StockRuntimeEnv { SUPABASE_URL?: string; SUPABASE_PUBLISHABLE_KEY?: string }
 export interface StockRepository {
+  registerLossBatch?(unit: string, input: import('@erp/contracts').StockLossBatchRegistration): Promise<{ ids: string[] }>;
   lossAttachment?(unit: string, id: string): Promise<import('@erp/contracts').StockLossAttachment>;
   lossConfiguration?(change?: import('@erp/contracts').LossConfigurationChange): Promise<import('@erp/contracts').LossConfiguration>;
   lossRegistrationContext?(unit: string): Promise<StockLossRegistrationContext>;

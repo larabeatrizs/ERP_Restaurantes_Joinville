@@ -474,6 +474,43 @@ test('RF-007 configura motivos e substituto com revisão, segregação e trilha'
     ['motivo', 'motivo', 'substituto', 'substituto']);
 }));
 
+test('RF-015 lança vários lotes com rollback integral e reenvio pela mesma chave', async () => actor(1, async () => {
+  const product = await create();
+  await confirm((await receive(product.id, { total_nota: null, itens: [
+    line(product.id, { numero_lote: 'LOTE-A', valor_unitario: '8' }),
+    line(product.id, { numero_lote: 'LOTE-B', valor_unitario: '2' }),
+  ] })).id);
+  const positions = (await rpc('saldos')).saldos.sort((a, b) => Number(a.lote_id) - Number(b.lote_id));
+  assert.equal(positions.length, 2);
+  await db.exec("reset role; update erp.unidade set codigo='RP-BUCAREIN' where id=1");
+  const reason = (await db.query("insert into erp_private.perda_motivo(descricao,exige_anexo) values('Queda de energia',true) returning id::text")).rows[0].id;
+  await become(1);
+  const input = { camara_id: positions[0].camara_id, data_registro: date, motivo_id: reason,
+    justificativa: 'Falha sintética', chave: key(950), itens: positions.map(row => ({ lote_id: row.lote_id, quantidade: '5' })),
+    anexo: { mime: 'image/png', base64: 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aVYQAAAAASUVORK5CYII=' },
+  };
+  const register = async value => (await db.query(
+    'select erp.perda_registrar_lote(1,$1::jsonb) as resultado', [JSON.stringify(value)],
+  )).rows[0].resultado;
+  await sqlRejects(`select erp.perda_registrar_lote(1,'${JSON.stringify({ ...input, itens: [input.itens[0], { ...input.itens[1], quantidade: '21' }] })}')`, 'PT409');
+  await db.exec('reset role');
+  for (const table of ['perda_estoque', 'perda_lote_comando', 'perda_anexo']) {
+    assert.equal((await db.query(`select count(*)::int as total from erp_private.${table}`)).rows[0].total, 0);
+  }
+  assert.equal((await db.query("select count(*)::int as total from erp.auditoria_estoque where acao='perda_registrar'")).rows[0].total, 0);
+  await become(1);
+  const result = await register(input);
+  assert.equal(result.ids.length, 2);
+  assert.deepEqual(await register({ ...input, itens: [...input.itens].reverse() }), result);
+  await sqlRejects(`select erp.perda_registrar_lote(1,'${JSON.stringify({ ...input, justificativa: 'Outro evento' })}')`, 'PT409');
+  await sqlRejects(`select erp.perda_registrar_lote(1,'${JSON.stringify({ ...input, itens: [input.itens[0], input.itens[0]] })}')`, 'PT422');
+  await db.exec('reset role');
+  assert.deepEqual((await db.query('select estado,valor_prejuizo::text from erp_private.perda_estoque order by lote_id')).rows,
+    [{ estado: 'PENDENTE', valor_prejuizo: '40.000000000000' }, { estado: 'PENDENTE', valor_prejuizo: '10.000000000000' }]);
+  assert.equal((await db.query('select sum(quantidade)::text as total from erp.saldo_lote_local')).rows[0].total, '40.000000');
+  assert.equal((await db.query('select count(*)::int as total from erp_private.perda_anexo')).rows[0].total, 2);
+}));
+
 test('RF-015 registra, revisa e reflete a baixa única no extrato', async () => actor(1, async () => {
   const p = await create();
   await confirm((await receive(p.id, { total_nota: null, itens: [line(p.id, { valor_unitario: '8' })] })).id);

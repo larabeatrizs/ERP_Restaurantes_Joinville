@@ -39,6 +39,7 @@ function fixture(options: { authError?: Error; repositoryError?: Error } = {}) {
     if (options.repositoryError) throw options.repositoryError;
   };
   const repository: StockRepository = {
+    async registerLossBatch(unit, value) { collect('registerLossBatch', unit, value); return { ids: ['1', '2'] }; },
     async lossAttachment(unit, id) { collect('lossAttachment', unit, id); return { mime: 'image/png', base64: 'iVBORw0KGgo=' }; },
     async lossRegistrationContext(unit) { collect('lossRegistrationContext', unit); return { unidade_id: unit, data_referencia: '2026-11-25', motivos: [], posicoes: [] }; },
     async registerLoss(unit, value) { collect('registerLoss', unit, value); return { id: product.id }; },
@@ -72,6 +73,20 @@ function fixture(options: { authError?: Error; repositoryError?: Error } = {}) {
     return { repository, async authenticate() { if (options.authError) throw options.authError; } };
   }) };
 }
+
+test('RF-015 encaminha o lote de perdas e recusa lotes repetidos', async () => {
+  const { app, calls } = fixture();
+  const path = '/estoque/perdas/lote';
+  const row = { lote_id: '1', quantidade: '2' };
+  const input = { camara_id: '1', data_registro: '2026-11-25', motivo_id: '1', justificativa: '', chave: key,
+    itens: [row, { lote_id: product.id, quantidade: '5' }] };
+  assert.equal((await app.fetch(request(path))).status, 405);
+  assert.equal((await app.fetch(request(path, 'POST', { ...input, itens: [row, row] }))).status, 422);
+  const response = await app.fetch(request(path, 'POST', input));
+  assert.equal(response.status, 201);
+  assert.deepEqual(await response.json(), { ids: ['1', '2'] });
+  assert.deepEqual(calls, [{ name: 'registerLossBatch', args: ['1', input] }]);
+});
 
 test('RF-015 entrega foto somente com sessão e como download sem cache', async () => {
   const { app, calls } = fixture();

@@ -48,6 +48,37 @@ export interface StockLossRegistration {
   anexo?: StockLossAttachment;
 }
 
+export const stockLossBatchMaxItems = 20;
+const lossCommonFields = ['camara_id', 'data_registro', 'motivo_id', 'justificativa', 'chave'];
+
+function isLossCommon(value: Record<string, unknown>): boolean {
+  return isStockId(value.camara_id) && isIsoDate(value.data_registro) && isStockId(value.motivo_id)
+    && isText(value.justificativa, 2000, true) && typeof value.chave === 'string'
+    && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value.chave)
+    && (!Object.hasOwn(value, 'anexo') || isStockLossAttachment(value.anexo));
+}
+
+export interface StockLossBatchRegistration extends Omit<StockLossRegistration, 'lote_id' | 'quantidade'> {
+  itens: { lote_id: string; quantidade: string }[];
+}
+
+export function isStockLossBatchRegistration(value: unknown): value is StockLossBatchRegistration {
+  if (!isRecord(value) || !Array.isArray(value.itens) || value.itens.length < 2 || value.itens.length > stockLossBatchMaxItems) return false;
+  if (!hasExactFields(value, [...lossCommonFields, 'itens'], ['anexo']) || !isLossCommon(value)) return false;
+  const ids = new Set<string>();
+  for (const item of value.itens) {
+    if (!isRecord(item) || !hasExactFields(item, ['lote_id', 'quantidade'])
+      || !isStockId(item.lote_id) || ids.has(item.lote_id) || !isStockDecimal(item.quantidade, { positive: true })) return false;
+    ids.add(item.lote_id);
+  }
+  return true;
+}
+
+export function isStockLossBatchResult(value: unknown, count: number): value is { ids: string[] } {
+  return isRecord(value) && hasExactFields(value, ['ids']) && Array.isArray(value.ids)
+    && value.ids.length === count && value.ids.every(isStockId) && new Set(value.ids).size === count;
+}
+
 export interface StockLossPosition {
   lote_id: string;
   camara_id: string;
@@ -67,12 +98,8 @@ export interface StockLossRegistrationContext {
 }
 
 export function isStockLossRegistration(value: unknown): value is StockLossRegistration {
-  return isRecord(value) && hasExactFields(value, ['lote_id', 'camara_id', 'data_registro', 'quantidade', 'motivo_id', 'justificativa', 'chave'], ['anexo'])
-    && isStockId(value.lote_id) && isStockId(value.camara_id) && isIsoDate(value.data_registro)
-    && isStockDecimal(value.quantidade, { positive: true }) && isStockId(value.motivo_id)
-    && isText(value.justificativa, 2000, true) && typeof value.chave === 'string'
-    && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value.chave)
-    && (!Object.hasOwn(value, 'anexo') || isStockLossAttachment(value.anexo));
+  return isRecord(value) && hasExactFields(value, [...lossCommonFields, 'lote_id', 'quantidade'], ['anexo'])
+    && isLossCommon(value) && isStockId(value.lote_id) && isStockDecimal(value.quantidade, { positive: true });
 }
 
 export function isStockLossRegistrationContext(value: unknown, unit: string): value is StockLossRegistrationContext {
