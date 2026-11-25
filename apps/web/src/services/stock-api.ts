@@ -9,6 +9,14 @@ import { isStockId, isStockLossPanel, isStockLossRegistrationContext } from '@er
 import type { StockLossReviewState, StockLossPanel, StockLossRegistration, StockLossRegistrationContext } from '@erp/contracts';
 
 export class StockApi {
+  async lossAttachment(unit: string, id: string): Promise<Blob> {
+    if (!isStockId(id)) throw new RequestError(404);
+    const response = await this.requestResponse(unit, `/estoque/perdas/${id}/anexo`);
+    const mime = response.headers.get('Content-Type');
+    if (mime !== 'image/jpeg' && mime !== 'image/png') throw new RequestError(503);
+    return response.blob();
+  }
+
   async lossRegistrationContext(unit: string): Promise<StockLossRegistrationContext> {
     const data = await this.request(unit, '/estoque/perdas/registro');
     if (!isStockLossRegistrationContext(data, unit)) throw new RequestError(503);
@@ -65,6 +73,13 @@ export class StockApi {
   }
 
   private async request(unit: string, route: string, body?: unknown, method = 'POST', signal?: AbortSignal): Promise<Record<string, unknown>> {
+    const response = await this.requestResponse(unit, route, body, method, signal);
+    const data: unknown = await response.json();
+    if (!isRecord(data)) throw new RequestError(503);
+    return data;
+  }
+
+  private async requestResponse(unit: string, route: string, body?: unknown, method = 'POST', signal?: AbortSignal): Promise<Response> {
     if (!isPositiveBigint(unit)) throw new RequestError(404);
     const token = await this.token();
     if (!token) throw new RequestError(401);
@@ -77,9 +92,7 @@ export class StockApi {
       signal: signal ? AbortSignal.any([signal, timeout]) : timeout,
     });
     if (!response.ok) throw new RequestError(response.status);
-    const data: unknown = await response.json();
-    if (!isRecord(data)) throw new RequestError(503);
-    return data;
+    return response;
   }
 
   async context(unit: string): Promise<StockContext> {

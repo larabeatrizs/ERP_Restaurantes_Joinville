@@ -1,6 +1,6 @@
 import { readJson } from './read-json.ts';
 import { hasExactFields, isEntradaInput, isProductLinkInput, isProdutoInput, isRecord, isStockId, isText } from '@erp/contracts';
-import { isStockLedgerFilters, isStockLossDecision, isStockLossRegistration } from '@erp/contracts';
+import { isStockLedgerFilters, isStockLossDecision, isStockLossRegistration, stockLossAttachmentMaxBytes } from '@erp/contracts';
 import type { ProductQuery, ProductResult, StockLedgerQuery } from '@erp/contracts';
 import { ApiError } from '../errors.ts';
 import { StockService } from '../services/stock-service.ts';
@@ -48,6 +48,7 @@ export async function stockController(request: Request, env: StockRuntimeEnv, un
   const confirmation = /^entradas\/([^/]+)\/(confirmar|aprovar-divergencia)$/.exec(route);
   const lossReview = /^estoque\/perdas\/([^/]+)\/revisao$/.exec(route)?.[1];
   const lossRegistration = route === 'estoque/perdas/registro';
+  const lossAttachment = /^estoque\/perdas\/([^/]+)\/anexo$/.exec(route)?.[1];
   const allow = productEdit ? 'PATCH, DELETE' : confirmation || productLink || productStatus || importedCompletion || lossReview ? 'POST' : route === 'produtos' || route === 'entradas' || lossRegistration ? 'GET, POST' : 'GET';
   if (!allow.split(', ').includes(request.method)) return methodDenied(allow, request.method === 'HEAD');
   const token = /^Bearer\s+(\S+)$/i.exec(request.headers.get('Authorization') ?? '')?.[1];
@@ -56,10 +57,23 @@ export async function stockController(request: Request, env: StockRuntimeEnv, un
   const session = factory(env, token);
   await session.authenticate();
   const service = new StockService(session.repository);
+  if (lossAttachment) {
+    if (new URL(request.url).search) throw new ApiError(400, 'INVALID_QUERY', 'Filtros inválidos.');
+    if (!isStockId(lossAttachment)) throw new ApiError(400, 'INVALID_ID', 'Identificador inválido.');
+    const readAttachment = session.repository.lossAttachment;
+    if (!readAttachment) throw new ApiError(503, 'SERVICE_UNAVAILABLE', 'Consulta de anexos indisponível.');
+    const result = await readAttachment(unit, lossAttachment);
+    const data = Uint8Array.from(atob(result.base64), character => character.charCodeAt(0));
+    const extension = result.mime === 'image/jpeg' ? 'jpg' : 'png';
+    return new Response(data, { headers: {
+      'Cache-Control': 'no-store', 'Content-Type': result.mime, 'X-Content-Type-Options': 'nosniff',
+      'Content-Disposition': `attachment; filename="perda-${lossAttachment}.${extension}"`,
+    } });
+  }
   if (lossRegistration) {
     if (new URL(request.url).search) throw new ApiError(400, 'INVALID_QUERY', 'Filtros inválidos.');
     if (request.method === 'GET') return reply(await service.lossRegistrationContext(unit));
-    const input = await readJson(request);
+    const input = await readJson(request, 4 * Math.ceil(stockLossAttachmentMaxBytes / 3) + 65536);
     if (!isStockLossRegistration(input)) invalid();
     return reply(await service.registerLoss(unit, input), 201);
   }

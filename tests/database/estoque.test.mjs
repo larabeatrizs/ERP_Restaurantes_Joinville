@@ -492,7 +492,10 @@ test('RF-015 registra, revisa e reflete a baixa única no extrato', async () => 
   )).rows[0].result;
   const context = await web(null);
   assert.equal(context.unidade_id, '1');
-  assert.deepEqual(context.motivos, [{ id: reasonId, descricao: 'Validade vencida' }]);
+  assert.deepEqual(context.motivos, [
+    { id: attachmentReasonId, descricao: 'Com anexo', exige_anexo: true },
+    { id: reasonId, descricao: 'Validade vencida', exige_anexo: false },
+  ]);
   assert.deepEqual(context.posicoes.map(row => [row.lote_id, row.camara_id, row.quantidade]), [
     [input.lote_id, input.camara_id, '20.000000'],
   ]);
@@ -536,7 +539,12 @@ test('RF-015 registra, revisa e reflete a baixa única no extrato', async () => 
 
   await become(1);
   await db.exec('set local role erp_stock_writer');
-  const competing = await register({ ...input, quantidade: '20', chave: key(903) });
+  const photo = { mime: 'image/png', base64: 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aVYQAAAAASUVORK5CYII=' };
+  const withPhoto = { ...input, quantidade: '20', chave: key(903), motivo_id: attachmentReasonId, anexo: photo };
+  const competing = await register(withPhoto);
+  assert.equal(await register(withPhoto), competing);
+  const otherPhoto = { ...photo, base64: photo.base64.replace('CYII', 'CXII') };
+  await sqlRejects(`select erp_private.perda_registrar_pendente(1,'${JSON.stringify({ ...withPhoto, anexo: otherPhoto })}')`, 'PT409');
   await db.exec('reset role');
   await db.query('insert into erp_private.perda_substituto values(1,$1)', [uid(4)]);
   await db.query('update erp.usuario set perfil_id=4 where id=$1', [uid(1)]);
@@ -563,6 +571,9 @@ test('RF-015 registra, revisa e reflete a baixa única no extrato', async () => 
   await sqlRejects('select erp.perda_painel(2,null,null)', 'PT404');
   const pendingRows = (await db.query(panel)).rows[0].painel.perdas;
   assert.deepEqual(pendingRows.map(row => row.id), [id, competing]);
+  assert.deepEqual(pendingRows.map(row => row.tem_anexo), [false, true]);
+  assert.deepEqual((await db.query('select erp.perda_anexo_consultar(1,$1) as foto', [competing])).rows[0].foto, photo);
+  await sqlRejects(`select erp.perda_anexo_consultar(2,${competing})`, 'PT404');
   assert.equal(pendingRows[0].valor_prejuizo, '40.000000000000');
   assert.equal(pendingRows[0].motivo, 'Validade vencida');
   const approved = (await db.query("select erp.perda_painel(1,$1,'APROVADA') as resultado", [id])).rows[0].resultado;
