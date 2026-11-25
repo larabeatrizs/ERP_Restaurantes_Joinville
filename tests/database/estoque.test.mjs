@@ -939,7 +939,7 @@ test('CARGA-002 nega leitura/escrita direta, perfis/unidades indevidos e reverte
 }));
 test('schema novo tem RLS, executor restrito e nenhum DML cliente ou USAGE auth', async () => {
   const rows = (await db.query("select relname,relrowsecurity from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname='erp' and c.relkind='r'")).rows;
-  assert.equal(rows.length, 28); assert.ok(rows.every((r) => r.relrowsecurity));
+  assert.equal(rows.length, 32); assert.ok(rows.every((r) => r.relrowsecurity));
   const role = (await db.query("select rolcanlogin,rolsuper,rolbypassrls,rolcreatedb,rolcreaterole from pg_roles where rolname='erp_stock_writer'")).rows[0];
   assert.ok(Object.values(role).every((v) => v === false));
   const grants = (await db.query("select has_schema_privilege('erp_stock_writer','auth','USAGE') as auth_usage,pg_has_role('authenticated','erp_stock_writer','MEMBER') as member,has_schema_privilege('erp_stock_writer','erp_private','CREATE') as can_create")).rows[0];
