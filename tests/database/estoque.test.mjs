@@ -445,6 +445,35 @@ test('RN-027 impede novos créditos e débitos em mês fechado e preserva reenvi
   assert.equal((await db.query('select estado from erp.entrada where id=$1', [draft.id])).rows[0].estado, 'RASCUNHO');
 }));
 
+test('RF-009 persiste refeições por versão e impede vínculo cruzado ou data fora do período', async () => actor(7, async () => {
+  await sqlRejects('select * from erp.cardapio_refeicao', '42501');
+  await db.exec('reset role');
+  const menu = (await db.query(`insert into erp.cardapio(unidade_id,inicio,fim,tipo_periodo)
+    values(1,'2026-11-01','2026-11-30','MENSAL') returning id::text`)).rows[0].id;
+  const version = async numero => (await db.query(`insert into erp.cardapio_versao(unidade_id,cardapio_id,numero,nutricionista_id)
+    values(1,$1,$2,$3) returning id::text,estado`, [menu, numero, uid(7)])).rows[0];
+  const first = await version(1);
+  const second = await version(2);
+  assert.equal(first.estado, 'RASCUNHO');
+  assert.notEqual(first.id, second.id);
+  await sqlRejects(`update erp.cardapio_versao set estado='PUBLICADO' where id=${first.id}`, '23514');
+  const dayInsert = `insert into erp.cardapio_dia(unidade_id,cardapio_id,cardapio_versao_id,periodo_inicio,periodo_fim,data) values`;
+  await sqlRejects(`${dayInsert}(1,${menu},${first.id},'2026-11-01','2026-11-30','2026-12-01')`, '23514');
+  await sqlRejects(`${dayInsert}(1,${menu},${first.id},'2026-11-01','2026-12-31','2026-12-01')`, '23503');
+  const firstDay = (await db.query(`${dayInsert}(1,${menu},${first.id},'2026-11-01','2026-11-30','2026-11-25') returning id::text`)).rows[0].id;
+  const secondDay = (await db.query(`${dayInsert}(1,${menu},${second.id},'2026-11-01','2026-11-30','2026-11-25') returning id::text`)).rows[0].id;
+  const mealInsert = 'insert into erp.cardapio_refeicao(unidade_id,cardapio_dia_id,tipo_refeicao,estimadas) values';
+  await db.exec(`${mealInsert}(1,${firstDay},'ALMOCO',200),(1,${secondDay},'ALMOCO',250)`);
+  await sqlRejects(`${mealInsert}(2,${firstDay},'ALMOCO',200)`, '23503');
+  await sqlRejects(`${mealInsert}(1,${firstDay},'ALMOCO',200)`, '23505');
+  await sqlRejects(`${mealInsert}(1,${firstDay},'JANTAR',-1)`, '23514');
+  assert.deepEqual((await db.query('select estimadas from erp.cardapio_refeicao order by id')).rows.map(row => row.estimadas), [200, 250]);
+  for (const role of ['anon', 'authenticated', 'service_role']) {
+    const privileges = (await db.query(`select has_table_privilege($1,'erp.cardapio_refeicao','SELECT, INSERT, UPDATE, DELETE') as allowed`, [role])).rows[0];
+    assert.equal(privileges.allowed, false);
+  }
+}));
+
 test('RF-007 configura motivos e substituto com revisão, segregação e trilha', async () => actor(1, async () => {
   await sqlRejects('select erp.perda_configuracao(null)', 'PT403');
   await db.exec("reset role; update erp.unidade set codigo='RP-BUCAREIN' where id=1");

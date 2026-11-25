@@ -56,6 +56,8 @@ Esta decisão resolve DOM-05 neste recorte: a requisição rápida pode nascer s
 
 ## Contrato de conciliação C1
 
+A fundação de persistência do RF-009 introduz o identificador de refeição por unidade na estrutura de cardápio, versão e dia. A chave composta permite que a futura conciliação use uma FK da mesma unidade. A publicação de cardápio, a vinculação de pratos e a revalidação do calendário precedem o uso operacional dessa referência.
+
 `WithdrawalAllocationInput` contém `revisao` textual e `destinos`, lista de pares `cardapio_refeicao_id`/`quantidade`. É a substituição integral da distribuição de **um item da retirada**, não um incremento sobre a lista anterior. IDs e quantidades permanecem strings: até 12 inteiros e seis decimais, sem arredondamento binário. A lista pode estar vazia (pendência) ou parcial; o total não excede a quantidade original. Uma refeição aparece uma vez por item. Limite técnico de payload: 100 destinos por atualização; não limita o número de refeições do restaurante. A revisão será comparada atomicamente com a persistida em C2; C1 só valida sua representação.
 
 `validateWithdrawalAllocation` exige contexto confiável lido pelo servidor: unidade e quantidade original do item, refeições existentes e suas unidades. Rejeita destinos desconhecidos/de outra unidade e contextos duplicados/ambíguos. Não aceita autoridade, unidade, estado, autor ou quantidade original no payload. Calcula com BigInt em milionésimos; não altera os argumentos. **Não autoriza nem substitui FK/RLS/locks.** Não usa calendário CAD-007 como se fosse uma refeição de cardápio e não cria refeição fictícia.
