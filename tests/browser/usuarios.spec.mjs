@@ -47,6 +47,37 @@ async function setup(page,{allowed=true,write=true,conflict=false,seed=[],failPa
  return {submissions,requests,reissues,edits,situations};
 }
 async function fill(page){await page.getByRole('button',{name:'Novo usuário',exact:true}).click();await page.getByLabel('Nome de login *',{exact:true}).fill(' NOVO.USUARIO ');await page.getByLabel('Nome de identificação *',{exact:true}).fill(' Pessoa sintética ');await page.getByLabel('Email *',{exact:true}).fill('NOVO@EXAMPLE.INVALID');await page.getByRole('checkbox',{name:'RP2 — Unidade B',exact:true}).check();await page.getByLabel('Motivo do cadastro *',{exact:true}).fill(' Cadastro sintético ');}
+test('RF-007 configura motivo com anexo e designa gestor vinculado a Bucarein', async ({ page }) => {
+  await setup(page);
+  const gestor = '00000000-0000-4000-8000-000000000014';
+  const state = { revisao: '0', bucarein: true, substituto: null, motivos: [], gestores: [{ id: gestor, nome: 'Gestor sintético' }] };
+  const writes = [];
+  await page.route('**/api/admin/perdas', route => {
+    if (route.request().method() === 'PATCH') {
+      const input = route.request().postDataJSON();
+      writes.push(input);
+      expect(input.revisao).toBe(state.revisao);
+      state.revisao = String(writes.length);
+      if (input.acao === 'motivo') state.motivos.push({ id: '1', descricao: input.descricao, exige_anexo: input.exige_anexo, ativo: input.ativo });
+      else state.substituto = input.usuario_id;
+    }
+    return route.fulfill({ json: state });
+  });
+  await page.getByRole('link', { name: 'Configuração de perdas' }).click();
+  await page.getByRole('button', { name: 'Novo motivo' }).click();
+  await page.getByRole('textbox', { name: 'Descrição' }).fill('Avaria');
+  await page.getByRole('checkbox', { name: 'Exige anexo' }).check();
+  await page.getByRole('button', { name: 'Salvar motivo' }).click();
+  await expect(page.getByRole('cell', { name: 'Obrigatório' })).toBeVisible();
+  await page.getByRole('combobox', { name: 'Gestor substituto' }).selectOption(gestor);
+  await page.getByRole('button', { name: 'Salvar substituto' }).click();
+  await expect(page.getByRole('status')).toHaveText('Substituto atualizado.');
+  expect(writes).toEqual([
+    { acao: 'motivo', revisao: '0', id: null, descricao: 'Avaria', exige_anexo: true, ativo: true },
+    { acao: 'substituto', revisao: '1', usuario_id: gestor },
+  ]);
+});
+
 test('usuários: administrador inclui com filiais e recebe link protegido; tabela mostra primeiro acesso',async({page})=>{
  const state=await setup(page);await fill(page);
  await page.getByLabel('Perfil *',{exact:true}).selectOption('NUTRICIONISTA');await expect(page.getByLabel('Perfil *',{exact:true})).toHaveValue('NUTRICIONISTA');await page.getByLabel('Perfil *',{exact:true}).selectOption('ESTOQUISTA');

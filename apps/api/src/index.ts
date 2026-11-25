@@ -3,6 +3,8 @@ import { identityController, settingsController, unitsController } from './contr
 import { createSupabaseSession } from './repositories/supabase-settings.ts';
 import type { RuntimeEnv, SessionFactory } from './repositories/settings-repository.ts';
 import { ApiError } from './errors.ts';
+import { isLossConfigurationChange } from '@erp/contracts';
+import { readJson } from './controllers/read-json.ts';
 import { stockController } from './controllers/stock-controller.ts';
 import { createSupabaseStockSession } from './repositories/supabase-stock.ts';
 import type { StockSessionFactory } from './repositories/stock-repository.ts';
@@ -30,6 +32,20 @@ export function createApp(factory: SessionFactory = createSupabaseSession, stock
     async fetch(request: Request, env: RuntimeEnv = {}): Promise<Response> {
       try {
         const path = new URL(request.url).pathname;
+        if (path === '/api/admin/perdas') {
+          if (request.method !== 'GET' && request.method !== 'PATCH') return methodNotAllowed('GET, PATCH', request.method === 'HEAD');
+          const token = /^Bearer\s+(\S+)$/i.exec(request.headers.get('Authorization') ?? '')?.[1];
+          if (!token) throw new ApiError(401, 'UNAUTHORIZED', 'Entre novamente.');
+          const session = stockFactory(env, token);
+          await session.authenticate();
+          if (new URL(request.url).search) throw new ApiError(400, 'INVALID_QUERY', 'Filtros inválidos.');
+          const configuration = session.repository.lossConfiguration;
+          if (!configuration) throw new ApiError(503, 'SERVICE_UNAVAILABLE', 'Configuração de perdas indisponível.');
+          const input = request.method === 'PATCH' ? await readJson(request) : undefined;
+          if (request.method === 'PATCH' && !isLossConfigurationChange(input)) throw new ApiError(422, 'INVALID_STOCK_INPUT', 'Revise os campos informados.');
+          const result = await configuration(isLossConfigurationChange(input) ? input : undefined);
+          return Response.json(result, { headers: { 'Cache-Control': 'no-store' } });
+        }
         const withdrawal = /^\/api\/unidades\/([^/]+)\/requisicoes(?:\/([^/]+)\/conferencia)?$/.exec(path);
         if(withdrawal?.[1])return await withdrawalController(request,env,withdrawal[1],withdrawal[2],withdrawalFactory);
         if (path === '/api/admin/usuarios' || /^\/api\/admin\/usuarios\/[a-f0-9-]{36}(?:\/(?:primeiro-acesso|situacao))?$/i.test(path)) {

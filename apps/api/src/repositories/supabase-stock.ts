@@ -4,6 +4,7 @@ import { isEntradaInput, isEntradaItemInput, isIsoDate, isProdutoInput, isRecord
 import type { CatalogProduct, Product, Receipt, ReceiptItem, StockBalance, StockContext } from '@erp/contracts';
 import type { StockRuntimeEnv, StockSession } from './stock-repository.ts';
 import { ApiError } from '../errors.ts';
+import { isLossConfiguration } from '@erp/contracts';
 
 function unavailable(): never { throw new ApiError(503, 'SERVICE_UNAVAILABLE', 'Serviço de estoque indisponível.'); }
 function catalogProduct(value: unknown): CatalogProduct {
@@ -132,6 +133,12 @@ export function createSupabaseStockSession(env: StockRuntimeEnv, token: string, 
       if (error || !data.user || data.user.is_anonymous || data.user.aud !== 'authenticated') throw new ApiError(401, 'UNAUTHORIZED', 'Sessão inválida ou expirada.');
     },
     repository: {
+      async lossConfiguration(change) {
+        const result = await client.schema('erp').rpc('perda_configuracao', { p_dados: change ?? null });
+        translate(result.error, result.status);
+        if (!isLossConfiguration(result.data)) unavailable();
+        return result.data;
+      },
       async lossRegistrationContext(unit) {
         const result = await client.schema('erp').rpc('perda_registro_web', { p_unidade: unit, p_dados: null });
         translate(result.error, result.status);
