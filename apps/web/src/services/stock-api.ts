@@ -6,9 +6,17 @@ import { RequestError } from './api.ts';
 import { isWithdrawal,isWithdrawalPanel } from '@erp/contracts';
 import type { WithdrawalInput,WithdrawalReview,Withdrawal,WithdrawalPanel } from '@erp/contracts';
 import { isStockId, isStockLossPanel, isStockLossRegistrationContext } from '@erp/contracts';
+import { isStockLossBatchResult } from '@erp/contracts';
+import type { StockLossBatchRegistration } from '@erp/contracts';
 import type { StockLossReviewState, StockLossPanel, StockLossRegistration, StockLossRegistrationContext } from '@erp/contracts';
 
 export class StockApi {
+  async registerLossBatch(unit: string, input: StockLossBatchRegistration): Promise<string[]> {
+    const data = await this.request(unit, '/estoque/perdas/lote', input);
+    if (!isStockLossBatchResult(data, input.itens.length)) throw new RequestError(503);
+    return data.ids;
+  }
+
   async lossAttachment(unit: string, id: string): Promise<Blob> {
     if (!isStockId(id)) throw new RequestError(404);
     const response = await this.requestResponse(unit, `/estoque/perdas/${id}/anexo`);

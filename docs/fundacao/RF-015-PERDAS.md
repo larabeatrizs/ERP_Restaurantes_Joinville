@@ -46,4 +46,10 @@ No Configurador, o perfil ADMIN ativo com a capacidade de gestão `USUARIO_GERIR
 
 Motivos ativos com exigência de anexo pedem uma foto JPEG ou PNG de até 2 MiB. O banco valida o tipo, a assinatura inicial e o tamanho e grava os bytes em uma tabela privada na mesma transação da perda. O reenvio verifica o hash do arquivo e a trilha registra apenas o hash e a presença da foto. O painel permite ao revisor autorizado baixar o arquivo pela API autenticada, sem URL pública.
 
-O catálogo depende do cadastramento de motivos pela administração. A política de Adhemar Garcia, a integração com RF-023, o lançamento em lote e a validação hospedada permanecem pendentes.
+## Registro de vários lotes
+
+O estoquista de Bucarein pode selecionar de 2 a 20 lotes de uma câmara, informar a quantidade de cada lote e enviar uma data, um motivo, uma justificativa e, quando aplicável, uma foto em comum. A API cria uma perda pendente por lote, com custo e revisão individuais. O limite de 20 itens é técnico e mantém o tamanho de cada transação limitado. A foto acompanha cada perda para consulta individual.
+
+Se qualquer item for recusado, a transação desfaz todo o lançamento. Reenviar a mesma chave e os mesmos dados devolve as perdas originais, inclusive se a ordem dos lotes mudar. Nenhum saldo é movimentado no registro.
+
+O catálogo depende do cadastramento de motivos pela administração. A política de Adhemar Garcia, a integração com RF-023 e a validação hospedada permanecem pendentes.

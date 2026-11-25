@@ -102,3 +102,32 @@ test('RF-015 estima o prejuízo e repete a mesma chave após resposta incerta', 
   expect(writes[0]).toEqual(writes[1]);
   expect(writes[0].anexo).toEqual({ mime: 'image/png', base64: lossPhoto });
 });
+
+test('RF-015 registra quantidades distintas para dois lotes de uma câmara', async ({ page }) => {
+  await setup(page, { unitCode: 'RP-BUCAREIN' });
+  const position = { lote_id: '1', camara_id: '1', produto: 'Arroz', lote: 'L1', local: 'Almoxarifado',
+    unidade_medida: 'KG', quantidade: '20.000000', valor_unitario: '8.000000' };
+  await page.route('**/api/unidades/1/estoque/perdas/registro', route => route.fulfill({ json: {
+    unidade_id: '1', data_referencia: '2026-11-25', motivos: [{ id: '1', descricao: 'Queda de energia' }],
+    posicoes: [position, { ...position, lote_id: '2', lote: 'L2' }, { ...position, lote_id: '3', lote: 'L3', camara_id: '2', local: 'Outra câmara' }],
+  } }));
+  let payload;
+  await page.route('**/api/unidades/1/estoque/perdas/lote', route => {
+    payload = route.request().postDataJSON();
+    return route.fulfill({ status: 201, json: { ids: ['31', '32'] } });
+  });
+  await page.getByRole('link', { name: 'Perdas', exact: true }).click();
+  await page.getByRole('checkbox', { name: 'Registrar vários lotes da mesma câmara' }).check();
+  await page.getByRole('combobox', { name: 'Câmara', exact: true }).selectOption('1');
+  await expect(page.getByRole('checkbox', { name: /L3/ })).toHaveCount(0);
+  await page.getByRole('checkbox', { name: /L1/ }).check();
+  await page.getByRole('checkbox', { name: /L2/ }).check();
+  await page.getByRole('textbox', { name: /Quantidade de Arroz · L1/ }).fill('5');
+  await page.getByRole('textbox', { name: /Quantidade de Arroz · L2/ }).fill('2,5');
+  await page.getByRole('combobox', { name: 'Motivo', exact: true }).selectOption('1');
+  await page.getByLabel('Justificativa').fill('Falha sintética');
+  await page.getByRole('button', { name: 'Registrar perdas', exact: true }).click();
+  await expect(page.getByRole('status').filter({ hasText: '2 perdas registradas' })).toBeVisible();
+  expect(payload).toMatchObject({ camara_id: '1', motivo_id: '1', justificativa: 'Falha sintética',
+    itens: [{ lote_id: '1', quantidade: '5' }, { lote_id: '2', quantidade: '2.5' }] });
+});
