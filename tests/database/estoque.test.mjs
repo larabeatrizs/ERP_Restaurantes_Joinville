@@ -445,6 +445,35 @@ test('RN-027 impede novos créditos e débitos em mês fechado e preserva reenvi
   assert.equal((await db.query('select estado from erp.entrada where id=$1', [draft.id])).rows[0].estado, 'RASCUNHO');
 }));
 
+test('RF-007 configura motivos e substituto com revisão, segregação e trilha', async () => actor(1, async () => {
+  await sqlRejects('select erp.perda_configuracao(null)', 'PT403');
+  await db.exec("reset role; update erp.unidade set codigo='RP-BUCAREIN' where id=1");
+  await db.exec("insert into erp.perfil(codigo) values('ADMIN') on conflict do nothing");
+  await db.exec("insert into erp.perfil_permissao select id,'USUARIO_GERIR' from erp.perfil where codigo='ADMIN' on conflict do nothing");
+  await db.query("update erp.usuario set perfil_id=(select id from erp.perfil where codigo='ADMIN') where id=$1", [uid(3)]);
+  await become(3);
+  const configure = async (value = null) => (await db.query(
+    'select erp.perda_configuracao($1::jsonb) as resultado', [value === null ? null : JSON.stringify(value)],
+  )).rows[0].resultado;
+  const initial = await configure();
+  assert.equal(initial.revisao, '0');
+  assert.deepEqual(initial.gestores.map(row => row.id), [uid(4)]);
+  const createReason = { acao: 'motivo', revisao: initial.revisao, id: null, descricao: 'Avaria', exige_anexo: true, ativo: true };
+  const created = await configure(createReason);
+  assert.equal(created.motivos[0].exige_anexo, true);
+  const edited = await configure({ ...createReason, revisao: created.revisao, id: created.motivos[0].id, ativo: false });
+  assert.equal(edited.motivos[0].ativo, false);
+  await sqlRejects(`select erp.perda_configuracao('${JSON.stringify(createReason)}')`, 'PT409');
+  await sqlRejects(`select erp.perda_configuracao('{"acao":"substituto","revisao":"${edited.revisao}","usuario_id":"${uid(7)}"}')`, 'PT422');
+  const designated = await configure({ acao: 'substituto', revisao: edited.revisao, usuario_id: uid(4) });
+  assert.equal(designated.substituto, uid(4));
+  const removed = await configure({ acao: 'substituto', revisao: designated.revisao, usuario_id: null });
+  assert.equal(removed.substituto, null);
+  await db.exec('reset role');
+  assert.deepEqual((await db.query('select acao from erp_private.perda_configuracao_evento order by id')).rows.map(row => row.acao),
+    ['motivo', 'motivo', 'substituto', 'substituto']);
+}));
+
 test('RF-015 registra, revisa e reflete a baixa única no extrato', async () => actor(1, async () => {
   const p = await create();
   await confirm((await receive(p.id, { total_nota: null, itens: [line(p.id, { valor_unitario: '8' })] })).id);

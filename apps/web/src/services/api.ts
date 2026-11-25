@@ -10,6 +10,8 @@ import type {
   UnitSummary,
 } from '@erp/contracts';
 import { isAdminUserDetail, isAdminUsersSnapshot, isAdminUserSituation } from '@erp/contracts';
+import { isLossConfiguration } from '@erp/contracts';
+import type { LossConfiguration, LossConfigurationChange } from '@erp/contracts';
 import type { AdminUserCreation, AdminUserDetail, AdminUserEdit, AdminUsersSnapshot, AdminUserSituation, AdminUserSituationChange } from '@erp/contracts';
 export class RequestError extends Error {
   constructor(public status: number) {
@@ -40,6 +42,14 @@ function userAccess(data: unknown): { criado: boolean; acesso: string | null } {
 }
 export class SettingsApi {
   constructor(private token: () => Promise<string | undefined>) {}
+  async lossConfiguration(change?: LossConfigurationChange): Promise<LossConfiguration> {
+    const response = await this.request('/admin/perdas', change && {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(change),
+    });
+    const result: unknown = await response.json();
+    if (!isLossConfiguration(result)) throw new RequestError(503);
+    return result;
+  }
   async identity(): Promise<{ nome: string; administracao?: boolean }> {
     const value: unknown = await (await this.request('/me')).json();
     if (!isRecord(value) || typeof value.nome !== 'string' || !value.nome.trim()) throw new RequestError(503);

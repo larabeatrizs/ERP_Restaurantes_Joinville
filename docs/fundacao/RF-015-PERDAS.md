@@ -38,4 +38,8 @@ A tela **Perdas de estoque** lista em Bucarein até 50 pendências elegíveis, d
 
 O estoquista de Bucarein registra uma perda na tela **Perdas de estoque**, selecionando uma posição com saldo, data, quantidade e motivo ativo que dispense anexo. A tela estima o prejuízo com o custo do lote. A API chama a transação de registro, que revalida os dados e grava a perda pendente. Se a resposta ficar incerta, a tela permite reenviar o mesmo pedido com a chave original.
 
-O preenchimento do catálogo de motivos e a configuração do substituto no Configurador, os anexos, o lançamento em lote e a validação hospedada seguem pendentes. A política de Adhemar Garcia e a integração com RF-023 permanecem pendentes.
+## Configuração de motivos e substituto
+
+No Configurador, o perfil ADMIN ativo com a capacidade de gestão `USUARIO_GERIR` pode criar, editar e inativar motivos e indicar se exigem anexo. A designação de substituto permite escolher ou remover um gestor ativo vinculado a Bucarein. Cada alteração efetiva registra ator, horário e valores anteriores e posteriores. A revisão impede sobrescrever uma configuração alterada por outra sessão.
+
+O catálogo depende do cadastramento de motivos pela administração. A política de Adhemar Garcia, a integração com RF-023, os anexos, o lançamento em lote e a validação hospedada permanecem pendentes.
