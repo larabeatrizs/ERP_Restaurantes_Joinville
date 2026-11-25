@@ -1,12 +1,17 @@
 import { isRecord } from './index.ts';
 import { hasExactFields, isIsoDate, isStockDecimal, isText } from './stock.ts';
 
-export interface StockLossReportQuery {
+export const stockLossReportFilterFields = {
+  produto: 200, categoria: 200, lote: 100, fornecedor: 200, motivo: 200,
+} as const;
+export type StockLossReportFilter = keyof typeof stockLossReportFilterFields;
+
+export interface StockLossReportQuery extends Partial<Record<StockLossReportFilter, string>> {
   inicio: string;
   periodicidade: 'mensal' | 'anual';
 }
 
-export interface StockLossReport extends StockLossReportQuery {
+export interface StockLossReport extends Pick<StockLossReportQuery, 'inicio' | 'periodicidade'> {
   unidade_id: string;
   inicio_anterior: string;
   prejuizo_atual: string;
@@ -15,9 +20,11 @@ export interface StockLossReport extends StockLossReportQuery {
 }
 
 export function isStockLossReportQuery(value: unknown): value is StockLossReportQuery {
-  return isRecord(value) && hasExactFields(value, ['inicio', 'periodicidade'])
+  return isRecord(value) && hasExactFields(value, ['inicio', 'periodicidade'], Object.keys(stockLossReportFilterFields))
     && isIsoDate(value.inicio) && value.inicio.slice(0, 4) >= '0002' && value.inicio.slice(0, 4) <= '9998'
     && value.inicio.endsWith('-01')
+    && Object.entries(stockLossReportFilterFields).every(([field, max]) => !Object.hasOwn(value, field)
+      || (isText(value[field], max) && !/[\u0000-\u001f\u007f-\u009f]/.test(value[field])))
     && (value.periodicidade === 'mensal' || (value.periodicidade === 'anual' && value.inicio.endsWith('-01-01')));
 }
 

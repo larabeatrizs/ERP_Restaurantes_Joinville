@@ -62,7 +62,7 @@ export async function stockController(request: Request, env: StockRuntimeEnv, un
   if (route === 'estoque/relatorio-perdas') {
     const params = new URL(request.url).searchParams;
     const query = Object.fromEntries(params);
-    if (params.size !== 2 || !isStockLossReportQuery(query)) throw new ApiError(400, 'INVALID_QUERY', 'Período inválido.');
+    if (params.size !== Object.keys(query).length || !isStockLossReportQuery(query)) throw new ApiError(400, 'INVALID_QUERY', 'Período ou filtros inválidos.');
     const report = session.repository.lossReport;
     if (!report) throw new ApiError(503, 'SERVICE_UNAVAILABLE', 'Relatório de perdas indisponível.');
     return reply(await report(unit, query));

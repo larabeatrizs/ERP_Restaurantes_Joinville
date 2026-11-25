@@ -2,7 +2,7 @@ import { csvDocument, stockTotalCents } from '@erp/contracts';
 import type { ActiveStatus, Product, Receipt, StockBalance, StockExpiry } from '@erp/contracts';
 import { decimalLabel, decimalUnits } from './stock-api.ts';
 import type { StockApi } from './stock-api.ts';
-import type { StockLossReport } from '@erp/contracts';
+import type { StockLossReport, StockLossReportFilter, StockLossReportQuery } from '@erp/contracts';
 
 export interface ConsultationReport {
   title: string; unit: string; generatedAt: string; scope: string; headers: string[]; rows: string[][];
@@ -16,7 +16,11 @@ function report(title: string, unit: string, scope: string, headers: string[], r
   }).format(new Date()) };
 }
 
-export function stockLossReport(data: StockLossReport, unit: string, userName: string): ConsultationReport {
+export const stockLossReportFilterLabels: Record<StockLossReportFilter, string> = {
+  produto: 'Produto', categoria: 'Categoria', lote: 'Lote', fornecedor: 'Fornecedor', motivo: 'Motivo',
+};
+
+export function stockLossReport(data: StockLossReport, unit: string, userName: string, query: StockLossReportQuery): ConsultationReport {
   function money(value: string): string {
     const cents = (decimalUnits(value) + 5_000_000_000n) / 10_000_000_000n;
     return `R$ ${decimalLabel(`${cents / 100n}.${String(cents % 100n).padStart(2, '0')}`, 2)}`;
@@ -24,7 +28,10 @@ export function stockLossReport(data: StockLossReport, unit: string, userName: s
   function period(value: string): string {
     return data.periodicidade === 'anual' ? value.slice(0, 4) : value.slice(0, 7).split('-').reverse().join('/');
   }
-  const scope = `Competência ${period(data.inicio)} · ${money(data.prejuizo_atual)} em perdas aprovadas. Período anterior ${period(data.inicio_anterior)} · ${money(data.prejuizo_anterior)}. Emitido por ${userName || 'Conta conectada'}.`;
+  const filters = (Object.keys(stockLossReportFilterLabels) as StockLossReportFilter[])
+    .filter(field => query[field]).map(field => `${stockLossReportFilterLabels[field]}: ${query[field]}`);
+  const filterSummary = filters.length ? ` Filtros: ${filters.join(' · ')}.` : '';
+  const scope = `Competência ${period(data.inicio)} · ${money(data.prejuizo_atual)} em perdas aprovadas. Período anterior ${period(data.inicio_anterior)} · ${money(data.prejuizo_anterior)}.${filterSummary} Emitido por ${userName || 'Conta conectada'}.`;
   return report('Perdas e descartes', unit, scope, ['Categoria', 'Produto', 'Lote', 'Motivo', 'Prejuízo'],
     data.itens.map(row => [row.categoria, row.produto, row.lote, row.motivo, money(row.prejuizo)]));
 }
