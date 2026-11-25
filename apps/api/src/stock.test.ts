@@ -87,9 +87,10 @@ test('RF-023 valida periodicidade, competência e parâmetros repetidos', async 
   assert.equal((await app.fetch(request(path + '?inicio=2026-01-01&periodicidade=mensal&inicio=2025-01-01'))).status, 400);
   assert.equal((await app.fetch(request(path + '?inicio=2026-01-01&periodicidade=mensal&motivo=a&motivo=b'))).status, 400);
   assert.equal((await app.fetch(request(path + '?inicio=2026-01-01&periodicidade=mensal&unidade=2'))).status, 400);
-  const response = await app.fetch(request(path + '?inicio=2026-01-01&periodicidade=mensal&motivo=vencida&produto=arroz'));
+  assert.equal((await app.fetch(request(path + '?inicio=2026-01-01&periodicidade=mensal&escopo=todos'))).status, 400);
+  const response = await app.fetch(request(path + '?inicio=2026-01-01&periodicidade=mensal&motivo=vencida&produto=arroz&escopo=consolidado'));
   assert.equal(response.status, 200);
-  assert.deepEqual(calls, [{ name: 'lossReport', args: ['1', { inicio: '2026-01-01', periodicidade: 'mensal', motivo: 'vencida', produto: 'arroz' }] }]);
+  assert.deepEqual(calls, [{ name: 'lossReport', args: ['1', { inicio: '2026-01-01', periodicidade: 'mensal', motivo: 'vencida', produto: 'arroz', escopo: 'consolidado' }] }]);
 });
 
 test('RF-015 encaminha o lote de perdas e recusa lotes repetidos', async () => {

@@ -105,13 +105,16 @@ export function StockPanel({ api, stock, categories, measures, suppliers, calend
         {page === 'categorias' && <Suspense fallback={<Skeleton label="Carregando categorias…" />}><CategoryPanel key={unit} api={categories} unit={unit} onDirty={setDirty} onBusy={setBusy} /></Suspense>}
         {page === 'produtos' && <ProductPanel key={unit} api={stock} unit={unit} unitName={units.find(item => item.id === unit)?.nome ?? ''} context={context} onDirty={setDirty} onBusy={setBusy} />}
         {page === 'recebimentos' && <ReceiptPanel key={unit} api={stock} unit={unit} unitName={units.find(item => item.id === unit)?.nome ?? ''} context={context} onDirty={setDirty} onBusy={setBusy} />}
-        {page === 'saldo' && <Balances key={unit} api={stock} unit={unit} unitName={units.find(item => item.id === unit)?.nome ?? ''} userName={userName} />}
+        {page === 'saldo' && <Balances key={unit} api={stock} unit={unit} unitName={units.find(item => item.id === unit)?.nome ?? ''} userName={userName}
+          canConsolidateLosses={context.capacidades.perdas_consolidar === true} />}
       </>}
     </main>
   </div>;
 }
 
-function Balances({ api, unit, unitName, userName }: { api: StockApi; unit: string; unitName: string; userName: string }) {
+function Balances({ api, unit, unitName, userName, canConsolidateLosses }: {
+  api: StockApi; unit: string; unitName: string; userName: string; canConsolidateLosses: boolean;
+}) {
   const [ledgerProduct, setLedgerProduct] = useState<StockBalance>();
   const [report, setReport] = useState<ConsultationReport>();
   const [rows, setRows] = useState<StockBalance[]>([]);
@@ -122,6 +125,7 @@ function Balances({ api, unit, unitName, userName }: { api: StockApi; unit: stri
   const [consultation, setConsultation] = useState<'valor' | 'validade' | 'minimo' | 'perdas'>();
   const [lossPeriod, setLossPeriod] = useState<StockLossReportQuery['periodicidade']>('mensal');
   const [lossDate, setLossDate] = useState('');
+  const [consolidatedLosses, setConsolidatedLosses] = useState(false);
   const [lossFilters, setLossFilters] = useState<Partial<Record<StockLossReportFilter, string>>>({});
   const [reportError, setReportError] = useState('');
   useEffect(() => {
@@ -153,7 +157,8 @@ function Balances({ api, unit, unitName, userName }: { api: StockApi; unit: stri
 
   async function openLossReport() {
     const filters = Object.fromEntries(Object.entries(lossFilters).map(([field, value]) => [field, value.trim()]).filter(([, value]) => value));
-    const period = { inicio: lossPeriod === 'mensal' ? `${lossDate}-01` : `${lossDate}-01-01`, periodicidade: lossPeriod, ...filters };
+    const period = { inicio: lossPeriod === 'mensal' ? `${lossDate}-01` : `${lossDate}-01-01`, periodicidade: lossPeriod,
+      ...filters, ...(canConsolidateLosses && consolidatedLosses ? { escopo: 'consolidado' } : {}) };
     if (!isStockLossReportQuery(period)) {
       setReportError('Informe um período válido para consultar as perdas.');
       return;
@@ -200,6 +205,8 @@ function Balances({ api, unit, unitName, userName }: { api: StockApi; unit: stri
             onChange={event => setLossFilters(current => ({ ...current, [field]: event.target.value }))} />
         </label>
       ))}
+      {canConsolidateLosses && <label><input type="checkbox" checked={consolidatedLosses} disabled={!!consultation}
+        onChange={event => setConsolidatedLosses(event.target.checked)} /> Consolidar unidades vinculadas</label>}
       <button disabled={!!consultation}>{consultation === 'perdas' ? 'Consultando perdas…' : 'Consultar perdas'}</button>
     </form>
     {!loading && !error && <p className="hint">{filtered.length} de {rows.length} posições da unidade selecionada. O CSV respeita a pesquisa.</p>}
