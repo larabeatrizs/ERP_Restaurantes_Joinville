@@ -39,6 +39,8 @@ function fixture(options: { authError?: Error; repositoryError?: Error } = {}) {
     if (options.repositoryError) throw options.repositoryError;
   };
   const repository: StockRepository = {
+    async pendingLosses(unit) { collect('pendingLosses', unit); return { unidade_id: unit, perdas: [] }; },
+    async reviewLoss(unit, id, decision) { collect('reviewLoss', unit, id, decision); return { id, estado: decision }; },
     async context(unit) { collect('context', unit); return context; },
     async products(unit, query) { collect('products', unit, query); return { produtos: [product], total: 1 }; },
     async availableProducts(unit, query) { collect('availableProducts', unit, query); return { produtos: [product], total: 1 }; },
@@ -67,6 +69,25 @@ function fixture(options: { authError?: Error; repositoryError?: Error } = {}) {
     return { repository, async authenticate() { if (options.authError) throw options.authError; } };
   }) };
 }
+
+test('RF-015 autentica a consulta e aceita somente uma decisão válida sobre a perda indicada', async () => {
+  const { app, calls } = fixture();
+  const path = '/estoque/perdas';
+  const review = `${path}/${product.id}/revisao`;
+  assert.equal((await app.fetch(new Request(base + path))).status, 401);
+  assert.equal((await app.fetch(request(path + '?unidade=2'))).status, 400);
+  assert.equal((await app.fetch(request(review))).status, 405);
+  assert.equal((await app.fetch(request(review, 'POST', { estado: 'APROVADA', autor: '1' }))).status, 422);
+  assert.equal((await app.fetch(request(review, 'POST', { estado: 'PENDENTE' }))).status, 422);
+  assert.deepEqual(await (await app.fetch(request(path))).json(), { unidade_id: '1', perdas: [] });
+  const response = await app.fetch(request(review, 'POST', { estado: 'REJEITADA' }));
+  assert.equal(response.headers.get('Cache-Control'), 'no-store');
+  assert.deepEqual(await response.json(), { id: product.id, estado: 'REJEITADA' });
+  assert.deepEqual(calls, [
+    { name: 'pendingLosses', args: ['1'] },
+    { name: 'reviewLoss', args: ['1', product.id, 'REJEITADA'] },
+  ]);
+});
 
 test('RF-017 autentica, encaminha filtros e rejeita query repetida ou exportação parcial solicitada', async () => {
   const { app, calls } = fixture();

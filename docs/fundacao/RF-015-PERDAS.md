@@ -30,4 +30,8 @@ A migration de revisão permite que a nutricionista vinculada à unidade ou o ge
 
 O extrato RF-017 apresenta a baixa como **Perda aprovada**, inclusive no filtro e na exportação. O teste descartável verifica a baixa de 5 kg a R$ 8,00, o saldo final de 15 kg, a segregação por autor e perfil, o reenvio, a rejeição e o rollback quando a auditoria falha.
 
-A jornada de RF-015 ainda depende de API e tela operacionais, cadastro de motivos e substituto no Configurador, anexos, lançamento em lote e validação hospedada. A política de Adhemar Garcia e a integração com RF-023 permanecem pendentes.
+## Painel de revisão
+
+A tela **Perdas de estoque** lista em Bucarein até 50 pendências elegíveis, da mais antiga à mais recente, e permite aprovar ou rejeitar após confirmação. A lista inclui lote, local, motivo, justificativa, quantidade e prejuízo. O servidor valida a unidade e a identidade autenticada, exclui da fila as perdas lançadas pela própria pessoa e reaplica as verificações da transação ao decidir. A tela atualiza a fila após cada decisão.
+
+O registro operacional de perdas, o cadastro de motivos e substituto no Configurador, os anexos, o lançamento em lote e a validação hospedada seguem pendentes. A política de Adhemar Garcia e a integração com RF-023 permanecem pendentes.

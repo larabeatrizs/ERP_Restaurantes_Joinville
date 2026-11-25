@@ -1,6 +1,6 @@
 import { readJson } from './read-json.ts';
 import { hasExactFields, isEntradaInput, isProductLinkInput, isProdutoInput, isRecord, isStockId, isText } from '@erp/contracts';
-import { isStockLedgerFilters } from '@erp/contracts';
+import { isStockLedgerFilters, isStockLossDecision } from '@erp/contracts';
 import type { ProductQuery, ProductResult, StockLedgerQuery } from '@erp/contracts';
 import { ApiError } from '../errors.ts';
 import { StockService } from '../services/stock-service.ts';
@@ -46,7 +46,8 @@ export async function stockController(request: Request, env: StockRuntimeEnv, un
   const productLink = /^produtos\/([^/]+)\/vinculo$/.exec(route);
   const productStatus = /^produtos\/([^/]+)\/status$/.exec(route);
   const confirmation = /^entradas\/([^/]+)\/(confirmar|aprovar-divergencia)$/.exec(route);
-  const allow = productEdit ? 'PATCH, DELETE' : confirmation || productLink || productStatus || importedCompletion ? 'POST' : route === 'produtos' || route === 'entradas' ? 'GET, POST' : 'GET';
+  const lossReview = /^estoque\/perdas\/([^/]+)\/revisao$/.exec(route)?.[1];
+  const allow = productEdit ? 'PATCH, DELETE' : confirmation || productLink || productStatus || importedCompletion || lossReview ? 'POST' : route === 'produtos' || route === 'entradas' ? 'GET, POST' : 'GET';
   if (!allow.split(', ').includes(request.method)) return methodDenied(allow, request.method === 'HEAD');
   const token = /^Bearer\s+(\S+)$/i.exec(request.headers.get('Authorization') ?? '')?.[1];
   if (!token) throw new ApiError(401, 'UNAUTHORIZED', 'Informe uma sessão válida.');
@@ -54,6 +55,14 @@ export async function stockController(request: Request, env: StockRuntimeEnv, un
   const session = factory(env, token);
   await session.authenticate();
   const service = new StockService(session.repository);
+  if (route === 'estoque/perdas' || lossReview) {
+    if (new URL(request.url).search) throw new ApiError(400, 'INVALID_QUERY', 'Filtros inválidos.');
+    if (!lossReview) return reply(await service.pendingLosses(unit));
+    if (!isStockId(lossReview)) throw new ApiError(400, 'INVALID_ID', 'Identificador inválido.');
+    const input = await readJson(request);
+    if (!isRecord(input) || !hasExactFields(input, ['estado']) || !isStockLossDecision(input.estado)) invalid();
+    return reply(await service.reviewLoss(unit, lossReview, input.estado));
+  }
   if(route==='produtos-importados'){
     const url=new URL(request.url);if(url.searchParams.has('status'))throw new ApiError(400,'INVALID_QUERY','Filtros inválidos.');
     const {q,offset}=productQuery(url);return reply(await service.importedProducts(unit,{q,offset}));

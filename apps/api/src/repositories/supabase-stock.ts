@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import { isImportedProducts, isStockAlerts, isStockExpiry, isStockLedger } from '@erp/contracts';
+import { isImportedProducts, isStockAlerts, isStockExpiry, isStockLedger, isStockLossPanel } from '@erp/contracts';
 import { isEntradaInput, isEntradaItemInput, isIsoDate, isProdutoInput, isRecord, isStockDecimal, isStockId, isStorageType, isText, productInputFields } from '@erp/contracts';
 import type { CatalogProduct, Product, Receipt, ReceiptItem, StockBalance, StockContext } from '@erp/contracts';
 import type { StockRuntimeEnv, StockSession } from './stock-repository.ts';
@@ -132,6 +132,18 @@ export function createSupabaseStockSession(env: StockRuntimeEnv, token: string, 
       if (error || !data.user || data.user.is_anonymous || data.user.aud !== 'authenticated') throw new ApiError(401, 'UNAUTHORIZED', 'Sessão inválida ou expirada.');
     },
     repository: {
+      async pendingLosses(unit) {
+        const result = await client.schema('erp').rpc('perda_painel', { p_unidade: unit, p_perda: null, p_decisao: null });
+        translate(result.error, result.status);
+        if (!isStockLossPanel(result.data, unit)) unavailable();
+        return result.data;
+      },
+      async reviewLoss(unit, id, decision) {
+        const result = await client.schema('erp').rpc('perda_painel', { p_unidade: unit, p_perda: id, p_decisao: decision });
+        translate(result.error, result.status);
+        if (!isRecord(result.data) || result.data.id !== id || result.data.estado !== decision) unavailable();
+        return { id, estado: decision };
+      },
       async importedProducts(unit,query){const result=await operation(unit,'listar',query,'produto_importado_operacao');if(!isImportedProducts(result))unavailable();return result;},
       async completeImportedProduct(unit,id,input){const result=await operation(unit,'concluir',{id,produto:input},'produto_importado_operacao');return{produto:product(result.produto)};},
       async context(unit) { return context(await operation(unit, 'contexto', {})); },

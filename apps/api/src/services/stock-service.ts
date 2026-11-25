@@ -1,4 +1,4 @@
-import type { EntradaInput, ProductLinkInput, ProductQuery, ProdutoInput, StockLedgerQuery } from '@erp/contracts';
+import type { EntradaInput, ProductLinkInput, ProductQuery, ProdutoInput, StockLedgerQuery, StockLossReviewState } from '@erp/contracts';
 import type { StockRepository } from '../repositories/stock-repository.ts';
 import { ApiError } from '../errors.ts';
 
@@ -7,6 +7,14 @@ export class StockService {
   private readonly repository: StockRepository;
   constructor(repository: StockRepository) { this.repository = repository; }
   context(unit: string) { return this.repository.context(unit); }
+  pendingLosses(unit: string) {
+    if (!this.repository.pendingLosses) throw new ApiError(503, 'SERVICE_UNAVAILABLE', 'Consulta de perdas indisponível.');
+    return this.repository.pendingLosses(unit);
+  }
+  reviewLoss(unit: string, id: string, decision: StockLossReviewState) {
+    if (!this.repository.reviewLoss) throw new ApiError(503, 'SERVICE_UNAVAILABLE', 'Revisão de perdas indisponível.');
+    return this.repository.reviewLoss(unit, id, decision);
+  }
   importedProducts(unit:string,query:Pick<ProductQuery,'q'|'offset'>){if(!this.repository.importedProducts)throw new ApiError(503,'SERVICE_UNAVAILABLE','Importação indisponível.');return this.repository.importedProducts(unit,query);}
   completeImportedProduct(unit:string,id:string,input:ProdutoInput){if(!this.repository.completeImportedProduct)throw new ApiError(503,'SERVICE_UNAVAILABLE','Importação indisponível.');return this.repository.completeImportedProduct(unit,id,input);}
   products(unit: string, query: ProductQuery) { return this.repository.products(unit, query); }

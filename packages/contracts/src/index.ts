@@ -64,4 +64,5 @@ export * from './stock-ledger.ts';
 export * from './stock-expiry.ts';
 export * from './stock-alerts.ts';
 export * from './stock-loss.ts';
+export * from './stock-loss-panel.ts';
 export * from './user-stock-period-access.ts';

@@ -5,8 +5,22 @@ import type { AvailableProductList, ProductLinkInput, ProdutoInput, Product, Ent
 import { RequestError } from './api.ts';
 import { isWithdrawal,isWithdrawalPanel } from '@erp/contracts';
 import type { WithdrawalInput,WithdrawalReview,Withdrawal,WithdrawalPanel } from '@erp/contracts';
+import { isStockLossPanel } from '@erp/contracts';
+import type { StockLossReviewState, StockLossPanel } from '@erp/contracts';
 
 export class StockApi {
+  async pendingLosses(unit: string): Promise<StockLossPanel> {
+    const data = await this.request(unit, '/estoque/perdas');
+    if (!isStockLossPanel(data, unit)) throw new RequestError(503);
+    return data;
+  }
+
+  async reviewLoss(unit: string, id: string, decision: StockLossReviewState): Promise<void> {
+    if (!isPositiveBigint(id)) throw new RequestError(422);
+    const data = await this.request(unit, `/estoque/perdas/${id}/revisao`, { estado: decision });
+    if (data.id !== id || data.estado !== decision) throw new RequestError(503);
+  }
+
   async importedProducts(unit:string,q='',offset=0):Promise<ImportedProducts>{const data=await this.request(unit,`/produtos-importados?${new URLSearchParams({q,offset:String(offset)})}`);if(!isImportedProducts(data))throw new RequestError(503);return data;}
   async completeImportedProduct(unit:string,id:string,input:ProdutoInput):Promise<Product>{if(!isPositiveBigint(id))throw new RequestError(422);const data=await this.request(unit,`/produtos-importados/${id}/concluir`,input);if(!isRecord(data.produto)||typeof data.produto.id!=='string'||typeof data.produto.revisao!=='string')throw new RequestError(503);return data.produto as unknown as Product;}
   async withdrawals(unit:string):Promise<WithdrawalPanel>{const data=await this.request(unit,'/requisicoes');if(!isWithdrawalPanel(data,unit))throw new RequestError(503);return data;}

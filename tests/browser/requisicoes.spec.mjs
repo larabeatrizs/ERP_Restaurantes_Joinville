@@ -9,7 +9,7 @@ async function setup(page,options={}){
   const ok=json=>route.fulfill({json});
   if(u.pathname==='/api/auth/login')return ok({access_token:'eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ0ZXN0ZSJ9.ficticio',refresh_token:'ficticio'});
   if(u.pathname==='/api/me')return ok({nome:'Pessoa de teste'});
-  if(u.pathname==='/api/unidades')return ok({unidades:[{id:'1',codigo:'RP1',nome:'Unidade A'},{id:'2',codigo:'RP2',nome:'Unidade B'}]});
+  if(u.pathname==='/api/unidades')return ok({unidades:[{id:'1',codigo:options.unitCode??'RP1',nome:'Unidade A'},{id:'2',codigo:'RP2',nome:'Unidade B'}]});
   if(u.pathname.endsWith('/requisicoes')){
    if(req.method()==='GET')return ok({unidade_id:unit,usuario_id:actor,pode_registrar:options.write!==false,pode_conferir:options.review===true,modo_saida:unit==='2'?'PREVIA':'POSTERIOR',produtos:[{id:'2',descricao:'Arroz',unidade:'KG'}],requisicoes:unit==='1'?state.rows:[]});
    const body=req.postDataJSON();state.writes.push(body);if(state.fail){state.fail=false;return route.fulfill({status:503,json:{error:{code:'TEMP'}}});}const r={...row(unit),solicitante_id:actor};state.rows=[r];return ok({requisicao:r});
@@ -31,4 +31,38 @@ test('conferente contesta com motivo e leitor não recebe ações; unidade mant�
 });
 test('leitura e layout de celular preservam navegação e não oferecem auto conferência',async({page})=>{
  await page.setViewportSize({width:360,height:800});await setup(page,{write:false,review:true,rows:[{...row(),solicitante_id:actor}]});await expect(page.getByRole('button',{name:'Conferir #1'})).toHaveCount(0);await expect(page.getByRole('heading',{name:'Retiradas recentes'})).toBeVisible();expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);await page.screenshot({path:'.git/est002-mobile.png',fullPage:true});
+});
+
+test('RF-015 aprova e rejeita perdas de Bucarein, com atualização da fila', async ({ page }) => {
+  await setup(page, { unitCode: 'RP-BUCAREIN' });
+  const loss = {
+    id: '11', produto: 'Arroz', lote: 'L1', local: 'Almoxarifado', unidade_medida: 'KG',
+    data_registro: '2026-11-24', motivo: 'Validade vencida', justificativa: '',
+    quantidade: '5.000000', valor_prejuizo: '40.000000000000',
+  };
+  let rows = [loss, { ...loss, id: '12', lote: 'L2' }];
+  const decisions = [];
+  await page.route('**/api/unidades/*/estoque/perdas**', route => {
+    const request = route.request();
+    const path = new URL(request.url()).pathname;
+    if (request.method() === 'GET') {
+      expect(path).toBe('/api/unidades/1/estoque/perdas');
+      return route.fulfill({ json: { unidade_id: '1', perdas: rows } });
+    }
+    const id = path.split('/').at(-2);
+    const { estado } = request.postDataJSON();
+    decisions.push({ id, estado });
+    rows = rows.filter(row => row.id !== id);
+    return route.fulfill({ json: { id, estado } });
+  });
+  await page.getByRole('link', { name: 'Perdas', exact: true }).click();
+  await expect(page.getByRole('cell', { name: 'R$ 40,00' })).toHaveCount(2);
+  await page.getByRole('button', { name: 'Aprovar perda 11' }).click();
+  await expect(page.getByRole('status').filter({ hasText: 'baixa foi registrada' })).toBeVisible();
+  await page.getByRole('button', { name: 'Rejeitar perda 12' }).click();
+  await expect(page.getByRole('status').filter({ hasText: 'saldo foi preservado' })).toBeVisible();
+  await expect(page.getByText('Nenhuma perda disponível para sua revisão.')).toBeVisible();
+  expect(decisions).toEqual([{ id: '11', estado: 'APROVADA' }, { id: '12', estado: 'REJEITADA' }]);
+  await page.getByRole('combobox', { name: 'Unidade', exact: true }).selectOption('2');
+  await expect(page.getByText('A revisão de perdas está disponível para Bucarein.')).toBeVisible();
 });
