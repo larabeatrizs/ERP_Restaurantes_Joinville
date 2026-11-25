@@ -5,10 +5,22 @@ import type { AvailableProductList, ProductLinkInput, ProdutoInput, Product, Ent
 import { RequestError } from './api.ts';
 import { isWithdrawal,isWithdrawalPanel } from '@erp/contracts';
 import type { WithdrawalInput,WithdrawalReview,Withdrawal,WithdrawalPanel } from '@erp/contracts';
-import { isStockLossPanel } from '@erp/contracts';
-import type { StockLossReviewState, StockLossPanel } from '@erp/contracts';
+import { isStockId, isStockLossPanel, isStockLossRegistrationContext } from '@erp/contracts';
+import type { StockLossReviewState, StockLossPanel, StockLossRegistration, StockLossRegistrationContext } from '@erp/contracts';
 
 export class StockApi {
+  async lossRegistrationContext(unit: string): Promise<StockLossRegistrationContext> {
+    const data = await this.request(unit, '/estoque/perdas/registro');
+    if (!isStockLossRegistrationContext(data, unit)) throw new RequestError(503);
+    return data;
+  }
+
+  async registerLoss(unit: string, input: StockLossRegistration): Promise<string> {
+    const data = await this.request(unit, '/estoque/perdas/registro', input);
+    if (!isStockId(data.id)) throw new RequestError(503);
+    return data.id;
+  }
+
   async pendingLosses(unit: string): Promise<StockLossPanel> {
     const data = await this.request(unit, '/estoque/perdas');
     if (!isStockLossPanel(data, unit)) throw new RequestError(503);

@@ -1,4 +1,4 @@
-import type { EntradaInput, ProductLinkInput, ProductQuery, ProdutoInput, StockLedgerQuery, StockLossReviewState } from '@erp/contracts';
+import type { EntradaInput, ProductLinkInput, ProductQuery, ProdutoInput, StockLedgerQuery, StockLossReviewState, StockLossRegistration } from '@erp/contracts';
 import type { StockRepository } from '../repositories/stock-repository.ts';
 import { ApiError } from '../errors.ts';
 
@@ -7,6 +7,14 @@ export class StockService {
   private readonly repository: StockRepository;
   constructor(repository: StockRepository) { this.repository = repository; }
   context(unit: string) { return this.repository.context(unit); }
+  lossRegistrationContext(unit: string) {
+    if (!this.repository.lossRegistrationContext) throw new ApiError(503, 'SERVICE_UNAVAILABLE', 'Registro de perdas indisponível.');
+    return this.repository.lossRegistrationContext(unit);
+  }
+  registerLoss(unit: string, input: StockLossRegistration) {
+    if (!this.repository.registerLoss) throw new ApiError(503, 'SERVICE_UNAVAILABLE', 'Registro de perdas indisponível.');
+    return this.repository.registerLoss(unit, input);
+  }
   pendingLosses(unit: string) {
     if (!this.repository.pendingLosses) throw new ApiError(503, 'SERVICE_UNAVAILABLE', 'Consulta de perdas indisponível.');
     return this.repository.pendingLosses(unit);

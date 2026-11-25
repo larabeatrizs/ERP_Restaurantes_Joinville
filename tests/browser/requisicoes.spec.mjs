@@ -45,6 +45,7 @@ test('RF-015 aprova e rejeita perdas de Bucarein, com atualização da fila', as
   await page.route('**/api/unidades/*/estoque/perdas**', route => {
     const request = route.request();
     const path = new URL(request.url()).pathname;
+    if (path.endsWith('/registro')) return route.fulfill({ status: 403, json: {} });
     if (request.method() === 'GET') {
       expect(path).toBe('/api/unidades/1/estoque/perdas');
       return route.fulfill({ json: { unidade_id: '1', perdas: rows } });
@@ -65,4 +66,32 @@ test('RF-015 aprova e rejeita perdas de Bucarein, com atualização da fila', as
   expect(decisions).toEqual([{ id: '11', estado: 'APROVADA' }, { id: '12', estado: 'REJEITADA' }]);
   await page.getByRole('combobox', { name: 'Unidade', exact: true }).selectOption('2');
   await expect(page.getByText('A revisão de perdas está disponível para Bucarein.')).toBeVisible();
+});
+
+test('RF-015 estima o prejuízo e repete a mesma chave após resposta incerta', async ({ page }) => {
+  await setup(page, { unitCode: 'RP-BUCAREIN' });
+  const writes = [];
+  await page.route('**/api/unidades/1/estoque/perdas/registro', route => {
+    const request = route.request();
+    if (request.method() === 'GET') return route.fulfill({ json: {
+      unidade_id: '1', data_referencia: '2026-11-25', motivos: [{ id: '1', descricao: 'Validade vencida' }],
+      posicoes: [{ lote_id: '1', camara_id: '1', produto: 'Arroz', lote: 'L1', local: 'Almoxarifado',
+        unidade_medida: 'KG', quantidade: '20.000000', valor_unitario: '8.000000' }],
+    } });
+    writes.push(request.postDataJSON());
+    return writes.length === 1
+      ? route.fulfill({ status: 503, json: {} })
+      : route.fulfill({ status: 201, json: { id: '12' } });
+  });
+  await page.getByRole('link', { name: 'Perdas', exact: true }).click();
+  await page.getByLabel('Lote e local').selectOption('1:1');
+  await page.getByLabel('Quantidade').fill('5,0');
+  await page.getByLabel('Motivo', { exact: true }).selectOption('1');
+  await expect(page.getByText('Prejuízo estimado de R$ 40,00')).toBeVisible();
+  await page.getByRole('button', { name: 'Registrar perda', exact: true }).click();
+  await expect(page.getByLabel('Quantidade')).toBeDisabled();
+  await page.getByRole('button', { name: 'Reenviar a mesma perda' }).click();
+  await expect(page.getByRole('status').filter({ hasText: 'Perda #12 registrada' })).toBeVisible();
+  expect(writes).toHaveLength(2);
+  expect(writes[0]).toEqual(writes[1]);
 });

@@ -13,7 +13,7 @@ import type { WorkspacePage } from './Workspace.tsx';
 import { ProductPanel } from './ProductPanel.tsx';
 import { ReceiptPanel } from './ReceiptPanel.tsx';
 import { WithdrawalPanel } from './WithdrawalPanel.tsx';
-import { StockLossReviewPanel } from './StockLossReviewPanel.tsx';
+import { StockLossRegistrationPanel } from './StockLossRegistrationPanel.tsx';
 import { HomePanel } from './HomePanel.tsx';
 import { AccountPanel } from './AccountPanel.tsx';
 import { ReportPreview } from './ReportPreview.tsx';
@@ -95,7 +95,7 @@ export function StockPanel({ api, stock, categories, measures, suppliers, calend
       {unitsLoaded && !loading && units.some(item => item.id === unit) && page === 'requisicoes' && <WithdrawalPanel key={unit} api={stock} unit={unit} onDirty={setDirty} onBusy={setBusy} />}
       {unitsLoaded && !loading && units.some(item => item.id === unit) && page === 'perdas' && (
         units.find(item => item.id === unit)?.codigo === 'RP-BUCAREIN'
-          ? <StockLossReviewPanel key={unit} api={stock} unit={unit} onBusy={setBusy} />
+          ? <StockLossRegistrationPanel key={unit} api={stock} unit={unit} onBusy={setBusy} onDirty={setDirty} />
           : <p className="notice">A revisão de perdas está disponível para Bucarein.</p>
       )}
       {unitsLoaded && !loading && units.some(item => item.id === unit) && page === 'calendario' && <Suspense fallback={<Skeleton label="Carregando calendário…" />}><CalendarPanel key={unit} api={calendar} unit={unit} onDirty={setDirty} onBusy={setBusy} /></Suspense>}

@@ -34,4 +34,8 @@ O extrato RF-017 apresenta a baixa como **Perda aprovada**, inclusive no filtro 
 
 A tela **Perdas de estoque** lista em Bucarein até 50 pendências elegíveis, da mais antiga à mais recente, e permite aprovar ou rejeitar após confirmação. A lista inclui lote, local, motivo, justificativa, quantidade e prejuízo. O servidor valida a unidade e a identidade autenticada, exclui da fila as perdas lançadas pela própria pessoa e reaplica as verificações da transação ao decidir. A tela atualiza a fila após cada decisão.
 
-O registro operacional de perdas, o cadastro de motivos e substituto no Configurador, os anexos, o lançamento em lote e a validação hospedada seguem pendentes. A política de Adhemar Garcia e a integração com RF-023 permanecem pendentes.
+## Registro por lote
+
+O estoquista de Bucarein registra uma perda na tela **Perdas de estoque**, selecionando uma posição com saldo, data, quantidade e motivo ativo que dispense anexo. A tela estima o prejuízo com o custo do lote. A API chama a transação de registro, que revalida os dados e grava a perda pendente. Se a resposta ficar incerta, a tela permite reenviar o mesmo pedido com a chave original.
+
+O preenchimento do catálogo de motivos e a configuração do substituto no Configurador, os anexos, o lançamento em lote e a validação hospedada seguem pendentes. A política de Adhemar Garcia e a integração com RF-023 permanecem pendentes.

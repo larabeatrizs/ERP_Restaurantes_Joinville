@@ -1,9 +1,11 @@
 import type { AvailableProductList, ProductLinkInput, EntradaInput, ProductList, ProductQuery, ProductResult, ProdutoInput, ReceiptList, ReceiptResult, StockBalances, StockContext } from '@erp/contracts';
 import type { StockAlerts, StockExpiry, StockLedger, StockLedgerQuery } from '@erp/contracts';
-import type { StockLossReviewState, StockLossPanel } from '@erp/contracts';
+import type { StockLossReviewState, StockLossPanel, StockLossRegistration, StockLossRegistrationContext } from '@erp/contracts';
 
 export interface StockRuntimeEnv { SUPABASE_URL?: string; SUPABASE_PUBLISHABLE_KEY?: string }
 export interface StockRepository {
+  lossRegistrationContext?(unit: string): Promise<StockLossRegistrationContext>;
+  registerLoss?(unit: string, input: StockLossRegistration): Promise<{ id: string }>;
   pendingLosses?(unit: string): Promise<StockLossPanel>;
   reviewLoss?(unit: string, id: string, decision: StockLossReviewState): Promise<{ id: string; estado: StockLossReviewState }>;
   importedProducts?(unit:string,query:Pick<ProductQuery,'q'|'offset'>):Promise<import('@erp/contracts').ImportedProducts>;
