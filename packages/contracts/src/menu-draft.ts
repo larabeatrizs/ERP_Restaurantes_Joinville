@@ -12,7 +12,7 @@ export interface MenuDraftResult { cardapio_id: string; versao_id: string }
 export interface MenuDraftSummary extends MenuPeriod, MenuDraftResult {}
 export interface MenuDraftDetail extends MenuDraftSummary { revisao: string; refeicoes: MenuDraft['refeicoes'] }
 export interface MenuDraftPage { rascunhos: MenuDraftSummary[]; proximo: string | null }
-export type MenuEstimateChanges = Pick<MenuDraftDetail, 'revisao' | 'refeicoes'>;
+export type MenuEstimateChanges = Pick<MenuDraftDetail, 'revisao' | 'refeicoes'> & { substituir?: true };
 
 export function isMenuPeriod(value: unknown): value is MenuPeriod {
   if (!isRecord(value) || !hasExactFields(value, periodFields) || !isIsoDate(value.inicio) || !isIsoDate(value.fim)
@@ -66,7 +66,8 @@ export function isMenuDraftDetail(value: unknown, version: string): value is Men
 }
 
 export function isMenuEstimateChanges(value: unknown): value is MenuEstimateChanges {
-  return isRecord(value) && hasExactFields(value, ['revisao', 'refeicoes']) && isStockId(value.revisao)
+  return isRecord(value) && hasExactFields(value, ['revisao', 'refeicoes'], ['substituir']) && isStockId(value.revisao)
+    && (!Object.hasOwn(value, 'substituir') || value.substituir === true)
     && Array.isArray(value.refeicoes) && value.refeicoes.length > 0 && validMeals(value.refeicoes, undefined, true);
 }
 
