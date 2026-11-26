@@ -7,10 +7,11 @@ import { SettingsApi } from '../services/api.ts';
 import { StockApi } from '../services/stock-api.ts';
 import { StockPanel } from './StockPanel.tsx';
 
-export type WorkspacePage = 'inicio' | 'conta' | 'calendario' | 'produtos' | 'recebimentos' | 'saldo' | 'categorias' | 'medidas' | 'fornecedores' | 'requisicoes' | 'perdas';
+export type WorkspacePage = 'inicio' | 'conta' | 'calendario' | 'cardapios' | 'produtos' | 'recebimentos' | 'saldo' | 'categorias' | 'medidas' | 'fornecedores' | 'requisicoes' | 'perdas';
 export const workspacePages: { key: WorkspacePage; label: string }[] = [
   { key: 'inicio', label: 'Início' },
   { key: 'calendario', label: 'Calendário e refeições' },
+  { key: 'cardapios', label: 'Cardápios' },
   { key: 'medidas', label: 'Unidades de medida' },
   { key: 'fornecedores', label: 'Fornecedores' },
   { key: 'categorias', label: 'Categorias' },

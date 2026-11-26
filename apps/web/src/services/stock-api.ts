@@ -9,10 +9,24 @@ import { isStockId, isStockLossPanel, isStockLossRegistrationContext } from '@er
 import { isStockLossBatchResult } from '@erp/contracts';
 import { isStockLossReport } from '@erp/contracts';
 import type { StockLossReport, StockLossReportQuery } from '@erp/contracts';
+import { isMenuDraftResult, isMenuGrade } from '@erp/contracts';
+import type { MenuDraft, MenuDraftResult, MenuGrade, MenuPeriod } from '@erp/contracts';
 import type { StockLossBatchRegistration } from '@erp/contracts';
 import type { StockLossReviewState, StockLossPanel, StockLossRegistration, StockLossRegistrationContext } from '@erp/contracts';
 
 export class StockApi {
+  async menuGrade(unit: string, period: MenuPeriod): Promise<MenuGrade> {
+    const data = await this.request(unit, `/cardapios/rascunho?${new URLSearchParams({ ...period })}`);
+    if (!isMenuGrade(data, period)) throw new RequestError(503);
+    return data;
+  }
+
+  async createMenuDraft(unit: string, input: MenuDraft): Promise<MenuDraftResult> {
+    const data = await this.request(unit, '/cardapios/rascunho', input);
+    if (!isMenuDraftResult(data)) throw new RequestError(503);
+    return data;
+  }
+
   async lossReport(unit: string, query: StockLossReportQuery): Promise<StockLossReport> {
     const params = new URLSearchParams();
     for (const [name, value] of Object.entries(query)) if (value !== undefined) params.set(name, value);

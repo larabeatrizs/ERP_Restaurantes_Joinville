@@ -7,6 +7,7 @@ import { ApiError } from '../errors.ts';
 import { isLossConfiguration } from '@erp/contracts';
 import { isStockLossAttachment, isStockLossBatchResult } from '@erp/contracts';
 import { isStockLossReport } from '@erp/contracts';
+import { isMenuDraftResult, isMenuGrade } from '@erp/contracts';
 
 function unavailable(): never { throw new ApiError(503, 'SERVICE_UNAVAILABLE', 'Serviço de estoque indisponível.'); }
 function catalogProduct(value: unknown): CatalogProduct {
@@ -136,6 +137,16 @@ export function createSupabaseStockSession(env: StockRuntimeEnv, token: string, 
       if (error || !data.user || data.user.is_anonymous || data.user.aud !== 'authenticated') throw new ApiError(401, 'UNAUTHORIZED', 'Sessão inválida ou expirada.');
     },
     repository: {
+      async menuGrade(unit, period) {
+        const result = await operation(unit, 'grade', period, 'cardapio_planejamento');
+        if (!isMenuGrade(result, period)) unavailable();
+        return result;
+      },
+      async createMenuDraft(unit, input) {
+        const result = await operation(unit, 'criar', input, 'cardapio_planejamento');
+        if (!isMenuDraftResult(result)) unavailable();
+        return result;
+      },
       async lossReport(unit, query) {
         const result = await operation(unit, 'listar', query, 'estoque_perdas_relatorio');
         if (!isStockLossReport(result, unit, query)) unavailable();
