@@ -549,7 +549,7 @@ test('RF-009 usa o calendário para validar e registrar rascunhos uma única vez
   await sqlRejects(`select erp.cardapio_consultar_rascunhos(1,${result.versao_id},null)`, 'PT404');
 }));
 
-test('RF-009 persiste refeições por versão e impede vínculo cruzado ou data fora do período', async () => actor(7, async () => {
+test('RF-005/RF-009 preservam versões de ficha e validam os vínculos de cardápio', async () => actor(7, async () => {
   await sqlRejects('select * from erp.cardapio_refeicao', '42501');
   await db.exec('reset role');
   const menu = (await db.query(`insert into erp.cardapio(unidade_id,inicio,fim,tipo_periodo)
@@ -576,6 +576,39 @@ test('RF-009 persiste refeições por versão e impede vínculo cruzado ou data 
     const privileges = (await db.query(`select has_table_privilege($1,'erp.cardapio_refeicao','SELECT, INSERT, UPDATE, DELETE') as allowed`, [role])).rows[0];
     assert.equal(privileges.allowed, false);
   }
+  await become(1);
+  const food = await create({ descricao: 'Peito de frango' });
+  const packaging = await create({ descricao: 'Copo descartável' });
+  await db.exec('reset role');
+  const packagingCategory = (await db.query("insert into erp.categoria(descricao,tipo_item) values('Embalagens','DESCARTAVEL') returning id::text")).rows[0].id;
+  await db.query('update erp.produto set categoria_id=$1 where id=$2', [packagingCategory, packaging.id]);
+  const dish = (await db.query("insert into erp.prato(descricao,tipo_prato) values('Estrogonofe','PROTEINA') returning id::text")).rows[0].id;
+  const recipe = async number => (await db.query(
+    'insert into erp.prato_versao(prato_id,numero,rendimento_porcoes,criado_por) values($1,$2,100,$3) returning id::text',
+    [dish, number, uid(7)],
+  )).rows[0].id;
+  const original = await recipe(1);
+  const later = await recipe(2);
+  const meal = (await db.query('select id::text from erp.cardapio_refeicao where cardapio_dia_id=$1', [firstDay])).rows[0].id;
+  await sqlRejects(`insert into erp.cardapio_prato values(1,${meal},${original},1,null,null,null)`, '23514');
+  await db.query('insert into erp.prato_item(prato_versao_id,produto_id,quantidade_receita,fator_correcao,custo_indireto) values($1,$3,10,1,false),($2,$3,12,1,false)',
+    [original, later, food.id]);
+  await sqlRejects(`insert into erp.prato_item values(${later},${packaging.id},1,1,false,null)`, '23514');
+  await db.query('insert into erp.prato_item values($1,$2,1,1,true,null)', [later, packaging.id]);
+  await sqlRejects(`insert into erp.cardapio_prato values(2,${meal},${original},1,null,null,null)`, '23503');
+  await db.query('insert into erp.cardapio_prato(unidade_id,cardapio_refeicao_id,prato_versao_id,ordem) values(1,$1,$2,1)', [meal, original]);
+  const portion = (await db.query(`select trunc(i.quantidade_receita/v.rendimento_porcoes,2)::text as porcao
+    from erp.cardapio_prato cp join erp.prato_versao v on v.id=cp.prato_versao_id
+    join erp.prato_item i on i.prato_versao_id=v.id where cp.cardapio_refeicao_id=$1`, [meal])).rows[0].porcao;
+  assert.equal(portion, '0.10');
+  await sqlRejects(`update erp.prato_item set quantidade_receita=20 where prato_versao_id=${original}`, '42501');
+  await db.query("update erp.prato set status='INATIVO' where id=$1", [dish]);
+  await sqlRejects(`insert into erp.cardapio_prato values(1,${meal},${later},2,null,null,null)`, '23514');
+  assert.equal((await db.query('select prato_versao_id::text from erp.cardapio_prato')).rows[0].prato_versao_id, original);
+  await db.exec('delete from erp.cardapio_prato');
+  await sqlRejects(`insert into erp.prato_item values(${original},${packaging.id},1,1,true,null)`, '23514');
+  await become(7);
+  await sqlRejects('select * from erp.prato_versao', '42501');
 }));
 
 test('RF-007 configura motivos e substituto com revisão, segregação e trilha', async () => actor(1, async () => {
@@ -1043,7 +1076,7 @@ test('CARGA-002 nega leitura/escrita direta, perfis/unidades indevidos e reverte
 }));
 test('schema novo tem RLS, executor restrito e nenhum DML cliente ou USAGE auth', async () => {
   const rows = (await db.query("select relname,relrowsecurity from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname='erp' and c.relkind='r'")).rows;
-  assert.equal(rows.length, 32); assert.ok(rows.every((r) => r.relrowsecurity));
+  assert.equal(rows.length, 36); assert.ok(rows.every((r) => r.relrowsecurity));
   const role = (await db.query("select rolcanlogin,rolsuper,rolbypassrls,rolcreatedb,rolcreaterole from pg_roles where rolname='erp_stock_writer'")).rows[0];
   assert.ok(Object.values(role).every((v) => v === false));
   const grants = (await db.query("select has_schema_privilege('erp_stock_writer','auth','USAGE') as auth_usage,pg_has_role('authenticated','erp_stock_writer','MEMBER') as member,has_schema_privilege('erp_stock_writer','erp_private','CREATE') as can_create")).rows[0];
