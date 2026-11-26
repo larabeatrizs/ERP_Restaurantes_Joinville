@@ -7,7 +7,7 @@ import { ApiError } from '../errors.ts';
 import { isLossConfiguration } from '@erp/contracts';
 import { isStockLossAttachment, isStockLossBatchResult } from '@erp/contracts';
 import { isStockLossReport } from '@erp/contracts';
-import { isMenuDraftResult, isMenuGrade } from '@erp/contracts';
+import { isMenuDraftDetail, isMenuDraftPage, isMenuDraftResult, isMenuGrade } from '@erp/contracts';
 
 function unavailable(): never { throw new ApiError(503, 'SERVICE_UNAVAILABLE', 'Serviço de estoque indisponível.'); }
 function catalogProduct(value: unknown): CatalogProduct {
@@ -137,6 +137,18 @@ export function createSupabaseStockSession(env: StockRuntimeEnv, token: string, 
       if (error || !data.user || data.user.is_anonymous || data.user.aud !== 'authenticated') throw new ApiError(401, 'UNAUTHORIZED', 'Sessão inválida ou expirada.');
     },
     repository: {
+      async menuDrafts(unit, cursor) {
+        const result = await client.schema('erp').rpc('cardapio_consultar_rascunhos', { p_unidade: unit, p_versao: null, p_antes: cursor ?? null });
+        translate(result.error, result.status);
+        if (!isMenuDraftPage(result.data, cursor)) unavailable();
+        return result.data;
+      },
+      async menuDraft(unit, version) {
+        const result = await client.schema('erp').rpc('cardapio_consultar_rascunhos', { p_unidade: unit, p_versao: version, p_antes: null });
+        translate(result.error, result.status);
+        if (!isMenuDraftDetail(result.data, version)) unavailable();
+        return result.data;
+      },
       async menuGrade(unit, period) {
         const result = await operation(unit, 'grade', period, 'cardapio_planejamento');
         if (!isMenuGrade(result, period)) unavailable();

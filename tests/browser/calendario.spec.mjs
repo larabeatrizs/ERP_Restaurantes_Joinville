@@ -62,6 +62,37 @@ test('RF-009 mostra a grade da unidade e reusa o envio após resposta incerta', 
   await expect(page.getByRole('textbox', { name: 'Estimativa de Jantar em 28/11/2026' })).toBeVisible();
 });
 
+test('RF-009 pagina rascunhos salvos e mostra as estimativas da versão selecionada', async ({ page }) => {
+  await setup(page);
+  const period = { inicio: '2026-11-27', fim: '2026-11-28', tipo_periodo: 'SEMANAL' };
+  const saved = { ...period, cardapio_id: '34', versao_id: '9007199254740999' };
+  const rows = Array.from({ length: 25 }, (_, i) => ({
+    ...period, cardapio_id: String(100 - i), versao_id: String(9007199254741030n - BigInt(i)),
+  }));
+  const cursor = rows.at(-1).versao_id;
+  await page.route('**/cardapios/rascunhos**', route => {
+    const url = new URL(route.request().url());
+    if (url.pathname.includes(`/${b}/`)) return route.fulfill({ json: { rascunhos: [], proximo: null } });
+    if (url.pathname.endsWith('/' + saved.versao_id)) return route.fulfill({ json: {
+      ...saved, refeicoes: [{ data: period.inicio, tipo_refeicao: 'ALMOCO', estimadas: 200 }],
+    } });
+    return route.fulfill({ json: url.searchParams.get('antes') === cursor
+      ? { rascunhos: [saved], proximo: null } : { rascunhos: rows, proximo: cursor } });
+  });
+  await page.getByRole('link', { name: 'Cardápios', exact: true }).click();
+  await page.getByRole('button', { name: 'Consultar rascunhos salvos' }).click();
+  await page.getByRole('button', { name: 'Próxima página' }).click();
+  await page.getByRole('button', { name: 'Abrir rascunho #34', exact: true }).click();
+  const detail = page.getByRole('region', { name: 'Refeições do rascunho' });
+  await expect(detail).toContainText('Almoço');
+  await expect(detail).toContainText('200');
+  await page.getByRole('button', { name: 'Voltar aos rascunhos' }).click();
+  await expect(page.getByRole('button', { name: 'Página anterior' })).toBeEnabled();
+  await page.getByRole('combobox', { name: 'Unidade', exact: true }).selectOption(b);
+  await page.getByRole('button', { name: 'Consultar rascunhos salvos' }).click();
+  await expect(page.getByText('Nenhum rascunho nesta página.')).toBeVisible();
+});
+
 test('calendário não configurado usa modelo explícito e salva revisão/motivo após prévia',async({page})=>{
  const state=await setup(page);await expect(page.getByText('Calendário ainda não configurado.',{exact:false})).toBeVisible();await expect(page.getByRole('checkbox',{name:'Almoço',exact:true})).not.toBeChecked();page.once('dialog',d=>d.accept());await page.getByRole('button',{name:'Usar modelo Adhemar Garcia',exact:true}).click();await expect(page.getByRole('checkbox',{name:'Segunda-feira',exact:true})).toBeChecked();await expect(page.getByRole('checkbox',{name:'Domingo',exact:true})).not.toBeChecked();await expect(page.getByLabel('Capacidade — Almoço',{exact:true})).toHaveValue('');
  await reviewSave(page);await expect(page.getByText('Calendário salvo com sucesso.',{exact:true})).toBeVisible();expect(state.writes).toHaveLength(1);expect(state.writes[0].revisao).toBeNull();expect(state.calendar.refeicoes[0].capacidade).toBeNull();await page.getByRole('button',{name:'Recarregar calendário',exact:true}).click();await expect(page.getByLabel('Início — Almoço',{exact:true})).toHaveValue('11:00');

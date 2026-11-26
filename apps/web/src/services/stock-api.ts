@@ -9,12 +9,27 @@ import { isStockId, isStockLossPanel, isStockLossRegistrationContext } from '@er
 import { isStockLossBatchResult } from '@erp/contracts';
 import { isStockLossReport } from '@erp/contracts';
 import type { StockLossReport, StockLossReportQuery } from '@erp/contracts';
-import { isMenuDraftResult, isMenuGrade } from '@erp/contracts';
-import type { MenuDraft, MenuDraftResult, MenuGrade, MenuPeriod } from '@erp/contracts';
+import { isMenuDraftDetail, isMenuDraftPage, isMenuDraftResult, isMenuGrade } from '@erp/contracts';
+import type { MenuDraft, MenuDraftDetail, MenuDraftPage, MenuDraftResult, MenuGrade, MenuPeriod } from '@erp/contracts';
 import type { StockLossBatchRegistration } from '@erp/contracts';
 import type { StockLossReviewState, StockLossPanel, StockLossRegistration, StockLossRegistrationContext } from '@erp/contracts';
 
 export class StockApi {
+  async menuDrafts(unit: string, cursor?: string): Promise<MenuDraftPage> {
+    if (cursor !== undefined && !isStockId(cursor)) throw new RequestError(400);
+    const search = cursor ? `?${new URLSearchParams({ antes: cursor })}` : '';
+    const data = await this.request(unit, `/cardapios/rascunhos${search}`);
+    if (!isMenuDraftPage(data, cursor)) throw new RequestError(503);
+    return data;
+  }
+
+  async menuDraft(unit: string, version: string): Promise<MenuDraftDetail> {
+    if (!isStockId(version)) throw new RequestError(400);
+    const data = await this.request(unit, `/cardapios/rascunhos/${version}`);
+    if (!isMenuDraftDetail(data, version)) throw new RequestError(503);
+    return data;
+  }
+
   async menuGrade(unit: string, period: MenuPeriod): Promise<MenuGrade> {
     const data = await this.request(unit, `/cardapios/rascunho?${new URLSearchParams({ ...period })}`);
     if (!isMenuGrade(data, period)) throw new RequestError(503);

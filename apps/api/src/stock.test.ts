@@ -39,6 +39,11 @@ function fixture(options: { authError?: Error; repositoryError?: Error } = {}) {
     if (options.repositoryError) throw options.repositoryError;
   };
   const repository: StockRepository = {
+    async menuDrafts(unit, cursor) { collect('menuDrafts', unit, cursor); return { rascunhos: [], proximo: null }; },
+    async menuDraft(unit, version) {
+      collect('menuDraft', unit, version);
+      return { cardapio_id: '1', versao_id: version, inicio: '2026-11-26', fim: '2026-11-28', tipo_periodo: 'SEMANAL', refeicoes: [] };
+    },
     async menuGrade(unit, period) { collect('menuGrade', unit, period); return { refeicoes: [{ data: period.inicio, tipo_refeicao: 'ALMOCO' }] }; },
     async createMenuDraft(unit, payload) { collect('createMenuDraft', unit, payload); return { cardapio_id: '1', versao_id: '2' }; },
     async lossReport(unit, query) {
@@ -80,6 +85,19 @@ function fixture(options: { authError?: Error; repositoryError?: Error } = {}) {
     return { repository, async authenticate() { if (options.authError) throw options.authError; } };
   }) };
 }
+
+test('RF-009 consulta página e detalhe de rascunhos com identificadores exatos', async () => {
+  const { app, calls } = fixture();
+  const path = '/cardapios/rascunhos';
+  assert.equal((await app.fetch(new Request(base + path))).status, 401);
+  assert.equal((await app.fetch(request(path + '?antes=1&antes=2'))).status, 400);
+  assert.equal((await app.fetch(request(path + '/0'))).status, 400);
+  assert.equal((await app.fetch(request(path + '?antes=' + product.id))).status, 200);
+  const detail = await app.fetch(request(path + '/' + product.id));
+  assert.equal(detail.status, 200);
+  assert.equal((await detail.json() as { versao_id: string }).versao_id, product.id);
+  assert.deepEqual(calls, [{ name: 'menuDrafts', args: ['1', product.id] }, { name: 'menuDraft', args: ['1', product.id] }]);
+});
 
 test('RF-009 valida grade e rascunho sem aceitar campos de autoridade', async () => {
   const { app, calls } = fixture();

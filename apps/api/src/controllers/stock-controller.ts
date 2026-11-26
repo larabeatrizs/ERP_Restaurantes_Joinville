@@ -53,6 +53,7 @@ export async function stockController(request: Request, env: StockRuntimeEnv, un
   const lossBatch = route === 'estoque/perdas/lote';
   const lossAttachment = /^estoque\/perdas\/([^/]+)\/anexo$/.exec(route)?.[1];
   const menu = route === 'cardapios/rascunho';
+  const menuVersion = /^cardapios\/rascunhos\/([^/]+)$/.exec(route)?.[1];
   const allow = productEdit ? 'PATCH, DELETE' : confirmation || productLink || productStatus || importedCompletion || lossReview || lossBatch ? 'POST' : route === 'produtos' || route === 'entradas' || lossRegistration || menu ? 'GET, POST' : 'GET';
   if (!allow.split(', ').includes(request.method)) return methodDenied(allow, request.method === 'HEAD');
   const token = /^Bearer\s+(\S+)$/i.exec(request.headers.get('Authorization') ?? '')?.[1];
@@ -61,6 +62,19 @@ export async function stockController(request: Request, env: StockRuntimeEnv, un
   const session = factory(env, token);
   await session.authenticate();
   const service = new StockService(session.repository);
+  if (menuVersion || route === 'cardapios/rascunhos') {
+    const params = new URL(request.url).searchParams;
+    if (menuVersion) {
+      if (!isStockId(menuVersion)) throw new ApiError(400, 'INVALID_ID', 'Identificador inválido.');
+      if (params.size) throw new ApiError(400, 'INVALID_QUERY', 'Filtros inválidos.');
+      if (!session.repository.menuDraft) throw new ApiError(503, 'SERVICE_UNAVAILABLE', 'Rascunho indisponível.');
+      return reply(await session.repository.menuDraft(unit, menuVersion));
+    }
+    const cursor = params.get('antes') ?? undefined;
+    if (params.size && (params.size !== 1 || !isStockId(cursor))) throw new ApiError(400, 'INVALID_QUERY', 'Cursor inválido.');
+    if (!session.repository.menuDrafts) throw new ApiError(503, 'SERVICE_UNAVAILABLE', 'Rascunhos indisponíveis.');
+    return reply(await session.repository.menuDrafts(unit, cursor));
+  }
   if (menu) {
     const params = new URL(request.url).searchParams;
     if (request.method === 'GET') {
