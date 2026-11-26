@@ -4,6 +4,9 @@ import type { StockLossReviewState, StockLossPanel, StockLossRegistration, Stock
 
 export interface StockRuntimeEnv { SUPABASE_URL?: string; SUPABASE_PUBLISHABLE_KEY?: string }
 export interface StockRepository {
+  dishIngredients?(unit: string, query: string): Promise<{ insumos: import('@erp/contracts').DishIngredientOption[] }>;
+  createDishRecipe?(unit: string, input: import('@erp/contracts').DishRecipeInput): Promise<import('@erp/contracts').DishRecipe>;
+  dishRecipe?(unit: string, id: string, version?: string): Promise<import('@erp/contracts').DishRecipe>;
   menuGrade?(unit: string, period: import('@erp/contracts').MenuPeriod): Promise<import('@erp/contracts').MenuGrade>;
   createMenuDraft?(unit: string, input: import('@erp/contracts').MenuDraft): Promise<import('@erp/contracts').MenuDraftResult>;
   menuDrafts?(unit: string, cursor?: string): Promise<import('@erp/contracts').MenuDraftPage>;

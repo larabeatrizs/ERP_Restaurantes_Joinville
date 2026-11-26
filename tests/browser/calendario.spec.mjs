@@ -21,6 +21,44 @@ async function setup(page,options={}){
  await page.goto('/');await page.getByLabel('Nome de usuário',{exact:true}).fill('teste');await page.getByLabel('Senha',{exact:true}).fill('senha-ficticia');await page.getByRole('button',{name:'Entrar',exact:true}).click();await page.getByLabel('Unidade de acesso',{exact:true}).selectOption(a);await page.getByRole('button',{name:'Acessar unidade',exact:true}).click();await page.getByRole('navigation',{name:'Principal'}).getByRole('link',{name:'Calendário e refeições',exact:true}).click();return state;
 }
 async function reviewSave(page,reason='Funcionamento sintético aprovado'){await page.getByRole('button',{name:'Revisar calendário',exact:true}).click();const d=page.getByRole('dialog');await d.getByLabel('Motivo da alteração *',{exact:true}).fill(reason);await d.getByRole('button',{name:'Salvar calendário',exact:true}).click();}
+test('RF-005 busca insumo, cadastra ficha e reusa o envio após resposta incerta', async ({ page }) => {
+  await setup(page);
+  const writes = [];
+  const ingredient = '9007199254741003';
+  await page.route('**/pratos**', route => {
+    const req = route.request();
+    const url = new URL(req.url());
+    if (req.method() === 'GET') {
+      expect(url.searchParams.get('q')).toBe('frango');
+      return route.fulfill({ json: { insumos: [{ id: ingredient, descricao: 'Peito de frango', complemento: '',
+        unidade: 'KG', fator_correcao: '1.250000', custo_indireto: false }] } });
+    }
+    writes.push(req.postDataJSON());
+    if (writes.length === 1) return route.fulfill({ status: 503, json: {} });
+    return route.fulfill({ status: 201, json: {
+      id: '91', versao_id: '92', numero: 1, descricao: 'Estrogonofe', tipo_prato: 'PROTEINA', status: 'ATIVO',
+      rendimento_porcoes: 100, peso_porcao_g: null, unidade_porcao: null, porcoes_por_unidade_compra: null, modo_preparo: null,
+      kcal_porcao: null, itens: [{ produto_id: ingredient, produto: 'Peito de frango', unidade: 'KG', quantidade_receita: '10',
+        quantidade_porcao: '0.1', fator_correcao: '1.25', custo_indireto: false, observacao: null }],
+    } });
+  });
+  await page.getByRole('link', { name: 'Pratos e fichas', exact: true }).click();
+  await page.getByRole('textbox', { name: 'Buscar insumos' }).fill('frango');
+  await page.getByRole('button', { name: 'Buscar insumos' }).click();
+  await page.getByRole('button', { name: 'Adicionar Peito de frango' }).click();
+  await page.getByRole('textbox', { name: 'Nome do prato' }).fill('Estrogonofe');
+  await page.getByRole('combobox', { name: 'Tipo de prato' }).selectOption('PROTEINA');
+  await page.getByRole('textbox', { name: 'Rendimento em porções' }).fill('100');
+  await page.getByRole('textbox', { name: 'Quantidade da receita (KG)' }).fill('10,0');
+  await page.getByRole('button', { name: 'Salvar ficha técnica' }).click();
+  await page.getByRole('button', { name: 'Reenviar ficha' }).click();
+  await expect(page.getByRole('status')).toContainText('Ficha técnica cadastrada. Versão 1.');
+  await expect(page.getByRole('cell', { name: '0,1 KG', exact: true })).toBeVisible();
+  expect(writes).toHaveLength(2);
+  expect(writes[0]).toEqual(writes[1]);
+  expect(writes[0].itens).toEqual([{ produto_id: ingredient, quantidade_receita: '10.0', custo_indireto: false }]);
+});
+
 test('RF-009 mostra a grade da unidade e reusa o envio após resposta incerta', async ({ page }) => {
   await setup(page);
   const writes = [];

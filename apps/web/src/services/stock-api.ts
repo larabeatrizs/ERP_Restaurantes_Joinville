@@ -11,10 +11,24 @@ import { isStockLossReport } from '@erp/contracts';
 import type { StockLossReport, StockLossReportQuery } from '@erp/contracts';
 import { isMenuDraftDetail, isMenuDraftPage, isMenuDraftResult, isMenuGrade } from '@erp/contracts';
 import type { MenuDraft, MenuDraftDetail, MenuDraftPage, MenuDraftResult, MenuEstimateChanges, MenuGrade, MenuPeriod } from '@erp/contracts';
+import { isDishIngredients, isDishRecipe } from '@erp/contracts';
+import type { DishIngredientOption, DishRecipe, DishRecipeInput } from '@erp/contracts';
 import type { StockLossBatchRegistration } from '@erp/contracts';
 import type { StockLossReviewState, StockLossPanel, StockLossRegistration, StockLossRegistrationContext } from '@erp/contracts';
 
 export class StockApi {
+  async dishIngredients(unit: string, query: string): Promise<DishIngredientOption[]> {
+    const data = await this.request(unit, `/pratos/insumos?${new URLSearchParams({ q: query })}`);
+    if (!isDishIngredients(data)) throw new RequestError(503);
+    return data.insumos;
+  }
+
+  async createDishRecipe(unit: string, input: DishRecipeInput): Promise<DishRecipe> {
+    const data = await this.request(unit, '/pratos', input);
+    if (!isDishRecipe(data) || data.numero !== 1) throw new RequestError(503);
+    return data;
+  }
+
   async editMenuEstimates(unit: string, version: string, changes: MenuEstimateChanges): Promise<MenuDraftDetail> {
     if (!isStockId(version)) throw new RequestError(400);
     const data = await this.request(unit, `/cardapios/rascunhos/${version}`, changes, 'PATCH');

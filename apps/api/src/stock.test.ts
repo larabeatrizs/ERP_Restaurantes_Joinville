@@ -26,6 +26,11 @@ const context: StockContext = { medidas: [], categorias: [], fornecedores: [], l
 } };
 const base = 'https://erp.test/api/unidades/1';
 const key = '00000000-0000-4000-8000-000000000001';
+const dishRecipe = {
+  id: '91', versao_id: '92', descricao: 'Estrogonofe', tipo_prato: 'PROTEINA' as const, status: 'ATIVO' as const,
+  numero: 1, rendimento_porcoes: 100, peso_porcao_g: null, unidade_porcao: null, porcoes_por_unidade_compra: null,
+  modo_preparo: null, kcal_porcao: null, itens: [],
+};
 function request(path: string, method = 'GET', data?: unknown, headers: Record<string, string> = {}) {
   return new Request(base + path, {
     method, headers: { Authorization: 'Bearer sessao-estoque', ...(data === undefined ? {} : { 'Content-Type': 'application/json' }), ...headers },
@@ -39,6 +44,9 @@ function fixture(options: { authError?: Error; repositoryError?: Error } = {}) {
     if (options.repositoryError) throw options.repositoryError;
   };
   const repository: StockRepository = {
+    async dishIngredients(unit, query) { collect('dishIngredients', unit, query); return { insumos: [] }; },
+    async createDishRecipe(unit, recipe) { collect('createDishRecipe', unit, recipe); return dishRecipe; },
+    async dishRecipe(unit, id, version) { collect('dishRecipe', unit, id, version); return dishRecipe; },
     async menuDrafts(unit, cursor) { collect('menuDrafts', unit, cursor); return { rascunhos: [], proximo: null }; },
     async menuDraft(unit, version) {
       collect('menuDraft', unit, version);
@@ -90,6 +98,25 @@ function fixture(options: { authError?: Error; repositoryError?: Error } = {}) {
     return { repository, async authenticate() { if (options.authError) throw options.authError; } };
   }) };
 }
+
+test('RF-005 valida busca, gravação e número de versão da ficha', async () => {
+  const { app, calls } = fixture();
+  const path = '/pratos';
+  const input = { descricao: 'Estrogonofe', tipo_prato: 'PROTEINA', rendimento_porcoes: 100, chave: key,
+    itens: [{ produto_id: product.id, quantidade_receita: '10', custo_indireto: false }] };
+  assert.equal((await app.fetch(new Request(base + path + '/insumos'))).status, 401);
+  assert.equal((await app.fetch(request(path + '/insumos?q=a&q=b'))).status, 400);
+  assert.equal((await app.fetch(request(path + '/91?numero=0'))).status, 400);
+  assert.equal((await app.fetch(request(path, 'POST', { ...input, status: 'ATIVO' }))).status, 422);
+  assert.equal((await app.fetch(request(path + '/insumos?q=frango'))).status, 200);
+  assert.equal((await app.fetch(request(path, 'POST', input))).status, 201);
+  assert.equal((await app.fetch(request(path + '/91?numero=1'))).status, 200);
+  assert.deepEqual(calls, [
+    { name: 'dishIngredients', args: ['1', 'frango'] },
+    { name: 'createDishRecipe', args: ['1', input] },
+    { name: 'dishRecipe', args: ['1', '91', '1'] },
+  ]);
+});
 
 test('RF-009 consulta página e detalhe de rascunhos com identificadores exatos', async () => {
   const { app, calls } = fixture();

@@ -67,5 +67,6 @@ export * from './stock-loss.ts';
 export * from './stock-loss-panel.ts';
 export * from './stock-loss-report.ts';
 export * from './menu-draft.ts';
+export * from './dish-recipe.ts';
 export * from './stock-loss-configuration.ts';
 export * from './user-stock-period-access.ts';
