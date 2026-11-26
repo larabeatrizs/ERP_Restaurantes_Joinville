@@ -549,6 +549,38 @@ test('RF-009 usa o calendário para validar e registrar rascunhos uma única vez
   await sqlRejects(`select erp.cardapio_consultar_rascunhos(1,${result.versao_id},null)`, 'PT404');
 }));
 
+test('RF-005 cadastra e consulta a primeira ficha com porção exata e reenvio seguro', async () => actor(1, async () => {
+  const product = await create({ descricao: 'Peito de frango', fator_correcao: '1.25' });
+  const request = { descricao: 'Estrogonofe de frango', tipo_prato: 'PROTEINA', rendimento_porcoes: 100,
+    chave: key(980), itens: [{ produto_id: product.id, quantidade_receita: '10', custo_indireto: false }] };
+  const operate = async (action, input, unit = 1) => (await db.query(
+    'select erp_private.prato_primeira_ficha($1,$2,$3::jsonb) as resultado', [unit, action, JSON.stringify(input)],
+  )).rows[0].resultado;
+  await sqlRejects(`select erp_private.prato_primeira_ficha(1,'criar','${JSON.stringify(request)}')`, '42501');
+  await db.exec('set local role erp_stock_writer');
+  await sqlRejects(`select erp_private.prato_primeira_ficha(1,'criar','${JSON.stringify(request)}')`, 'PT403');
+  await become(7);
+  await db.exec('set local role erp_stock_writer');
+  const invalid = { ...request, itens: [{ ...request.itens[0], quantidade_receita: '0' }] };
+  await sqlRejects(`select erp_private.prato_primeira_ficha(1,'criar','${JSON.stringify(invalid)}')`, '23514');
+  const created = await operate('criar', request);
+  assert.equal(created.numero, 1);
+  assert.equal(created.itens[0].quantidade_porcao, '0.100000000000');
+  assert.equal(created.itens[0].fator_correcao, '1.250000');
+  assert.equal(created.itens[0].unidade, 'KG');
+  assert.deepEqual(await operate('criar', request), created);
+  const changed = { ...request, rendimento_porcoes: 200 };
+  await sqlRejects(`select erp_private.prato_primeira_ficha(1,'criar','${JSON.stringify(changed)}')`, 'PT409');
+  await sqlRejects(`select erp_private.prato_primeira_ficha(2,'ler','{"id":"${created.id}"}')`, 'PT404');
+  await db.exec('reset role');
+  assert.equal((await db.query('select count(*)::int as total from erp.prato')).rows[0].total, 1);
+  assert.equal((await db.query("select count(*)::int as total from erp.auditoria_estoque where acao='prato_criar'")).rows[0].total, 1);
+  await db.query('update erp.produto set unidade_medida_id=2 where id=$1', [product.id]);
+  await become(3);
+  await db.exec('set local role erp_stock_writer');
+  assert.deepEqual(await operate('ler', { id: created.id, numero: '1' }), created);
+}));
+
 test('RF-005/RF-009 preservam versões de ficha e validam os vínculos de cardápio', async () => actor(7, async () => {
   await sqlRejects('select * from erp.cardapio_refeicao', '42501');
   await db.exec('reset role');
