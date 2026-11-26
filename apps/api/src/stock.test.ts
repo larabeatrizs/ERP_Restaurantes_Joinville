@@ -42,7 +42,12 @@ function fixture(options: { authError?: Error; repositoryError?: Error } = {}) {
     async menuDrafts(unit, cursor) { collect('menuDrafts', unit, cursor); return { rascunhos: [], proximo: null }; },
     async menuDraft(unit, version) {
       collect('menuDraft', unit, version);
-      return { cardapio_id: '1', versao_id: version, inicio: '2026-11-26', fim: '2026-11-28', tipo_periodo: 'SEMANAL', refeicoes: [] };
+      return { cardapio_id: '1', versao_id: version, inicio: '2026-11-26', fim: '2026-11-28', tipo_periodo: 'SEMANAL', revisao: '1', refeicoes: [] };
+    },
+    async editMenuEstimates(unit, version, changes) {
+      collect('editMenuEstimates', unit, version, changes);
+      return { cardapio_id: '1', versao_id: version, inicio: '2026-11-26', fim: '2026-11-28', tipo_periodo: 'SEMANAL',
+        revisao: '2', refeicoes: changes.refeicoes };
     },
     async menuGrade(unit, period) { collect('menuGrade', unit, period); return { refeicoes: [{ data: period.inicio, tipo_refeicao: 'ALMOCO' }] }; },
     async createMenuDraft(unit, payload) { collect('createMenuDraft', unit, payload); return { cardapio_id: '1', versao_id: '2' }; },
@@ -97,6 +102,16 @@ test('RF-009 consulta página e detalhe de rascunhos com identificadores exatos'
   assert.equal(detail.status, 200);
   assert.equal((await detail.json() as { versao_id: string }).versao_id, product.id);
   assert.deepEqual(calls, [{ name: 'menuDrafts', args: ['1', product.id] }, { name: 'menuDraft', args: ['1', product.id] }]);
+});
+
+test('RF-009 exige revisão e aceita somente alterações de estimativas', async () => {
+  const { app, calls } = fixture();
+  const path = '/cardapios/rascunhos/' + product.id;
+  const changes = { revisao: '1', refeicoes: [{ data: '2026-11-26', tipo_refeicao: 'ALMOCO', estimadas: 201 }] };
+  assert.equal((await app.fetch(request(path, 'PATCH', { ...changes, estado: 'PUBLICADO' }))).status, 422);
+  assert.equal((await app.fetch(request(path, 'PATCH', { ...changes, revisao: 1 }))).status, 422);
+  assert.equal((await app.fetch(request(path, 'PATCH', changes))).status, 200);
+  assert.deepEqual(calls, [{ name: 'editMenuEstimates', args: ['1', product.id, changes] }]);
 });
 
 test('RF-009 valida grade e rascunho sem aceitar campos de autoridade', async () => {

@@ -66,6 +66,9 @@ test('RF-009 pagina rascunhos salvos e mostra as estimativas da versão selecion
   await setup(page);
   const period = { inicio: '2026-11-27', fim: '2026-11-28', tipo_periodo: 'SEMANAL' };
   const saved = { ...period, cardapio_id: '34', versao_id: '9007199254740999' };
+  let revision = '1';
+  let count = 200;
+  const changes = [];
   const rows = Array.from({ length: 25 }, (_, i) => ({
     ...period, cardapio_id: String(100 - i), versao_id: String(9007199254741030n - BigInt(i)),
   }));
@@ -73,9 +76,23 @@ test('RF-009 pagina rascunhos salvos e mostra as estimativas da versão selecion
   await page.route('**/cardapios/rascunhos**', route => {
     const url = new URL(route.request().url());
     if (url.pathname.includes(`/${b}/`)) return route.fulfill({ json: { rascunhos: [], proximo: null } });
-    if (url.pathname.endsWith('/' + saved.versao_id)) return route.fulfill({ json: {
-      ...saved, refeicoes: [{ data: period.inicio, tipo_refeicao: 'ALMOCO', estimadas: 200 }],
-    } });
+    if (url.pathname.endsWith('/' + saved.versao_id)) {
+      if (route.request().method() === 'PATCH') {
+        const edit = route.request().postDataJSON();
+        changes.push(edit);
+        if (revision === '1') {
+          revision = '2';
+          count = 205;
+          return route.fulfill({ status: 412, json: {} });
+        }
+        expect(edit.revisao).toBe(revision);
+        revision = '3';
+        count = edit.refeicoes[0].estimadas;
+      }
+      return route.fulfill({ json: { ...saved, revisao: revision,
+        refeicoes: [{ data: period.inicio, tipo_refeicao: 'ALMOCO', estimadas: count }],
+      } });
+    }
     return route.fulfill({ json: url.searchParams.get('antes') === cursor
       ? { rascunhos: [saved], proximo: null } : { rascunhos: rows, proximo: cursor } });
   });
@@ -86,6 +103,21 @@ test('RF-009 pagina rascunhos salvos e mostra as estimativas da versão selecion
   const detail = page.getByRole('region', { name: 'Refeições do rascunho' });
   await expect(detail).toContainText('Almoço');
   await expect(detail).toContainText('200');
+  await page.getByRole('button', { name: 'Editar estimativas' }).click();
+  const estimate = page.getByRole('textbox', { name: 'Estimativa de Almoço em 27/11/2026' });
+  await estimate.fill('210');
+  await page.getByRole('button', { name: 'Salvar estimativas' }).click();
+  await expect(page.getByRole('alert')).toContainText('Outra sessão alterou');
+  await expect(estimate).toHaveValue('210');
+  page.once('dialog', dialog => dialog.accept());
+  await page.getByRole('button', { name: 'Recarregar versão' }).click();
+  await expect(detail).toContainText('205');
+  await page.getByRole('button', { name: 'Editar estimativas' }).click();
+  await estimate.fill('215');
+  await page.getByRole('button', { name: 'Salvar estimativas' }).click();
+  await expect(page.getByRole('status')).toContainText('Estimativas atualizadas.');
+  await expect(detail).toContainText('215');
+  expect(changes.map(change => [change.revisao, change.refeicoes[0].estimadas])).toEqual([['1', 210], ['2', 215]]);
   await page.getByRole('button', { name: 'Voltar aos rascunhos' }).click();
   await expect(page.getByRole('button', { name: 'Página anterior' })).toBeEnabled();
   await page.getByRole('combobox', { name: 'Unidade', exact: true }).selectOption(b);

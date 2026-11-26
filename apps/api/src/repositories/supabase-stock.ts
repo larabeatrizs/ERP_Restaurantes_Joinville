@@ -137,6 +137,12 @@ export function createSupabaseStockSession(env: StockRuntimeEnv, token: string, 
       if (error || !data.user || data.user.is_anonymous || data.user.aud !== 'authenticated') throw new ApiError(401, 'UNAUTHORIZED', 'Sessão inválida ou expirada.');
     },
     repository: {
+      async editMenuEstimates(unit, version, changes) {
+        const result = await client.schema('erp').rpc('cardapio_editar_estimativas', { p_unidade: unit, p_versao: version, p_dados: changes });
+        translate(result.error, result.status);
+        if (!isMenuDraftDetail(result.data, version)) unavailable();
+        return result.data;
+      },
       async menuDrafts(unit, cursor) {
         const result = await client.schema('erp').rpc('cardapio_consultar_rascunhos', { p_unidade: unit, p_versao: null, p_antes: cursor ?? null });
         translate(result.error, result.status);

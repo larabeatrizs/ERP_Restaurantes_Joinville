@@ -1,6 +1,6 @@
 import { readJson } from './read-json.ts';
 import { isStockLossReportQuery } from '@erp/contracts';
-import { isMenuDraft, isMenuPeriod } from '@erp/contracts';
+import { isMenuDraft, isMenuEstimateChanges, isMenuPeriod } from '@erp/contracts';
 import { hasExactFields, isEntradaInput, isProductLinkInput, isProdutoInput, isRecord, isStockId, isText } from '@erp/contracts';
 import { isStockLedgerFilters, isStockLossDecision, isStockLossRegistration, isStockLossBatchRegistration, stockLossAttachmentMaxBytes } from '@erp/contracts';
 import type { ProductQuery, ProductResult, StockLedgerQuery } from '@erp/contracts';
@@ -54,7 +54,7 @@ export async function stockController(request: Request, env: StockRuntimeEnv, un
   const lossAttachment = /^estoque\/perdas\/([^/]+)\/anexo$/.exec(route)?.[1];
   const menu = route === 'cardapios/rascunho';
   const menuVersion = /^cardapios\/rascunhos\/([^/]+)$/.exec(route)?.[1];
-  const allow = productEdit ? 'PATCH, DELETE' : confirmation || productLink || productStatus || importedCompletion || lossReview || lossBatch ? 'POST' : route === 'produtos' || route === 'entradas' || lossRegistration || menu ? 'GET, POST' : 'GET';
+  const allow = menuVersion ? 'GET, PATCH' : productEdit ? 'PATCH, DELETE' : confirmation || productLink || productStatus || importedCompletion || lossReview || lossBatch ? 'POST' : route === 'produtos' || route === 'entradas' || lossRegistration || menu ? 'GET, POST' : 'GET';
   if (!allow.split(', ').includes(request.method)) return methodDenied(allow, request.method === 'HEAD');
   const token = /^Bearer\s+(\S+)$/i.exec(request.headers.get('Authorization') ?? '')?.[1];
   if (!token) throw new ApiError(401, 'UNAUTHORIZED', 'Informe uma sessão válida.');
@@ -67,6 +67,12 @@ export async function stockController(request: Request, env: StockRuntimeEnv, un
     if (menuVersion) {
       if (!isStockId(menuVersion)) throw new ApiError(400, 'INVALID_ID', 'Identificador inválido.');
       if (params.size) throw new ApiError(400, 'INVALID_QUERY', 'Filtros inválidos.');
+      if (request.method === 'PATCH') {
+        const changes = await readJson(request);
+        if (!isMenuEstimateChanges(changes)) invalid();
+        if (!session.repository.editMenuEstimates) throw new ApiError(503, 'SERVICE_UNAVAILABLE', 'Edição de rascunho indisponível.');
+        return reply(await session.repository.editMenuEstimates(unit, menuVersion, changes));
+      }
       if (!session.repository.menuDraft) throw new ApiError(503, 'SERVICE_UNAVAILABLE', 'Rascunho indisponível.');
       return reply(await session.repository.menuDraft(unit, menuVersion));
     }

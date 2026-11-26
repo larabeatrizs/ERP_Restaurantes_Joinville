@@ -499,11 +499,24 @@ test('RF-009 usa o calendário para validar e registrar rascunhos uma única vez
   )).rows[0].resultado;
   const firstPage = await consult(1);
   assert.deepEqual(firstPage, { rascunhos: [{ ...period, ...result }], proximo: null });
-  assert.deepEqual(await consult(1, result.versao_id), { ...period, ...result, refeicoes: input.refeicoes });
+  assert.deepEqual(await consult(1, result.versao_id), { ...period, ...result, revisao: '1', refeicoes: input.refeicoes });
+  const changes = { revisao: '1', refeicoes: [{ ...input.refeicoes[0], estimadas: 201 }] };
+  const edit = async value => (await db.query(
+    'select erp.cardapio_editar_estimativas(1,$1,$2::jsonb) as resultado', [result.versao_id, JSON.stringify(value)],
+  )).rows[0].resultado;
+  const edited = await edit(changes);
+  assert.deepEqual(edited.refeicoes, [changes.refeicoes[0], input.refeicoes[1]]);
+  assert.equal(edited.revisao, '2');
+  assert.deepEqual(await consult(1, result.versao_id), edited);
+  await sqlRejects(`select erp.cardapio_editar_estimativas(1,${result.versao_id},'${JSON.stringify(changes)}')`, 'PT412');
+  const absent = { revisao: '2', refeicoes: [{ ...input.refeicoes[0], tipo_refeicao: 'JANTAR' }] };
+  await sqlRejects(`select erp.cardapio_editar_estimativas(1,${result.versao_id},'${JSON.stringify(absent)}')`, 'PT422');
   await sqlRejects(`select erp.cardapio_consultar_rascunhos(2,${result.versao_id},null)`, 'PT404');
   await become(1);
   await sqlRejects('select erp.cardapio_consultar_rascunhos(1,null,null)', 'PT403');
+  await sqlRejects(`select erp.cardapio_editar_estimativas(1,${result.versao_id},'${JSON.stringify(changes)}')`, 'PT403');
   await db.exec('reset role');
+  assert.equal((await db.query("select count(*)::int n from erp.auditoria_estoque where acao='cardapio_editar_estimativas'")).rows[0].n, 1);
   await db.query(`insert into erp.cardapio_versao(unidade_id,cardapio_id,numero,nutricionista_id)
     select 1,$1,n,$2 from generate_series(2,26) n`, [result.cardapio_id, uid(7)]);
   await become(7);
