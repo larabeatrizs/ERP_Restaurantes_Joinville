@@ -8,6 +8,7 @@ import { isLossConfiguration } from '@erp/contracts';
 import { isStockLossAttachment, isStockLossBatchResult } from '@erp/contracts';
 import { isStockLossReport } from '@erp/contracts';
 import { isMenuDraftDetail, isMenuDraftPage, isMenuDraftResult, isMenuGrade } from '@erp/contracts';
+import { isDishIngredients, isDishRecipe } from '@erp/contracts';
 
 function unavailable(): never { throw new ApiError(503, 'SERVICE_UNAVAILABLE', 'Serviço de estoque indisponível.'); }
 function catalogProduct(value: unknown): CatalogProduct {
@@ -137,6 +138,21 @@ export function createSupabaseStockSession(env: StockRuntimeEnv, token: string, 
       if (error || !data.user || data.user.is_anonymous || data.user.aud !== 'authenticated') throw new ApiError(401, 'UNAUTHORIZED', 'Sessão inválida ou expirada.');
     },
     repository: {
+      async dishIngredients(unit, query) {
+        const result = await operation(unit, 'insumos', { q: query }, 'prato_ficha_web');
+        if (!isDishIngredients(result)) unavailable();
+        return result;
+      },
+      async createDishRecipe(unit, input) {
+        const result = await operation(unit, 'criar', input, 'prato_ficha_web');
+        if (!isDishRecipe(result) || result.numero !== 1) unavailable();
+        return result;
+      },
+      async dishRecipe(unit, id, version) {
+        const result = await operation(unit, 'ler', { id, ...(version ? { numero: version } : {}) }, 'prato_ficha_web');
+        if (!isDishRecipe(result) || result.id !== id || (version && String(result.numero) !== version)) unavailable();
+        return result;
+      },
       async editMenuEstimates(unit, version, changes) {
         const result = await client.schema('erp').rpc('cardapio_editar_estimativas', { p_unidade: unit, p_versao: version, p_dados: changes });
         translate(result.error, result.status);
