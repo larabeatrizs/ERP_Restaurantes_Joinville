@@ -5,8 +5,7 @@ import type { MenuDraft, MenuDraftResult, MenuGrade, MenuMeal, MenuPeriod } from
 import { RequestError } from '../services/api.ts';
 import type { StockApi } from '../services/stock-api.ts';
 import { Skeleton } from './Skeleton.tsx';
-
-const labels = { CAFE_MANHA: 'Café da manhã', ALMOCO: 'Almoço', JANTAR: 'Jantar' };
+import { mealLabels as labels, MenuSavedDrafts } from './MenuSavedDrafts.tsx';
 const mealKey = (meal: MenuMeal) => `${meal.data}:${meal.tipo_refeicao}`;
 
 export function MenuDraftPanel({ api, unit, onDirty, onBusy }: {
@@ -20,6 +19,7 @@ export function MenuDraftPanel({ api, unit, onDirty, onBusy }: {
   const [estimates, setEstimates] = useState<Record<string, string>>({});
   const [pending, setPending] = useState<MenuDraft>();
   const [created, setCreated] = useState<MenuDraftResult>();
+  const [showSaved, setShowSaved] = useState(false);
   const [busy, setBusy] = useState<'grade' | 'save'>();
   const [error, setError] = useState('');
   const locked = !!busy || !!pending;
@@ -90,6 +90,9 @@ export function MenuDraftPanel({ api, unit, onDirty, onBusy }: {
   const samePeriod = selection?.period.inicio === period.inicio && selection.period.fim === period.fim
     && selection.period.tipo_periodo === period.tipo_periodo;
   return <>
+    <div className="actions"><button type="button" disabled={locked} aria-expanded={showSaved}
+      onClick={() => setShowSaved(value => !value)}>{showSaved ? 'Ocultar rascunhos salvos' : 'Consultar rascunhos salvos'}</button></div>
+    {showSaved && <MenuSavedDrafts key={created?.versao_id} api={api} unit={unit} />}
     <section className="card" aria-label="Período do cardápio">
       <form className="filters" onSubmit={event => void loadGrade(event)}>
         <label className="field"><span id="cardapio-periodo-label">Tipo de período</span>

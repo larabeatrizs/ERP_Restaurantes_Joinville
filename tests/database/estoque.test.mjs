@@ -493,6 +493,27 @@ test('RF-009 usa o calendário para validar e registrar rascunhos uma única vez
   assert.deepEqual((await db.query('select estado from erp.cardapio_versao')).rows, [{ estado: 'RASCUNHO' }]);
   assert.equal((await db.query('select count(*)::int n from erp.cardapio_refeicao')).rows[0].n, 2);
   assert.equal((await db.query("select count(*)::int n from erp.auditoria_estoque where acao='cardapio_criar_rascunho'")).rows[0].n, 1);
+  await become(7);
+  const consult = async (unit, version = null, cursor = null) => (await db.query(
+    'select erp.cardapio_consultar_rascunhos($1,$2,$3) as resultado', [unit, version, cursor],
+  )).rows[0].resultado;
+  const firstPage = await consult(1);
+  assert.deepEqual(firstPage, { rascunhos: [{ ...period, ...result }], proximo: null });
+  assert.deepEqual(await consult(1, result.versao_id), { ...period, ...result, refeicoes: input.refeicoes });
+  await sqlRejects(`select erp.cardapio_consultar_rascunhos(2,${result.versao_id},null)`, 'PT404');
+  await become(1);
+  await sqlRejects('select erp.cardapio_consultar_rascunhos(1,null,null)', 'PT403');
+  await db.exec('reset role');
+  await db.query(`insert into erp.cardapio_versao(unidade_id,cardapio_id,numero,nutricionista_id)
+    select 1,$1,n,$2 from generate_series(2,26) n`, [result.cardapio_id, uid(7)]);
+  await become(7);
+  const paginated = await consult(1);
+  assert.equal(paginated.rascunhos.length, 25);
+  assert.deepEqual(await consult(1, null, paginated.proximo), firstPage);
+  await db.exec('reset role');
+  await db.query("update erp.cardapio_versao set estado='CANCELADO' where id=$1", [result.versao_id]);
+  await become(7);
+  await sqlRejects(`select erp.cardapio_consultar_rascunhos(1,${result.versao_id},null)`, 'PT404');
 }));
 
 test('RF-009 persiste refeições por versão e impede vínculo cruzado ou data fora do período', async () => actor(7, async () => {
