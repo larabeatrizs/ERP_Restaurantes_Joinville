@@ -10,8 +10,9 @@ export interface MenuGrade { refeicoes: MenuMeal[] }
 export interface MenuDraft extends MenuPeriod { chave: string; refeicoes: (MenuMeal & { estimadas: number })[] }
 export interface MenuDraftResult { cardapio_id: string; versao_id: string }
 export interface MenuDraftSummary extends MenuPeriod, MenuDraftResult {}
-export interface MenuDraftDetail extends MenuDraftSummary { refeicoes: MenuDraft['refeicoes'] }
+export interface MenuDraftDetail extends MenuDraftSummary { revisao: string; refeicoes: MenuDraft['refeicoes'] }
 export interface MenuDraftPage { rascunhos: MenuDraftSummary[]; proximo: string | null }
+export type MenuEstimateChanges = Pick<MenuDraftDetail, 'revisao' | 'refeicoes'>;
 
 export function isMenuPeriod(value: unknown): value is MenuPeriod {
   if (!isRecord(value) || !hasExactFields(value, periodFields) || !isIsoDate(value.inicio) || !isIsoDate(value.fim)
@@ -20,12 +21,12 @@ export function isMenuPeriod(value: unknown): value is MenuPeriod {
   return days >= 1 && days <= (value.tipo_periodo === 'SEMANAL' ? 7 : 31);
 }
 
-function validMeals(rows: unknown, period: MenuPeriod, draft: boolean): boolean {
+function validMeals(rows: unknown, period: MenuPeriod | undefined, draft: boolean): boolean {
   if (!Array.isArray(rows) || rows.length > 93) return false;
   const seen = new Set<string>();
   for (const row of rows) {
     if (!isRecord(row) || !hasExactFields(row, draft ? ['data', 'tipo_refeicao', 'estimadas'] : ['data', 'tipo_refeicao'])
-      || !isIsoDate(row.data) || row.data < period.inicio || row.data > period.fim
+      || !isIsoDate(row.data) || (period && (row.data < period.inicio || row.data > period.fim))
       || !mealTypes.some(meal => meal === row.tipo_refeicao)) return false;
     if (draft && (typeof row.estimadas !== 'number' || !Number.isInteger(row.estimadas) || row.estimadas < 0 || row.estimadas > 2147483647)) return false;
     const key = `${row.data}:${row.tipo_refeicao}`;
@@ -59,9 +60,14 @@ function isMenuDraftSummary(value: unknown): value is MenuDraftSummary {
 }
 
 export function isMenuDraftDetail(value: unknown, version: string): value is MenuDraftDetail {
-  if (!isRecord(value) || !hasExactFields(value, [...periodFields, 'cardapio_id', 'versao_id', 'refeicoes'])) return false;
-  const { refeicoes, ...summary } = value;
-  return isMenuDraftSummary(summary) && summary.versao_id === version && validMeals(refeicoes, summary, true);
+  if (!isRecord(value) || !hasExactFields(value, [...periodFields, 'cardapio_id', 'versao_id', 'revisao', 'refeicoes'])) return false;
+  const { refeicoes, revisao, ...summary } = value;
+  return isMenuDraftSummary(summary) && summary.versao_id === version && isStockId(revisao) && validMeals(refeicoes, summary, true);
+}
+
+export function isMenuEstimateChanges(value: unknown): value is MenuEstimateChanges {
+  return isRecord(value) && hasExactFields(value, ['revisao', 'refeicoes']) && isStockId(value.revisao)
+    && Array.isArray(value.refeicoes) && value.refeicoes.length > 0 && validMeals(value.refeicoes, undefined, true);
 }
 
 export function isMenuDraftPage(value: unknown, cursor?: string): value is MenuDraftPage {

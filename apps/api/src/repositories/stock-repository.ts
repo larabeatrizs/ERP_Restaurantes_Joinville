@@ -8,6 +8,7 @@ export interface StockRepository {
   createMenuDraft?(unit: string, input: import('@erp/contracts').MenuDraft): Promise<import('@erp/contracts').MenuDraftResult>;
   menuDrafts?(unit: string, cursor?: string): Promise<import('@erp/contracts').MenuDraftPage>;
   menuDraft?(unit: string, version: string): Promise<import('@erp/contracts').MenuDraftDetail>;
+  editMenuEstimates?(unit: string, version: string, changes: import('@erp/contracts').MenuEstimateChanges): Promise<import('@erp/contracts').MenuDraftDetail>;
   lossReport?(unit: string, query: import('@erp/contracts').StockLossReportQuery): Promise<import('@erp/contracts').StockLossReport>;
   registerLossBatch?(unit: string, input: import('@erp/contracts').StockLossBatchRegistration): Promise<{ ids: string[] }>;
   lossAttachment?(unit: string, id: string): Promise<import('@erp/contracts').StockLossAttachment>;

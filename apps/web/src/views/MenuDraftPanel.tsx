@@ -20,6 +20,8 @@ export function MenuDraftPanel({ api, unit, onDirty, onBusy }: {
   const [pending, setPending] = useState<MenuDraft>();
   const [created, setCreated] = useState<MenuDraftResult>();
   const [showSaved, setShowSaved] = useState(false);
+  const [savedDirty, setSavedDirty] = useState(false);
+  const [savedBusy, setSavedBusy] = useState(false);
   const [busy, setBusy] = useState<'grade' | 'save'>();
   const [error, setError] = useState('');
   const locked = !!busy || !!pending;
@@ -89,10 +91,21 @@ export function MenuDraftPanel({ api, unit, onDirty, onBusy }: {
 
   const samePeriod = selection?.period.inicio === period.inicio && selection.period.fim === period.fim
     && selection.period.tipo_periodo === period.tipo_periodo;
+  function toggleSaved() {
+    const dirty = showSaved ? savedDirty : Object.values(estimates).some(value => value.trim());
+    if (dirty && !window.confirm('Descartar as estimativas ainda não salvas?')) return;
+    setSelection(undefined);
+    setEstimates({});
+    setSavedDirty(false);
+    setError('');
+    onDirty(false);
+    setShowSaved(value => !value);
+  }
   return <>
-    <div className="actions"><button type="button" disabled={locked} aria-expanded={showSaved}
-      onClick={() => setShowSaved(value => !value)}>{showSaved ? 'Ocultar rascunhos salvos' : 'Consultar rascunhos salvos'}</button></div>
-    {showSaved && <MenuSavedDrafts key={created?.versao_id} api={api} unit={unit} />}
+    <div className="actions"><button type="button" disabled={locked || savedBusy} aria-expanded={showSaved}
+      onClick={toggleSaved}>{showSaved ? 'Ocultar rascunhos salvos' : 'Consultar rascunhos salvos'}</button></div>
+    {showSaved ? <MenuSavedDrafts api={api} unit={unit} onDirty={dirty => { setSavedDirty(dirty); onDirty(dirty); }}
+      onBusy={saving => { setSavedBusy(saving); onBusy(saving); }} /> : <>
     <section className="card" aria-label="Período do cardápio">
       <form className="filters" onSubmit={event => void loadGrade(event)}>
         <label className="field"><span id="cardapio-periodo-label">Tipo de período</span>
@@ -137,5 +150,6 @@ export function MenuDraftPanel({ api, unit, onDirty, onBusy }: {
           </button></div>
         </form>}
     </section>}
+    </>}
   </>;
 }
