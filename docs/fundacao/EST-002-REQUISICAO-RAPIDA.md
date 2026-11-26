@@ -64,7 +64,9 @@ Em **Cardápios**, a nutricionista seleciona o período, consulta a grade e info
 
 Na mesma tela, **Consultar rascunhos salvos** lista até 25 versões em rascunho por página e permite abrir as refeições e estimativas de cada versão. A consulta revalida perfil e vínculo ativo na unidade e recupera as estimativas persistidas.
 
-**Editar estimativas** altera as quantidades das refeições existentes. A API revalida a disponibilidade no calendário, o estado de rascunho e a revisão antes de gravar e auditar a mudança. Em caso de revisão divergente, a tela conserva os valores digitados e permite recarregar a versão atual. Inclusão e remoção de refeições em rascunhos salvos, pratos, publicação e validação em staging seguem pendentes.
+**Editar estimativas** altera as quantidades das refeições existentes. **Incluir ou remover refeições** consulta a grade atual do período e salva a seleção completa com as estimativas. Uma refeição que saiu do calendário precisa ser desmarcada para salvar essa seleção. O rascunho mantém pelo menos uma refeição, como na criação, e o banco preserva os IDs das refeições mantidas.
+
+A API revalida a disponibilidade no calendário, o estado de rascunho e a revisão antes de gravar e auditar a mudança. Em caso de revisão divergente, a tela conserva os valores digitados e permite recarregar a versão atual. Pratos, publicação e validação em staging seguem pendentes.
 
 `WithdrawalAllocationInput` contém `revisao` textual e `destinos`, lista de pares `cardapio_refeicao_id`/`quantidade`. É a substituição integral da distribuição de **um item da retirada**, não um incremento sobre a lista anterior. IDs e quantidades permanecem strings: até 12 inteiros e seis decimais, sem arredondamento binário. A lista pode estar vazia (pendência) ou parcial; o total não excede a quantidade original. Uma refeição aparece uma vez por item. Limite técnico de payload: 100 destinos por atualização; não limita o número de refeições do restaurante. A revisão será comparada atomicamente com a persistida em C2; C1 só valida sua representação.
 

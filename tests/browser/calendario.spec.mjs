@@ -68,7 +68,11 @@ test('RF-009 pagina rascunhos salvos e mostra as estimativas da versão selecion
   const saved = { ...period, cardapio_id: '34', versao_id: '9007199254740999' };
   let revision = '1';
   let count = 200;
+  let replaced;
   const changes = [];
+  await page.route(/\/cardapios\/rascunho\?/, route => route.fulfill({ json: { refeicoes: [
+    { data: period.inicio, tipo_refeicao: 'ALMOCO' }, { data: period.fim, tipo_refeicao: 'JANTAR' },
+  ] } }));
   const rows = Array.from({ length: 25 }, (_, i) => ({
     ...period, cardapio_id: String(100 - i), versao_id: String(9007199254741030n - BigInt(i)),
   }));
@@ -86,11 +90,12 @@ test('RF-009 pagina rascunhos salvos e mostra as estimativas da versão selecion
           return route.fulfill({ status: 412, json: {} });
         }
         expect(edit.revisao).toBe(revision);
-        revision = '3';
+        revision = String(Number(revision) + 1);
         count = edit.refeicoes[0].estimadas;
+        if (edit.substituir) replaced = edit.refeicoes;
       }
       return route.fulfill({ json: { ...saved, revisao: revision,
-        refeicoes: [{ data: period.inicio, tipo_refeicao: 'ALMOCO', estimadas: count }],
+        refeicoes: replaced ?? [{ data: period.inicio, tipo_refeicao: 'ALMOCO', estimadas: count }],
       } });
     }
     return route.fulfill({ json: url.searchParams.get('antes') === cursor
@@ -118,6 +123,19 @@ test('RF-009 pagina rascunhos salvos e mostra as estimativas da versão selecion
   await expect(page.getByRole('status')).toContainText('Estimativas atualizadas.');
   await expect(detail).toContainText('215');
   expect(changes.map(change => [change.revisao, change.refeicoes[0].estimadas])).toEqual([['1', 210], ['2', 215]]);
+  await page.getByRole('button', { name: 'Incluir ou remover refeições' }).click();
+  await page.getByRole('checkbox', { name: 'Incluir Almoço em 27/11/2026' }).uncheck();
+  await page.getByRole('button', { name: 'Salvar refeições' }).click();
+  await expect(page.getByRole('alert')).toContainText('Mantenha pelo menos uma refeição');
+  await page.getByRole('checkbox', { name: 'Incluir Jantar em 28/11/2026' }).check();
+  await page.getByRole('textbox', { name: 'Estimativa de Jantar em 28/11/2026' }).fill('190');
+  await page.getByRole('button', { name: 'Salvar refeições' }).click();
+  await expect(page.getByRole('status')).toContainText('Refeições atualizadas.');
+  await expect(detail).toContainText('190');
+  await expect(detail.getByText('Almoço')).toHaveCount(0);
+  expect(changes.at(-1)).toEqual({ revisao: '3', substituir: true, refeicoes: [
+    { data: '2026-11-28', tipo_refeicao: 'JANTAR', estimadas: 190 },
+  ] });
   await page.getByRole('button', { name: 'Voltar aos rascunhos' }).click();
   await expect(page.getByRole('button', { name: 'Página anterior' })).toBeEnabled();
   await page.getByRole('combobox', { name: 'Unidade', exact: true }).selectOption(b);

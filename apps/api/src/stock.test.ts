@@ -110,8 +110,11 @@ test('RF-009 exige revisão e aceita somente alterações de estimativas', async
   const changes = { revisao: '1', refeicoes: [{ data: '2026-11-26', tipo_refeicao: 'ALMOCO', estimadas: 201 }] };
   assert.equal((await app.fetch(request(path, 'PATCH', { ...changes, estado: 'PUBLICADO' }))).status, 422);
   assert.equal((await app.fetch(request(path, 'PATCH', { ...changes, revisao: 1 }))).status, 422);
+  assert.equal((await app.fetch(request(path, 'PATCH', { ...changes, substituir: false }))).status, 422);
   assert.equal((await app.fetch(request(path, 'PATCH', changes))).status, 200);
-  assert.deepEqual(calls, [{ name: 'editMenuEstimates', args: ['1', product.id, changes] }]);
+  assert.equal((await app.fetch(request(path, 'PATCH', { ...changes, substituir: true }))).status, 200);
+  assert.deepEqual(calls, [{ name: 'editMenuEstimates', args: ['1', product.id, changes] },
+    { name: 'editMenuEstimates', args: ['1', product.id, { ...changes, substituir: true }] }]);
 });
 
 test('RF-009 valida grade e rascunho sem aceitar campos de autoridade', async () => {

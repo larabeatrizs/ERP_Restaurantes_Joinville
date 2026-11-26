@@ -511,6 +511,26 @@ test('RF-009 usa o calendário para validar e registrar rascunhos uma única vez
   await sqlRejects(`select erp.cardapio_editar_estimativas(1,${result.versao_id},'${JSON.stringify(changes)}')`, 'PT412');
   const absent = { revisao: '2', refeicoes: [{ ...input.refeicoes[0], tipo_refeicao: 'JANTAR' }] };
   await sqlRejects(`select erp.cardapio_editar_estimativas(1,${result.versao_id},'${JSON.stringify(absent)}')`, 'PT422');
+  await db.exec(`reset role;
+    insert into erp.calendario_excecao values(1,'2026-11-29','ESPECIAL','Domingo sintético');
+    insert into erp.calendario_refeicao_especial(unidade_id,data,tipo,inicio,fim)
+      values (1,'2026-11-29','JANTAR','17:00','19:00');
+  `);
+  const kept = (await db.query("select id::text from erp.cardapio_refeicao where tipo_refeicao='ALMOCO'")).rows[0].id;
+  await become(7);
+  const full = { revisao: '2', substituir: true, refeicoes: [
+    changes.refeicoes[0], { data: '2026-11-29', tipo_refeicao: 'JANTAR', estimadas: 90 },
+  ] };
+  const adjusted = await edit(full);
+  assert.equal(adjusted.revisao, '3');
+  assert.deepEqual(adjusted.refeicoes, full.refeicoes);
+  assert.deepEqual(await edit({ ...full, revisao: '3' }), adjusted);
+  const outside = { ...full, revisao: '3', refeicoes: [{ data: '2026-12-01', tipo_refeicao: 'ALMOCO', estimadas: 90 }] };
+  await sqlRejects(`select erp.cardapio_editar_estimativas(1,${result.versao_id},'${JSON.stringify(outside)}')`, 'PT422');
+  await db.exec('reset role');
+  assert.equal((await db.query("select id::text from erp.cardapio_refeicao where tipo_refeicao='ALMOCO'")).rows[0].id, kept);
+  assert.equal((await db.query("select count(*)::int n from erp.auditoria_estoque where acao='cardapio_ajustar_refeicoes'")).rows[0].n, 1);
+  await become(7);
   await sqlRejects(`select erp.cardapio_consultar_rascunhos(2,${result.versao_id},null)`, 'PT404');
   await become(1);
   await sqlRejects('select erp.cardapio_consultar_rascunhos(1,null,null)', 'PT403');
