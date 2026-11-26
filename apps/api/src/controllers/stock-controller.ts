@@ -1,5 +1,6 @@
 import { readJson } from './read-json.ts';
 import { isStockLossReportQuery } from '@erp/contracts';
+import { isMenuDraft, isMenuPeriod } from '@erp/contracts';
 import { hasExactFields, isEntradaInput, isProductLinkInput, isProdutoInput, isRecord, isStockId, isText } from '@erp/contracts';
 import { isStockLedgerFilters, isStockLossDecision, isStockLossRegistration, isStockLossBatchRegistration, stockLossAttachmentMaxBytes } from '@erp/contracts';
 import type { ProductQuery, ProductResult, StockLedgerQuery } from '@erp/contracts';
@@ -51,7 +52,8 @@ export async function stockController(request: Request, env: StockRuntimeEnv, un
   const lossRegistration = route === 'estoque/perdas/registro';
   const lossBatch = route === 'estoque/perdas/lote';
   const lossAttachment = /^estoque\/perdas\/([^/]+)\/anexo$/.exec(route)?.[1];
-  const allow = productEdit ? 'PATCH, DELETE' : confirmation || productLink || productStatus || importedCompletion || lossReview || lossBatch ? 'POST' : route === 'produtos' || route === 'entradas' || lossRegistration ? 'GET, POST' : 'GET';
+  const menu = route === 'cardapios/rascunho';
+  const allow = productEdit ? 'PATCH, DELETE' : confirmation || productLink || productStatus || importedCompletion || lossReview || lossBatch ? 'POST' : route === 'produtos' || route === 'entradas' || lossRegistration || menu ? 'GET, POST' : 'GET';
   if (!allow.split(', ').includes(request.method)) return methodDenied(allow, request.method === 'HEAD');
   const token = /^Bearer\s+(\S+)$/i.exec(request.headers.get('Authorization') ?? '')?.[1];
   if (!token) throw new ApiError(401, 'UNAUTHORIZED', 'Informe uma sessão válida.');
@@ -59,6 +61,22 @@ export async function stockController(request: Request, env: StockRuntimeEnv, un
   const session = factory(env, token);
   await session.authenticate();
   const service = new StockService(session.repository);
+  if (menu) {
+    const params = new URL(request.url).searchParams;
+    if (request.method === 'GET') {
+      const query = Object.fromEntries(params);
+      if (params.size !== Object.keys(query).length || !isMenuPeriod(query)) throw new ApiError(400, 'INVALID_QUERY', 'Período inválido.');
+      const grade = session.repository.menuGrade;
+      if (!grade) throw new ApiError(503, 'SERVICE_UNAVAILABLE', 'Grade de cardápio indisponível.');
+      return reply(await grade(unit, query));
+    }
+    if (params.size) throw new ApiError(400, 'INVALID_QUERY', 'Filtros inválidos.');
+    const input = await readJson(request);
+    if (!isMenuDraft(input)) invalid();
+    const createDraft = session.repository.createMenuDraft;
+    if (!createDraft) throw new ApiError(503, 'SERVICE_UNAVAILABLE', 'Rascunho de cardápio indisponível.');
+    return reply(await createDraft(unit, input), 201);
+  }
   if (route === 'estoque/relatorio-perdas') {
     const params = new URL(request.url).searchParams;
     const query = Object.fromEntries(params);

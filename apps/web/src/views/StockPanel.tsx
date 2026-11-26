@@ -14,6 +14,7 @@ import { ProductPanel } from './ProductPanel.tsx';
 import { ReceiptPanel } from './ReceiptPanel.tsx';
 import { WithdrawalPanel } from './WithdrawalPanel.tsx';
 import { StockLossRegistrationPanel } from './StockLossRegistrationPanel.tsx';
+import { MenuDraftPanel } from './MenuDraftPanel.tsx';
 import { HomePanel } from './HomePanel.tsx';
 import { AccountPanel } from './AccountPanel.tsx';
 import { ReportPreview } from './ReportPreview.tsx';
@@ -58,7 +59,7 @@ export function StockPanel({ api, stock, categories, measures, suppliers, calend
     let active = true;
     onUnitChange(unit);
     setContext(undefined); setLoading(true); setError('');
-    if (page === 'inicio' || page === 'conta' || page === 'calendario' || page === 'requisicoes' || page === 'perdas') { setLoading(false); return; }
+    if (page === 'inicio' || page === 'conta' || page === 'calendario' || page === 'cardapios' || page === 'requisicoes' || page === 'perdas') { setLoading(false); return; }
     void stock.context(unit).then(data => { if (active) { setContext(data); setLoading(false); } })
       .catch(err => { if (active) { setError(stockError(err)); setLoading(false); } });
     return () => { active = false; };
@@ -80,7 +81,7 @@ export function StockPanel({ api, stock, categories, measures, suppliers, calend
       <button className="signout" disabled={busy} onClick={() => { if (discard()) void onSignOut().catch(err => setError(stockError(err))); }}>Sair</button>
     </aside>
     <main id="conteudo" tabIndex={-1} className="main stock-main">
-      <header><p className="eyebrow">GESTÃO DA UNIDADE</p><h1>{page === 'perdas' ? 'Perdas de estoque' : page === 'requisicoes' ? 'Requisições rápidas' : title[page]}</h1>{page !== 'perdas' && <p className="muted">{page === 'requisicoes' ? 'Registre a retirada no momento em que acontece.' : subtitle[page]}</p>}</header>
+      <header><p className="eyebrow">GESTÃO DA UNIDADE</p><h1>{page === 'cardapios' ? 'Planejamento de cardápio' : page === 'perdas' ? 'Perdas de estoque' : page === 'requisicoes' ? 'Requisições rápidas' : title[page]}</h1>{page !== 'perdas' && page !== 'cardapios' && <p className="muted">{page === 'requisicoes' ? 'Registre a retirada no momento em que acontece.' : subtitle[page]}</p>}</header>
       <section className="card unit-card" aria-label="Unidade">
         <label className="field">Unidade<select value={unit} disabled={busy || loading || !unitsLoaded || !units.length} onChange={event => { if (discard()) setUnit(event.target.value); }}>
           {units.map(item => <option key={item.id} value={item.id}>{item.codigo} — {item.nome}</option>)}
@@ -93,6 +94,7 @@ export function StockPanel({ api, stock, categories, measures, suppliers, calend
       {unitsLoaded && !loading && units.some(item => item.id === unit) && page === 'inicio' && <HomePanel key={unit} api={stock} unit={unit} name={userName} onNavigate={onNavigate} />}
       {unitsLoaded && !loading && units.some(item => item.id === unit) && page === 'conta' && <AccountPanel name={userName} />}
       {unitsLoaded && !loading && units.some(item => item.id === unit) && page === 'requisicoes' && <WithdrawalPanel key={unit} api={stock} unit={unit} onDirty={setDirty} onBusy={setBusy} />}
+      {unitsLoaded && !loading && units.some(item => item.id === unit) && page === 'cardapios' && <MenuDraftPanel key={unit} api={stock} unit={unit} onDirty={setDirty} onBusy={setBusy} />}
       {unitsLoaded && !loading && units.some(item => item.id === unit) && page === 'perdas' && (
         units.find(item => item.id === unit)?.codigo === 'RP-BUCAREIN'
           ? <StockLossRegistrationPanel key={unit} api={stock} unit={unit} onBusy={setBusy} onDirty={setDirty} />

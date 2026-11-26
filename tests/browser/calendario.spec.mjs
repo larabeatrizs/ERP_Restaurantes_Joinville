@@ -21,6 +21,47 @@ async function setup(page,options={}){
  await page.goto('/');await page.getByLabel('Nome de usuário',{exact:true}).fill('teste');await page.getByLabel('Senha',{exact:true}).fill('senha-ficticia');await page.getByRole('button',{name:'Entrar',exact:true}).click();await page.getByLabel('Unidade de acesso',{exact:true}).selectOption(a);await page.getByRole('button',{name:'Acessar unidade',exact:true}).click();await page.getByRole('navigation',{name:'Principal'}).getByRole('link',{name:'Calendário e refeições',exact:true}).click();return state;
 }
 async function reviewSave(page,reason='Funcionamento sintético aprovado'){await page.getByRole('button',{name:'Revisar calendário',exact:true}).click();const d=page.getByRole('dialog');await d.getByLabel('Motivo da alteração *',{exact:true}).fill(reason);await d.getByRole('button',{name:'Salvar calendário',exact:true}).click();}
+test('RF-009 mostra a grade da unidade e reusa o envio após resposta incerta', async ({ page }) => {
+  await setup(page);
+  const writes = [];
+  await page.route('**/cardapios/rascunho**', route => {
+    const request = route.request();
+    const url = new URL(request.url());
+    if (request.method() === 'POST') {
+      writes.push(request.postDataJSON());
+      return writes.length === 1 ? route.fulfill({ status: 503, json: {} })
+        : route.fulfill({ status: 201, json: { cardapio_id: '34', versao_id: '56' } });
+    }
+    expect(url.searchParams.get('inicio')).toBe('2026-11-27');
+    expect(url.searchParams.get('fim')).toBe('2026-11-28');
+    const friday = { data: '2026-11-27', tipo_refeicao: 'ALMOCO' };
+    const meals = url.pathname.includes(`/${a}/`) ? [friday]
+      : [friday, { data: '2026-11-28', tipo_refeicao: 'JANTAR' }];
+    return route.fulfill({ json: { refeicoes: meals } });
+  });
+  await page.getByRole('link', { name: 'Cardápios', exact: true }).click();
+  const load = async () => {
+    await page.getByLabel('Início', { exact: true }).fill('2026-11-27');
+    await page.getByLabel('Fim', { exact: true }).fill('2026-11-28');
+    await page.getByRole('button', { name: 'Consultar refeições' }).click();
+  };
+  await load();
+  const lunch = page.getByRole('textbox', { name: 'Estimativa de Almoço em 27/11/2026' });
+  await expect(lunch).toBeVisible();
+  await expect(page.getByRole('textbox', { name: /Jantar/ })).toHaveCount(0);
+  await lunch.fill('200');
+  await page.getByRole('button', { name: 'Salvar rascunho' }).click();
+  await expect(lunch).toBeDisabled();
+  await page.getByRole('button', { name: 'Reenviar rascunho' }).click();
+  await expect(page.getByRole('status')).toContainText('Rascunho #34 criado.');
+  expect(writes).toHaveLength(2);
+  expect(writes[0]).toEqual(writes[1]);
+  expect(writes[0].refeicoes).toEqual([{ data: '2026-11-27', tipo_refeicao: 'ALMOCO', estimadas: 200 }]);
+  await page.getByRole('combobox', { name: 'Unidade', exact: true }).selectOption(b);
+  await load();
+  await expect(page.getByRole('textbox', { name: 'Estimativa de Jantar em 28/11/2026' })).toBeVisible();
+});
+
 test('calendário não configurado usa modelo explícito e salva revisão/motivo após prévia',async({page})=>{
  const state=await setup(page);await expect(page.getByText('Calendário ainda não configurado.',{exact:false})).toBeVisible();await expect(page.getByRole('checkbox',{name:'Almoço',exact:true})).not.toBeChecked();page.once('dialog',d=>d.accept());await page.getByRole('button',{name:'Usar modelo Adhemar Garcia',exact:true}).click();await expect(page.getByRole('checkbox',{name:'Segunda-feira',exact:true})).toBeChecked();await expect(page.getByRole('checkbox',{name:'Domingo',exact:true})).not.toBeChecked();await expect(page.getByLabel('Capacidade — Almoço',{exact:true})).toHaveValue('');
  await reviewSave(page);await expect(page.getByText('Calendário salvo com sucesso.',{exact:true})).toBeVisible();expect(state.writes).toHaveLength(1);expect(state.writes[0].revisao).toBeNull();expect(state.calendar.refeicoes[0].capacidade).toBeNull();await page.getByRole('button',{name:'Recarregar calendário',exact:true}).click();await expect(page.getByLabel('Início — Almoço',{exact:true})).toHaveValue('11:00');

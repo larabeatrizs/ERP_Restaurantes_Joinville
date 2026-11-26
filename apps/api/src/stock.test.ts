@@ -39,6 +39,8 @@ function fixture(options: { authError?: Error; repositoryError?: Error } = {}) {
     if (options.repositoryError) throw options.repositoryError;
   };
   const repository: StockRepository = {
+    async menuGrade(unit, period) { collect('menuGrade', unit, period); return { refeicoes: [{ data: period.inicio, tipo_refeicao: 'ALMOCO' }] }; },
+    async createMenuDraft(unit, payload) { collect('createMenuDraft', unit, payload); return { cardapio_id: '1', versao_id: '2' }; },
     async lossReport(unit, query) {
       collect('lossReport', unit, query);
       return { inicio: query.inicio, periodicidade: query.periodicidade, unidade_id: unit,
@@ -78,6 +80,23 @@ function fixture(options: { authError?: Error; repositoryError?: Error } = {}) {
     return { repository, async authenticate() { if (options.authError) throw options.authError; } };
   }) };
 }
+
+test('RF-009 valida grade e rascunho sem aceitar campos de autoridade', async () => {
+  const { app, calls } = fixture();
+  const path = '/cardapios/rascunho';
+  const period = { inicio: '2026-11-26', fim: '2026-11-28', tipo_periodo: 'SEMANAL' };
+  const query = new URLSearchParams(period);
+  const payload = { ...period, chave: key, refeicoes: [{ data: period.inicio, tipo_refeicao: 'ALMOCO', estimadas: 0 }] };
+  assert.equal((await app.fetch(new Request(base + path + '?' + query))).status, 401);
+  assert.equal((await app.fetch(request(path + '?' + query + '&inicio=2026-11-25'))).status, 400);
+  assert.equal((await app.fetch(request(path, 'POST', { ...payload, estado: 'PUBLICADO' }))).status, 422);
+  assert.equal((await app.fetch(request(path, 'POST', { ...payload, refeicoes: [...payload.refeicoes, ...payload.refeicoes] }))).status, 422);
+  assert.equal((await app.fetch(request(path + '?' + query))).status, 200);
+  const response = await app.fetch(request(path, 'POST', payload));
+  assert.equal(response.status, 201);
+  assert.deepEqual(await response.json(), { cardapio_id: '1', versao_id: '2' });
+  assert.deepEqual(calls, [{ name: 'menuGrade', args: ['1', period] }, { name: 'createMenuDraft', args: ['1', payload] }]);
+});
 
 test('RF-023 valida periodicidade, competência e parâmetros repetidos', async () => {
   const { app, calls } = fixture();
