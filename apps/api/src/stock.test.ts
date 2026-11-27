@@ -45,6 +45,7 @@ function fixture(options: { authError?: Error; repositoryError?: Error } = {}) {
   };
   const repository: StockRepository = {
     async dishIngredients(unit, query) { collect('dishIngredients', unit, query); return { insumos: [] }; },
+    async searchDishes(unit, query) { collect('searchDishes', unit, query); return { pratos: [], proximo: null }; },
     async createDishRecipe(unit, recipe) { collect('createDishRecipe', unit, recipe); return dishRecipe; },
     async dishRecipe(unit, id, version) { collect('dishRecipe', unit, id, version); return dishRecipe; },
     async menuDrafts(unit, cursor) { collect('menuDrafts', unit, cursor); return { rascunhos: [], proximo: null }; },
@@ -106,13 +107,17 @@ test('RF-005 valida busca, gravação e número de versão da ficha', async () =
     itens: [{ produto_id: product.id, quantidade_receita: '10', custo_indireto: false }] };
   assert.equal((await app.fetch(new Request(base + path + '/insumos'))).status, 401);
   assert.equal((await app.fetch(request(path + '/insumos?q=a&q=b'))).status, 400);
+  assert.equal((await app.fetch(request(path + '?q=a&q=b'))).status, 400);
+  assert.equal((await app.fetch(request(path + '?tipo=INVALIDO'))).status, 400);
   assert.equal((await app.fetch(request(path + '/91?numero=0'))).status, 400);
   assert.equal((await app.fetch(request(path, 'POST', { ...input, status: 'ATIVO' }))).status, 422);
   assert.equal((await app.fetch(request(path + '/insumos?q=frango'))).status, 200);
+  assert.equal((await app.fetch(request(path + '?q=frango&tipo=PROTEINA&antes=91'))).status, 200);
   assert.equal((await app.fetch(request(path, 'POST', input))).status, 201);
   assert.equal((await app.fetch(request(path + '/91?numero=1'))).status, 200);
   assert.deepEqual(calls, [
     { name: 'dishIngredients', args: ['1', 'frango'] },
+    { name: 'searchDishes', args: ['1', { q: 'frango', tipo: 'PROTEINA', antes: '91' }] },
     { name: 'createDishRecipe', args: ['1', input] },
     { name: 'dishRecipe', args: ['1', '91', '1'] },
   ]);

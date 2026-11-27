@@ -5,6 +5,8 @@ import type { DishIngredientOption, DishRecipe, DishRecipeInput, DishType } from
 import { RequestError } from '../services/api.ts';
 import { decimalLabel } from '../services/stock-api.ts';
 import type { StockApi } from '../services/stock-api.ts';
+import { DishRecipeRead } from './DishRecipeRead.tsx';
+import { DishSavedPanel } from './DishSavedPanel.tsx';
 
 const optionalFields = [
   { key: 'peso_porcao_g', label: 'Peso por porção (g)', numeric: true, max: 19 },
@@ -31,6 +33,7 @@ export function DishRecipePanel({ api, unit, onDirty, onBusy }: {
   const [saving, setSaving] = useState(false);
   const [pending, setPending] = useState<DishRecipeInput>();
   const [recipe, setRecipe] = useState<DishRecipe>();
+  const [showSaved, setShowSaved] = useState(false);
   const [error, setError] = useState('');
   const locked = saving || !!pending;
 
@@ -90,23 +93,16 @@ export function DishRecipePanel({ api, unit, onDirty, onBusy }: {
     }
   }
 
-  if (recipe) return <section className="card" aria-label="Ficha cadastrada">
-    <div className="section-heading"><h2>{recipe.descricao}</h2><button type="button" onClick={() => {
+  const savedAction = <div className="actions"><button type="button" disabled={locked} aria-expanded={showSaved}
+    onClick={() => setShowSaved(value => !value)}>{showSaved ? 'Voltar ao cadastro' : 'Consultar fichas salvas'}</button></div>;
+  if (showSaved) return <>{savedAction}<DishSavedPanel api={api} unit={unit} /></>;
+  if (recipe) return <>{savedAction}<DishRecipeRead recipe={recipe} created action="Novo prato" onAction={() => {
       setRecipe(undefined); setName(''); setType(''); setServings(''); setDetails({}); setPreparation('');
       setIngredients([]); setQuery(''); setOptions(undefined);
-    }}>Novo prato</button></div>
-    <p className="notice" role="status">Ficha técnica cadastrada. Versão {recipe.numero}.</p>
-    <p>{dishTypes[recipe.tipo_prato]} · Rendimento de {recipe.rendimento_porcoes} porções</p>
-    <div className="table-wrap" role="region" tabIndex={0} aria-label="Insumos da ficha">
-      <table><thead><tr><th>Insumo</th><th>Receita inteira</th><th>Por porção</th><th>Fator de correção</th></tr></thead>
-        <tbody>{recipe.itens.map(row => <tr key={row.produto_id}><td>{row.produto}</td>
-          <td>{decimalLabel(row.quantidade_receita)} {row.unidade}</td>
-          <td>{decimalLabel(row.quantidade_porcao)} {row.unidade}</td><td>{decimalLabel(row.fator_correcao)}</td>
-        </tr>)}</tbody></table>
-    </div>
-  </section>;
+    }} /></>;
 
   return <>
+    {savedAction}
     {error && <p className="notice error" role="alert">{error}</p>}
     <section className="card" aria-label="Buscar insumos">
       <form className="filters" onSubmit={event => void search(event)}>

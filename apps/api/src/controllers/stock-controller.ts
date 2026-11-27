@@ -1,7 +1,7 @@
 import { readJson } from './read-json.ts';
 import { isStockLossReportQuery } from '@erp/contracts';
 import { isMenuDraft, isMenuEstimateChanges, isMenuPeriod } from '@erp/contracts';
-import { isDishRecipeInput } from '@erp/contracts';
+import { isDishRecipeInput, isDishSearchQuery } from '@erp/contracts';
 import { hasExactFields, isEntradaInput, isProductLinkInput, isProdutoInput, isRecord, isStockId, isText } from '@erp/contracts';
 import { isStockLedgerFilters, isStockLossDecision, isStockLossRegistration, isStockLossBatchRegistration, stockLossAttachmentMaxBytes } from '@erp/contracts';
 import type { ProductQuery, ProductResult, StockLedgerQuery } from '@erp/contracts';
@@ -56,7 +56,7 @@ export async function stockController(request: Request, env: StockRuntimeEnv, un
   const menu = route === 'cardapios/rascunho';
   const menuVersion = /^cardapios\/rascunhos\/([^/]+)$/.exec(route)?.[1];
   const dish = /^pratos\/([^/]+)$/.exec(route)?.[1];
-  const allow = menuVersion ? 'GET, PATCH' : productEdit ? 'PATCH, DELETE' : confirmation || productLink || productStatus || importedCompletion || lossReview || lossBatch || route === 'pratos' ? 'POST' : route === 'produtos' || route === 'entradas' || lossRegistration || menu ? 'GET, POST' : 'GET';
+  const allow = menuVersion ? 'GET, PATCH' : productEdit ? 'PATCH, DELETE' : confirmation || productLink || productStatus || importedCompletion || lossReview || lossBatch ? 'POST' : route === 'produtos' || route === 'entradas' || route === 'pratos' || lossRegistration || menu ? 'GET, POST' : 'GET';
   if (!allow.split(', ').includes(request.method)) return methodDenied(allow, request.method === 'HEAD');
   const token = /^Bearer\s+(\S+)$/i.exec(request.headers.get('Authorization') ?? '')?.[1];
   if (!token) throw new ApiError(401, 'UNAUTHORIZED', 'Informe uma sessão válida.');
@@ -67,6 +67,12 @@ export async function stockController(request: Request, env: StockRuntimeEnv, un
   if (dish || route === 'pratos') {
     const params = new URL(request.url).searchParams;
     if (route === 'pratos') {
+      if (request.method === 'GET') {
+        const query = { q: '', ...Object.fromEntries(params) };
+        if (params.size !== new Set(params.keys()).size || !isDishSearchQuery(query)) throw new ApiError(400, 'INVALID_QUERY', 'Busca inválida.');
+        if (!session.repository.searchDishes) throw new ApiError(503, 'SERVICE_UNAVAILABLE', 'Consulta de pratos indisponível.');
+        return reply(await session.repository.searchDishes(unit, query));
+      }
       if (params.size) throw new ApiError(400, 'INVALID_QUERY', 'Filtros inválidos.');
       const input = await readJson(request, 1024 * 1024);
       if (!isDishRecipeInput(input)) invalid();

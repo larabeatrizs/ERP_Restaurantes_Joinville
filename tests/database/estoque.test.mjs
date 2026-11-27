@@ -580,6 +580,13 @@ test('RF-005 cadastra e consulta a primeira ficha com porção exata e reenvio s
   await db.query('update erp.produto set unidade_medida_id=2 where id=$1', [product.id]);
   await become(3);
   assert.deepEqual(await operate('ler', { id: created.id, numero: '1' }), created);
+  const listed = { pratos: [{ id: created.id, descricao: created.descricao, tipo_prato: 'PROTEINA',
+    status: 'ATIVO', numero: 1, rendimento_porcoes: 100 }], proximo: null };
+  assert.deepEqual(await operate('listar', { q: 'FRANGO', tipo: 'PROTEINA' }), listed);
+  assert.deepEqual(await operate('listar', { q: 'estrogonofe' }), listed);
+  assert.deepEqual(await operate('listar', { q: '', tipo: 'SALADA' }), { pratos: [], proximo: null });
+  assert.deepEqual(await operate('listar', { q: '', antes: created.id }), { pratos: [], proximo: null });
+  await sqlRejects("select erp.prato_ficha_web(2,'listar','{\"q\":\"\"}')", 'PT404');
 }));
 
 test('RF-005/RF-009 preservam versões de ficha e validam os vínculos de cardápio', async () => actor(7, async () => {
