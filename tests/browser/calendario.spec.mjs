@@ -25,22 +25,35 @@ test('RF-005 busca insumo, cadastra ficha e reusa o envio após resposta incerta
   await setup(page);
   const writes = [];
   const ingredient = '9007199254741003';
+  const recipe = {
+    id: '91', versao_id: '92', numero: 1, descricao: 'Estrogonofe', tipo_prato: 'PROTEINA', status: 'ATIVO',
+    rendimento_porcoes: 100, peso_porcao_g: null, unidade_porcao: null, porcoes_por_unidade_compra: null, modo_preparo: null,
+    kcal_porcao: null, itens: [{ produto_id: ingredient, produto: 'Peito de frango', unidade: 'KG', quantidade_receita: '10',
+      quantidade_porcao: '0.1', fator_correcao: '1.25', custo_indireto: false, observacao: null }],
+  };
+  const searches = [];
   await page.route('**/pratos**', route => {
     const req = route.request();
     const url = new URL(req.url());
     if (req.method() === 'GET') {
+      if (url.pathname.endsWith('/pratos')) {
+        searches.push([...url.searchParams]);
+        return route.fulfill({ json: { pratos: [{
+          id: recipe.id, descricao: recipe.descricao, tipo_prato: recipe.tipo_prato, status: recipe.status,
+          numero: recipe.numero, rendimento_porcoes: recipe.rendimento_porcoes,
+        }], proximo: null } });
+      }
+      if (url.pathname.endsWith('/pratos/91')) {
+        expect(url.searchParams.get('numero')).toBe('1');
+        return route.fulfill({ json: recipe });
+      }
       expect(url.searchParams.get('q')).toBe('frango');
       return route.fulfill({ json: { insumos: [{ id: ingredient, descricao: 'Peito de frango', complemento: '',
         unidade: 'KG', fator_correcao: '1.250000', custo_indireto: false }] } });
     }
     writes.push(req.postDataJSON());
     if (writes.length === 1) return route.fulfill({ status: 503, json: {} });
-    return route.fulfill({ status: 201, json: {
-      id: '91', versao_id: '92', numero: 1, descricao: 'Estrogonofe', tipo_prato: 'PROTEINA', status: 'ATIVO',
-      rendimento_porcoes: 100, peso_porcao_g: null, unidade_porcao: null, porcoes_por_unidade_compra: null, modo_preparo: null,
-      kcal_porcao: null, itens: [{ produto_id: ingredient, produto: 'Peito de frango', unidade: 'KG', quantidade_receita: '10',
-        quantidade_porcao: '0.1', fator_correcao: '1.25', custo_indireto: false, observacao: null }],
-    } });
+    return route.fulfill({ status: 201, json: recipe });
   });
   await page.getByRole('link', { name: 'Pratos e fichas', exact: true }).click();
   await page.getByRole('textbox', { name: 'Buscar insumos' }).fill('frango');
@@ -57,6 +70,13 @@ test('RF-005 busca insumo, cadastra ficha e reusa o envio após resposta incerta
   expect(writes).toHaveLength(2);
   expect(writes[0]).toEqual(writes[1]);
   expect(writes[0].itens).toEqual([{ produto_id: ingredient, quantidade_receita: '10.0', custo_indireto: false }]);
+  await page.getByRole('button', { name: 'Consultar fichas salvas' }).click();
+  await page.getByRole('textbox', { name: 'Nome do prato ou ingrediente' }).fill('frango');
+  await page.getByRole('combobox', { name: 'Tipo de prato', exact: true }).selectOption('PROTEINA');
+  await page.getByRole('button', { name: 'Buscar fichas' }).click();
+  await page.getByRole('button', { name: 'Abrir ficha de Estrogonofe' }).click();
+  await expect(page.getByRole('region', { name: 'Insumos da ficha' })).toContainText('0,1 KG');
+  expect(searches.at(-1)).toEqual([['q', 'frango'], ['tipo', 'PROTEINA']]);
 });
 
 test('RF-009 mostra a grade da unidade e reusa o envio após resposta incerta', async ({ page }) => {

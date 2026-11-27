@@ -11,12 +11,25 @@ import { isStockLossReport } from '@erp/contracts';
 import type { StockLossReport, StockLossReportQuery } from '@erp/contracts';
 import { isMenuDraftDetail, isMenuDraftPage, isMenuDraftResult, isMenuGrade } from '@erp/contracts';
 import type { MenuDraft, MenuDraftDetail, MenuDraftPage, MenuDraftResult, MenuEstimateChanges, MenuGrade, MenuPeriod } from '@erp/contracts';
-import { isDishIngredients, isDishRecipe } from '@erp/contracts';
-import type { DishIngredientOption, DishRecipe, DishRecipeInput } from '@erp/contracts';
+import { isDishIngredients, isDishRecipe, isDishSearchPage } from '@erp/contracts';
+import type { DishIngredientOption, DishRecipe, DishRecipeInput, DishSearchPage, DishSearchQuery } from '@erp/contracts';
 import type { StockLossBatchRegistration } from '@erp/contracts';
 import type { StockLossReviewState, StockLossPanel, StockLossRegistration, StockLossRegistrationContext } from '@erp/contracts';
 
 export class StockApi {
+  async searchDishes(unit: string, query: DishSearchQuery): Promise<DishSearchPage> {
+    const search = new URLSearchParams({ ...query });
+    const data = await this.request(unit, `/pratos?${search}`);
+    if (!isDishSearchPage(data, query)) throw new RequestError(503);
+    return data;
+  }
+
+  async dishRecipe(unit: string, id: string, version: number): Promise<DishRecipe> {
+    if (!isStockId(id) || !Number.isInteger(version) || version < 1) throw new RequestError(400);
+    const data = await this.request(unit, `/pratos/${id}?numero=${version}`);
+    if (!isDishRecipe(data) || data.id !== id || data.numero !== version) throw new RequestError(503);
+    return data;
+  }
   async dishIngredients(unit: string, query: string): Promise<DishIngredientOption[]> {
     const data = await this.request(unit, `/pratos/insumos?${new URLSearchParams({ q: query })}`);
     if (!isDishIngredients(data)) throw new RequestError(503);

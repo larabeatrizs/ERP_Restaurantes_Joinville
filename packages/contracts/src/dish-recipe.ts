@@ -7,6 +7,11 @@ export const dishTypes = {
   ACOMPANHAMENTO: 'Acompanhamento', FRUTA: 'Fruta', BOLO_DOCE: 'Bolo ou doce',
 } as const;
 export type DishType = keyof typeof dishTypes;
+export interface DishSearchQuery { q: string; tipo?: DishType; antes?: string }
+export interface DishSearchPage {
+  pratos: Pick<DishRecipe, 'id' | 'descricao' | 'tipo_prato' | 'status' | 'numero' | 'rendimento_porcoes'>[];
+  proximo: string | null;
+}
 export interface DishIngredientOption {
   id: string; descricao: string; complemento: string; unidade: string; fator_correcao: string; custo_indireto: boolean;
 }
@@ -70,4 +75,22 @@ export function isDishIngredients(value: unknown): value is { insumos: DishIngre
     && value.insumos.every(row => isRecord(row) && hasExactFields(row, ['id', 'descricao', 'complemento', 'unidade', 'fator_correcao', 'custo_indireto'])
       && isStockId(row.id) && isText(row.descricao, 200) && isText(row.complemento, 200, true) && isText(row.unidade, 100)
       && positive(row.fator_correcao) && typeof row.custo_indireto === 'boolean');
+}
+
+export function isDishSearchQuery(value: unknown): value is DishSearchQuery {
+  return isRecord(value) && hasExactFields(value, ['q'], ['tipo', 'antes']) && isText(value.q, 200, true)
+    && (!Object.hasOwn(value, 'tipo') || (typeof value.tipo === 'string' && Object.hasOwn(dishTypes, value.tipo)))
+    && (!Object.hasOwn(value, 'antes') || isStockId(value.antes));
+}
+
+export function isDishSearchPage(value: unknown, query: DishSearchQuery): value is DishSearchPage {
+  if (!isRecord(value) || !hasExactFields(value, ['pratos', 'proximo']) || !Array.isArray(value.pratos) || value.pratos.length > 25) return false;
+  let last = query.antes;
+  for (const row of value.pratos) {
+    if (!isRecord(row) || !hasExactFields(row, [...required, 'id', 'status', 'numero']) || !header(row)
+      || !integer(row.numero) || !isStockId(row.id) || (last && BigInt(row.id) >= BigInt(last))
+      || (row.status !== 'ATIVO' && row.status !== 'INATIVO') || (query.tipo && row.tipo_prato !== query.tipo)) return false;
+    last = row.id;
+  }
+  return value.proximo === null || (value.pratos.length === 25 && value.proximo === last);
 }
